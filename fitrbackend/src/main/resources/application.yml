@@ -1,0 +1,13 @@
+server:
+  part: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/toydb
+    username: ambroseblay
+    password: 'password'
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
