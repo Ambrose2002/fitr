@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/toydb
+    url: jdbc:postgresql://localhost:5432/fitrdb
     username: ambroseblay
     password: 'password'
 
