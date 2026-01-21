@@ -1,5 +1,6 @@
 package com.example.fitrbackend.model;
 
+import jakarta.persistence.Column;
 import java.time.Instant;
 import lombok.Getter;
 import jakarta.persistence.Entity;
@@ -24,6 +25,7 @@ public class User {
     @Setter
     private String lastname;
 
+    @Column(name = "email", unique = true, nullable = false)
     @Getter
     @Setter
     private String email;
@@ -35,6 +37,14 @@ public class User {
     @Getter
     private Instant createdAt;
 
+    @Getter
+    @Setter
+    private Instant lastLoginAt;
+
+    @Getter
+    @Setter
+    private boolean isActive;
+
     public User() {
 
     }
@@ -45,5 +55,6 @@ public class User {
         this.email = email;
         this.passwordHash = passwordHash;
         this.createdAt = Instant.now();
+        this.isActive = true;
     }
 }
