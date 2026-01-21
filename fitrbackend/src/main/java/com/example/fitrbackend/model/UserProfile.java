@@ -33,7 +33,7 @@ public class UserProfile {
 
     @Getter
     @Setter
-    private ExperinceLevel experienceLevel;
+    private ExperienceLevel experienceLevel;
 
     @Getter
     @Setter
@@ -47,7 +47,7 @@ public class UserProfile {
     @Setter
     private Instant createdAt;
 
-    public UserProfile(User user, float height, float weight, ExperinceLevel experienceLevel, Goal goal, Unit preferredUnit) {
+    public UserProfile(User user, float height, float weight, ExperienceLevel experienceLevel, Goal goal, Unit preferredUnit) {
         this.user = user;
         this.height = height;
         this.weight = weight;

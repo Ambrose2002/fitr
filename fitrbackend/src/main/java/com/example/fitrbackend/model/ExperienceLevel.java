@@ -1,6 +1,6 @@
 package com.example.fitrbackend.model;
 
-public enum ExperinceLevel {
+public enum ExperienceLevel {
     BEGINNER,
     INTERMEDIATE,
     ADVANCED
