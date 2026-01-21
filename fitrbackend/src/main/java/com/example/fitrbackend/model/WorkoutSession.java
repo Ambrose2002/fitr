@@ -34,6 +34,7 @@ public class WorkoutSession {
     private Instant endTime;
 
     @Getter
+    @Setter
     private String notes;
 
     public WorkoutSession(User user, Instant startTime, Instant endTime, String notes, Location workoutLocation) {
