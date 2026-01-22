@@ -10,33 +10,65 @@ import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * Represents a single workout session.
+ *
+ * @author YOUR NAME
+ */
 @Entity
 public class WorkoutSession {
 
+    /**
+     * Unique identifier for the workout session.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Getter
     private long id;
 
+    /**
+     * The user that performed the workout session.
+     */
     @ManyToOne
     @JoinColumn(name = "user_id")
     @Getter
     private User user;
 
+    /**
+     * The location of the workout session.
+     */
     @Getter
     @Setter
     private Location workoutLocation;
 
+    /**
+     * The start time of the workout session.
+     */
     @Getter
     private Instant startTime;
 
+    /**
+     * The end time of the workout session.
+     */
     @Getter
     private Instant endTime;
 
+    /**
+     * Any notes made about the workout session.
+     */
     @Getter
     @Setter
     private String notes;
 
+    /**
+     * Creates a new workout session.
+     *
+     * @param user the user that performed the workout session
+     * @param startTime the start time of the workout session
+     * @param endTime the end time of the workout session
+     * @param notes any notes made about the workout session
+     * @param workoutLocation the location of the workout session
+     */
     public WorkoutSession(User user, Instant startTime, Instant endTime, String notes, Location workoutLocation) {
         this.user = user;
         this.startTime = startTime;
@@ -45,4 +77,3 @@ public class WorkoutSession {
         this.workoutLocation = workoutLocation;
     }
 }
-
