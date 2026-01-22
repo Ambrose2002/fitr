@@ -101,3 +101,4 @@ public class UserProfile {
         this.preferredDistanceUnit = preferredDistanceUnit;
         this.createdAt = Instant.now();
     }
+}
