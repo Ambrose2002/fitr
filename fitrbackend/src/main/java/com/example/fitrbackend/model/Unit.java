@@ -19,5 +19,10 @@ public enum Unit {
     /**
      * Miles
      */
-    MI
+    MI,
+    /**
+     * Centimeters
+     */
+    CM
+
 }
