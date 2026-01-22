@@ -11,8 +11,6 @@ import lombok.Getter;
 import lombok.Setter;
 /**
  * Represents a user's profile.
- *
- * @author Jake Byrne
  */
 @Entity
 public class UserProfile {

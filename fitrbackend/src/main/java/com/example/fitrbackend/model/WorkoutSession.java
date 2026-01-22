@@ -12,8 +12,6 @@ import lombok.Setter;
 
 /**
  * Represents a single workout session.
- *
- * @author YOUR NAME
  */
 @Entity
 public class WorkoutSession {
