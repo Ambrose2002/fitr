@@ -1,5 +1,6 @@
 package com.example.fitrbackend.dto;
 
+import java.time.Instant;
 import lombok.Getter;
 /**
  * Represents a response to a user request.
@@ -30,6 +31,12 @@ public class UserResponse {
     @Getter
     private final String email;
 
+    @Getter
+    private final Instant createdAt;
+
+    @Getter
+    private final boolean isActive;
+
     /**
      * Creates a new UserResponse.
      *
@@ -38,10 +45,12 @@ public class UserResponse {
      * @param lastname The last name of the user.
      * @param email The email address of the user.
      */
-    public UserResponse(long id, String firstname, String lastname, String email) {
+    public UserResponse(long id, String firstname, String lastname, String email, Instant createdAt, boolean isActive) {
         this.id = id;
         this.firstname = firstname;
         this.lastname = lastname;
         this.email = email;
+        this.createdAt = createdAt;
+        this.isActive = isActive;
     }
 }
