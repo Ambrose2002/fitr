@@ -50,9 +50,14 @@ public class SetLog {
 
 
 
-    public SetLog(WorkoutSession workoutSession, int setNumber) {
+    public SetLog(WorkoutSession workoutSession, int setNumber, float weight, int reps, Long durationSeconds, float distance, float calories) {
         this.workoutSession = workoutSession;
         this.setNumber = setNumber;
         this.completedAt = Instant.now();
+        this.weight = weight;
+        this.reps = reps;
+        this.durationSeconds = durationSeconds;
+        this.distance = distance;
+        this.calories = calories;
     }
 }
