@@ -35,6 +35,8 @@ public class WorkoutSession {
     /**
      * The location of the workout session.
      */
+    @ManyToOne
+    @JoinColumn(name = "workout_location_id")
     @Getter
     @Setter
     private Location workoutLocation;
