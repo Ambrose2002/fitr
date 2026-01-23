@@ -1,7 +1,9 @@
 package com.example.fitrbackend.controller;
 
-import org.springframework.web.bind.annotation.Mapping;
+import com.example.fitrbackend.dto.CreateLoginRequest;
+import com.example.fitrbackend.dto.LoginResponse;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -10,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     @PostMapping("/login")
-    public String login() {
+    public LoginResponse login( @RequestBody CreateLoginRequest req) {
         return null;
     }
 }
