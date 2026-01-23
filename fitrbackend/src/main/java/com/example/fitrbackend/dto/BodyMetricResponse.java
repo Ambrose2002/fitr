@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @Getter
-@AllArgsConstructor
 public class BodyMetricResponse {
 
     private final long id;
@@ -14,4 +13,12 @@ public class BodyMetricResponse {
     private final MetricType metricType;
     private final float value;
     private final Instant recordedAt;
+
+    public BodyMetricResponse(long id, long user_id, MetricType metricType, float value, Instant recordedAt) {
+        this.id = id;
+        this.user_id = user_id;
+        this.metricType = metricType;
+        this.value = value;
+        this.recordedAt = recordedAt;
+    }
 }

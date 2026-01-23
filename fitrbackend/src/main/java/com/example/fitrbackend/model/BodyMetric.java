@@ -1,5 +1,6 @@
 package com.example.fitrbackend.model;
 
+import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -14,6 +15,7 @@ import lombok.Setter;
  *
  * @author Jake Byrne
  */
+@Entity
 public class BodyMetric {
 
     /**
@@ -35,8 +37,6 @@ public class BodyMetric {
     /**
      * The type of metric associated with the body metric.
      */
-    @ManyToOne
-    @JoinColumn(name = "metric_type_id")
     @Getter
     private MetricType metricType;
 
