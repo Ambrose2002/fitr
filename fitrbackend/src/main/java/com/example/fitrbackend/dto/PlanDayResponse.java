@@ -1,6 +1,5 @@
 package com.example.fitrbackend.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @Getter

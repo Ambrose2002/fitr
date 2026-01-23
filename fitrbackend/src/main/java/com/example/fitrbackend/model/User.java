@@ -1,6 +1,7 @@
 package com.example.fitrbackend.model;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.Getter;
 import jakarta.persistence.Entity;
@@ -8,10 +9,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.Setter;
+
 /**
  * Represents a user in the system.
  */
 @Entity
+@Table(name = "users")
 public class User {
 
     /**
@@ -73,9 +76,10 @@ public class User {
 
     /**
      * Creates a new user with the given details.
-     * @param firstname First name of the user.
-     * @param lastname Last name of the user.
-     * @param email Email of the user.
+     * 
+     * @param firstname    First name of the user.
+     * @param lastname     Last name of the user.
+     * @param email        Email of the user.
      * @param passwordHash Hash of the user's password.
      */
     public User(String firstname, String lastname, String email, String passwordHash) {

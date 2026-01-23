@@ -2,7 +2,6 @@ package com.example.fitrbackend.dto;
 
 import com.example.fitrbackend.model.MetricType;
 import java.time.Instant;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @Getter
