@@ -15,6 +15,7 @@ import lombok.Setter;
  *
  * @author Jake Byrne
  */
+@Getter
 @Entity
 public class BodyMetric {
 
@@ -23,7 +24,6 @@ public class BodyMetric {
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Getter
     private long id;
 
     /**
@@ -31,27 +31,26 @@ public class BodyMetric {
      */
     @ManyToOne
     @JoinColumn(name = "user_id")
-    @Getter
     private User user;
 
     /**
      * The type of metric associated with the body metric.
      */
-    @Getter
     private MetricType metricType;
 
     /**
      * The value of the body metric.
      */
-    @Getter
     @Setter
     private float value;
 
     /**
      * The time at which the body metric was recorded.
      */
-    @Getter
-    private Instant recordedAt;
+    private final Instant recordedAt;
+
+    @Setter
+    private Instant updatedAt;
 
     /**
      * Creates a new body metric.
@@ -65,5 +64,6 @@ public class BodyMetric {
         this.metricType = metricType;
         this.value = value;
         this.recordedAt = Instant.now();
+        this.updatedAt = Instant.now();
     }
 }
