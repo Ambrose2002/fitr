@@ -30,20 +30,20 @@ public class AuthController {
         String email = req.getEmail();
         String password = req.getPassword();
 
-        UserResponse user = userService.getUser(email);
+        UserResponse userResponse = userService.getUser(email);
 
-        if (user ==  null) {
+        if (userResponse ==  null) {
             throw new AuthenticationFailedException("Invalid email or password");
         }
         if (!authService.validateUser(email, password)) {
             throw new AuthenticationFailedException("Invalid email or password");
         }
-        userService.updateUserLastLogin(user.getId());
+        userService.updateUserLastLogin(userResponse.getId());
         return new LoginResponse(authService.generateToken(email));
     }
 
     @PostMapping("/signup")
-    public LoginResponse login (@Valid @RequestBody CreateUserRequest req) {
+    public LoginResponse signup (@Valid @RequestBody CreateUserRequest req) {
         String email = req.getEmail();
         String password = req.getPassword();
         String firstName = req.getFirstName();

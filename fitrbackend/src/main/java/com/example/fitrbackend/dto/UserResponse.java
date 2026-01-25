@@ -5,36 +5,31 @@ import lombok.Getter;
 /**
  * Represents a response to a user request.
  */
+@Getter
 public class UserResponse {
 
     /**
      * The ID of the user.
      */
-    @Getter
     private final long id;
 
     /**
      * The first name of the user.
      */
-    @Getter
     private final String firstname;
 
     /**
      * The last name of the user.
      */
-    @Getter
     private final String lastname;
 
     /**
      * The email address of the user.
      */
-    @Getter
     private final String email;
 
-    @Getter
     private final Instant createdAt;
 
-    @Getter
     private final boolean isActive;
 
     /**
