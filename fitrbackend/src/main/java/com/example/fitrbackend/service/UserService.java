@@ -1,10 +1,12 @@
 package com.example.fitrbackend.service;
 
+import com.example.fitrbackend.dto.UpdateUserRequest;
 import com.example.fitrbackend.dto.UserResponse;
 import com.example.fitrbackend.exception.DataNotFoundException;
 import com.example.fitrbackend.model.User;
 import com.example.fitrbackend.repository.UserRepository;
 import java.time.Instant;
+import java.util.Objects;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -47,6 +49,25 @@ public class UserService {
         User user = repo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "user"));
         user.setLastLoginAt(Instant.now());
         repo.save(user);
+    }
+
+    public UserResponse updateUser(String email, UpdateUserRequest req) {
+        User user = repo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+        String firstName = req.getFirstName();
+        System.out.println(firstName);
+        if (!Objects.equals(firstName, "") && firstName != null) {
+            user.setFirstname(firstName);
+        }
+
+        String lastName = req.getLastName();
+        if (!Objects.equals(lastName, "") && lastName != null) {
+            user.setLastname(lastName);
+        }
+
+        return toResponse(repo.save(user));
     }
 
     private UserResponse toResponse(User user) {
