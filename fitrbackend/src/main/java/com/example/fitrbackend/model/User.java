@@ -53,7 +53,7 @@ public class User {
     /**
      * Instant when the user was created.
      */
-    private Instant createdAt;
+    private final Instant createdAt;
 
     /**
      * Instant when the user last logged in.
@@ -66,6 +66,13 @@ public class User {
      */
     @Setter
     private boolean isActive;
+
+    /**
+     * No-arg constructor for JPA.
+     */
+    public User() {
+        this.createdAt = Instant.now();
+    }
 
     /**
      * Creates a new user with the given details.

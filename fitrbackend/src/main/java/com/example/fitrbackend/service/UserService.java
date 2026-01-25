@@ -27,12 +27,11 @@ public class UserService {
     }
 
     public UserResponse getUser(String email) {
-        try {
-            return toResponse(repo.findByEmail(email));
-        } catch (Exception e) {
+        User user = repo.findByEmail(email);
+        if (user == null) {
             return null;
         }
-
+        return toResponse(user);
     }
 
     public void updateUserLastLogin(Long id) {
@@ -48,7 +47,6 @@ public class UserService {
                 user.getLastname(),
                 user.getEmail(),
                 user.getCreatedAt(),
-                user.isActive()
-        );
+                user.isActive());
     }
 }
