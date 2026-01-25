@@ -1,5 +1,6 @@
 package com.example.fitrbackend.controller;
 
+import com.example.fitrbackend.dto.CreateUserRequest;
 import com.example.fitrbackend.dto.LoginRequest;
 import com.example.fitrbackend.dto.LoginResponse;
 import com.example.fitrbackend.dto.UserResponse;
@@ -39,5 +40,23 @@ public class AuthController {
         }
         userService.updateUserLastLogin(user.getId());
         return new LoginResponse(authService.generateToken(email));
+    }
+
+    @PostMapping("/signup")
+    public LoginResponse login (@Valid @RequestBody CreateUserRequest req) {
+        String email = req.getEmail();
+        String password = req.getPassword();
+        String firstName = req.getFirstName();
+        String lastName = req.getLastName();
+
+        UserResponse user = userService.getUser(email);
+
+        if (user != null) {
+            throw new AuthenticationFailedException("User with email " + email + " exists");
+        }
+
+        UserResponse newUser = userService.createUser(email, password, firstName, lastName);
+        return new LoginResponse(authService.generateToken(email));
+
     }
 }

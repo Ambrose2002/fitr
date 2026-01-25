@@ -5,6 +5,7 @@ import com.example.fitrbackend.exception.DataNotFoundException;
 import com.example.fitrbackend.model.User;
 import com.example.fitrbackend.repository.UserRepository;
 import java.time.Instant;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -12,7 +13,18 @@ public class UserService {
 
     private final UserRepository repo;
 
-    public UserService(UserRepository repo) { this.repo = repo;}
+    private final PasswordEncoder passwordEncoder;
+
+    public UserService(UserRepository repo, PasswordEncoder passwordEncoder) {
+        this.repo = repo;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    public UserResponse createUser(String email, String password, String firstName, String lastName) {
+        String passwordHash = passwordEncoder.encode(password);
+        User user = new User(firstName, lastName, email, passwordHash);
+        return toResponse(repo.save(user));
+    }
 
     public UserResponse getUser(String email) {
         try {
