@@ -4,7 +4,6 @@ import com.example.fitrbackend.dto.LoginRequest;
 import com.example.fitrbackend.dto.LoginResponse;
 import com.example.fitrbackend.dto.UserResponse;
 import com.example.fitrbackend.exception.AuthenticationFailedException;
-import com.example.fitrbackend.exception.DataNotFoundException;
 import com.example.fitrbackend.service.AuthService;
 import com.example.fitrbackend.service.UserService;
 import jakarta.validation.Valid;
@@ -38,6 +37,7 @@ public class AuthController {
         if (!authService.validateUser(email, password)) {
             throw new AuthenticationFailedException("Invalid email or password");
         }
+        userService.updateUserLastLogin(user.getId());
         return new LoginResponse(authService.generateToken(email));
     }
 }

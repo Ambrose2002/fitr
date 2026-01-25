@@ -13,6 +13,7 @@ import lombok.Setter;
 /**
  * Represents a user in the system.
  */
+@Getter
 @Entity
 @Table(name = "users")
 public class User {
@@ -22,20 +23,17 @@ public class User {
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Getter
     private Long id;
 
     /**
      * First name of the user.
      */
-    @Getter
     @Setter
     private String firstname;
 
     /**
      * Last name of the user.
      */
-    @Getter
     @Setter
     private String lastname;
 
@@ -43,34 +41,29 @@ public class User {
      * Email of the user. This must be unique in the system.
      */
     @Column(name = "email", unique = true, nullable = false)
-    @Getter
     @Setter
     private String email;
 
     /**
      * Hash of the user's password.
      */
-    @Getter
     @Setter
     private String passwordHash;
 
     /**
      * Instant when the user was created.
      */
-    @Getter
     private Instant createdAt;
 
     /**
      * Instant when the user last logged in.
      */
-    @Getter
     @Setter
     private Instant lastLoginAt;
 
     /**
      * Whether the user is active or not.
      */
-    @Getter
     @Setter
     private boolean isActive;
 
