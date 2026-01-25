@@ -1,6 +1,7 @@
 package com.example.fitrbackend.controller;
 
 import com.example.fitrbackend.dto.UserResponse;
+import com.example.fitrbackend.exception.AuthenticationFailedException;
 import com.example.fitrbackend.exception.DataNotFoundException;
 import com.example.fitrbackend.service.UserService;
 import org.springframework.security.core.Authentication;
@@ -22,7 +23,9 @@ public class UserController {
     @GetMapping
     public UserResponse getMe() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        assert auth != null;
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
         String email = auth.getName();
 
         UserResponse userResponse = userService.getUser(email);
