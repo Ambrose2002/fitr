@@ -5,6 +5,7 @@ import com.example.fitrbackend.dto.LoginResponse;
 import com.example.fitrbackend.dto.UserResponse;
 import com.example.fitrbackend.exception.AuthenticationFailedException;
 import com.example.fitrbackend.exception.DataNotFoundException;
+import com.example.fitrbackend.service.AuthService;
 import com.example.fitrbackend.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,9 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final UserService userService;
+    private final AuthService authService;
 
-    public AuthController(UserService service) {
+    public AuthController(UserService service, AuthService authService) {
         this.userService = service;
+        this.authService = authService;
     }
 
     @PostMapping("/login")
@@ -30,8 +33,11 @@ public class AuthController {
         UserResponse user = userService.getUser(email);
 
         if (user ==  null) {
-            throw new AuthenticationFailedException("failed to login");
+            throw new AuthenticationFailedException("Invalid email or password");
         }
-        return null;
+        if (!authService.validateUser(email, password)) {
+            throw new AuthenticationFailedException("Invalid email or password");
+        }
+        return new LoginResponse(authService.generateToken(email));
     }
 }
