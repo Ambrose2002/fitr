@@ -1,2 +1,8 @@
-package com.example.fitrbackend.exception;public class AuthenticationFailedException {
+package com.example.fitrbackend.exception;
+
+public class AuthenticationFailedException extends RuntimeException{
+
+    public AuthenticationFailedException(String message) {
+        super(message);
+    }
 }
