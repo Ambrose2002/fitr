@@ -34,6 +34,15 @@ public class UserService {
         return toResponse(user);
     }
 
+    public UserResponse getUser(Long id) {
+        User user = repo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "user"));
+
+        if (user == null) {
+            return null;
+        }
+        return toResponse(user);
+    }
+
     public void updateUserLastLogin(Long id) {
         User user = repo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "user"));
         user.setLastLoginAt(Instant.now());
