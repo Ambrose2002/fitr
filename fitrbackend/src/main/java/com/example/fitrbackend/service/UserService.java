@@ -12,9 +12,9 @@ public class UserService {
 
     public UserService(UserRepository repo) { this.repo = repo;}
 
-    public User getUser(String email) {
+    public UserResponse getUser(String email) {
         try {
-            return repo.findByEmail(email);
+            return toResponse(repo.findByEmail(email));
         } catch (Exception e) {
             return null;
         }

@@ -2,6 +2,11 @@ package com.example.fitrbackend.controller;
 
 import com.example.fitrbackend.dto.LoginRequest;
 import com.example.fitrbackend.dto.LoginResponse;
+import com.example.fitrbackend.dto.UserResponse;
+import com.example.fitrbackend.exception.AuthenticationFailedException;
+import com.example.fitrbackend.exception.DataNotFoundException;
+import com.example.fitrbackend.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,10 +16,22 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/auth")
 public class AuthController {
 
+    private final UserService userService;
+
+    public AuthController(UserService service) {
+        this.userService = service;
+    }
+
     @PostMapping("/login")
-    public LoginResponse login( @RequestBody LoginRequest req) {
+    public LoginResponse login( @Valid @RequestBody LoginRequest req) {
         String email = req.getEmail();
         String password = req.getPassword();
+
+        UserResponse user = userService.getUser(email);
+
+        if (user ==  null) {
+            throw new AuthenticationFailedException("failed to login");
+        }
         return null;
     }
 }
