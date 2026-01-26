@@ -1,5 +1,9 @@
 package com.example.fitrbackend.dto;
 
+import com.example.fitrbackend.model.ExperienceLevel;
+import com.example.fitrbackend.model.Gender;
+import com.example.fitrbackend.model.Goal;
+import com.example.fitrbackend.model.Unit;
 import java.time.Instant;
 import lombok.Getter;
 /**
@@ -41,43 +45,43 @@ public class UserProfileResponse {
      * The user's gender.
      */
     @Getter
-    private final String gender;
+    private final Gender gender;
 
     /**
      * The user's height.
      */
     @Getter
-    private final String height;
+    private final float height;
 
     /**
      * The user's weight.
      */
     @Getter
-    private final String weight;
+    private final float weight;
 
     /**
      * The user's experience level.
      */
     @Getter
-    private final String experience;
+    private final ExperienceLevel experience;
 
     /**
      * The user's goal.
      */
     @Getter
-    private final String goal;
+    private final Goal goal;
 
     /**
      * The user's preferred unit of weight.
      */
     @Getter
-    private final String preferredWeightUnit;
+    private final Unit preferredWeightUnit;
 
     /**
      * The user's preferred unit of distance.
      */
     @Getter
-    private final String preferredDistanceUnit;
+    private final Unit preferredDistanceUnit;
 
     @Getter
     private final Instant createdAt;
@@ -98,7 +102,7 @@ public class UserProfileResponse {
      * @param preferredWeightUnit The user's preferred unit of weight.
      * @param preferredDistanceUnit The user's preferred unit of distance.
      */
-    public UserProfileResponse(long id, long userId, String firstname, String lastname, String email, String gender, String height, String weight, String experience, String goal, String preferredWeightUnit, String preferredDistanceUnit, Instant createdAt) {
+    public UserProfileResponse(long id, long userId, String firstname, String lastname, String email, Gender gender, float height, float weight, ExperienceLevel experience, Goal goal, Unit preferredWeightUnit, Unit preferredDistanceUnit, Instant createdAt) {
         this.id = id;
         this.userId = userId;
         this.firstname = firstname;

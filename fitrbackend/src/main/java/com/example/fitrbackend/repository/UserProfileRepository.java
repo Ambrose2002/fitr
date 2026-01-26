@@ -1,8 +1,11 @@
 package com.example.fitrbackend.repository;
 
+import com.example.fitrbackend.model.User;
 import com.example.fitrbackend.model.UserProfile;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserProfileRepository extends JpaRepository<UserProfile, Long> {
+
+    UserProfile findByUser(User user);
 
 }

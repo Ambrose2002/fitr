@@ -45,6 +45,10 @@ public class UserProfile {
     @Setter
     private float weight;
 
+    @Getter
+    @Setter
+    private Gender gender;
+
     /**
      * The user's experience level.
      */
