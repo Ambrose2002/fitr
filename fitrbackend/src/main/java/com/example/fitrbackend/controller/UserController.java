@@ -1,5 +1,6 @@
 package com.example.fitrbackend.controller;
 
+import com.example.fitrbackend.dto.CreateUserProfileRequest;
 import com.example.fitrbackend.dto.UpdateUserRequest;
 import com.example.fitrbackend.dto.UserProfileResponse;
 import com.example.fitrbackend.dto.UserResponse;
@@ -66,5 +67,18 @@ public class UserController {
         Long id = userResponse.getId();
         return userProfileService.getUserProfile(id);
 
+    }
+
+    @PostMapping("/profile")
+    public UserProfileResponse setUserProfile(@RequestBody CreateUserProfileRequest req) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+
+        UserResponse userResponse = userService.getUser(email);
+
+        return userProfileService.createUserProfile(req, userResponse.getId());
     }
 }

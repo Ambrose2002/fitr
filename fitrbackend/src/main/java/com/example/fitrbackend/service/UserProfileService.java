@@ -1,5 +1,6 @@
 package com.example.fitrbackend.service;
 
+import com.example.fitrbackend.dto.CreateUserProfileRequest;
 import com.example.fitrbackend.dto.UserProfileResponse;
 import com.example.fitrbackend.exception.DataNotFoundException;
 import com.example.fitrbackend.model.User;
@@ -28,6 +29,12 @@ public class UserProfileService {
             throw new DataNotFoundException(id, "userProfile");
         }
         return toUserProfileResponse(profileRepo.findByUser(user));
+    }
+
+    public UserProfileResponse createUserProfile(CreateUserProfileRequest req, Long id) {
+        User user = userRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "user"));
+        UserProfile profile = new UserProfile(user, req.getGender(), req.getHeight(), req.getWeight(), req.getExperienceLevel(), req.getGoal(), req.getPreferredWeightUnit(), req.getPreferredDistanceUnit());
+        return toUserProfileResponse(profileRepo.save(profile));
     }
 
     private UserProfileResponse toUserProfileResponse(UserProfile profile) {

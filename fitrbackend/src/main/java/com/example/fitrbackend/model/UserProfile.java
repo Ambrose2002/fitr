@@ -95,10 +95,11 @@ public class UserProfile {
      * @param preferredWeightUnit The unit of measurement for the user's weight.
      * @param preferredDistanceUnit The unit of measurement for the user's preferred distance.
      */
-    public UserProfile(User user, float height, float weight, ExperienceLevel experienceLevel, Goal goal, Unit preferredWeightUnit, Unit preferredDistanceUnit) {
+    public UserProfile(User user, Gender gender, float height, float weight, ExperienceLevel experienceLevel, Goal goal, Unit preferredWeightUnit, Unit preferredDistanceUnit) {
         this.user = user;
         this.height = height;
         this.weight = weight;
+        this.gender = gender;
         this.experienceLevel = experienceLevel;
         this.goal = goal;
         this.preferredWeightUnit = preferredWeightUnit;
