@@ -10,7 +10,9 @@ import java.util.List;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,8 +49,18 @@ public class LocationController {
         }
         String email = auth.getName();
 
-        UserResponse userResponse = userService.getUser(email);
-        return locationService.createLocation(req, userResponse.getId());
+        return locationService.createLocation(req, email);
+    }
+
+    @PutMapping("/{id}")
+    public LocationResponse updateLocation(@RequestBody CreateLocationRequest req, @PathVariable Long id) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        return locationService.updateLocation(req, id, email);
+
     }
 
 }

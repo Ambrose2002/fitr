@@ -9,6 +9,7 @@ import com.example.fitrbackend.repository.LocationRepository;
 import com.example.fitrbackend.repository.UserRepository;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -31,11 +32,26 @@ public class LocationService {
         return locationRepo.findByUserId(userId).stream().map(this::toLocationResponse).toList();
     }
 
-    public LocationResponse createLocation(CreateLocationRequest req, Long userId) {
-        User user = userRepo.findById(userId).orElseThrow(() -> new DataNotFoundException(userId, "user"));
+    public LocationResponse createLocation(CreateLocationRequest req, String email) {
+        User user = userRepo.findByEmail(email);
         Location location = new Location(req.getName(), req.getAddress(), user);
         Location savedLocation = locationRepo.save(location);
         return toLocationResponse(savedLocation);
+    }
+
+    public LocationResponse updateLocation(CreateLocationRequest req, Long id, String userEmail) {
+
+        User user = userRepo.findByEmail(userEmail);
+        Location location = locationRepo.findById(id)
+                .orElseThrow(() -> new DataNotFoundException(id, "location"));
+        if (Objects.equals(location.getUser().getId(), user.getId())) {
+            location.setName(req.getName());
+            location.setAddress(req.getAddress());
+            return toLocationResponse(locationRepo.save(location));
+        } else {
+            throw new DataNotFoundException(id, "location");
+        }
+
     }
 
     private LocationResponse toLocationResponse(Location location) {
