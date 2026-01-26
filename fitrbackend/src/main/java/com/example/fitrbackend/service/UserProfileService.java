@@ -2,6 +2,7 @@ package com.example.fitrbackend.service;
 
 import com.example.fitrbackend.dto.CreateUserProfileRequest;
 import com.example.fitrbackend.dto.UserProfileResponse;
+import com.example.fitrbackend.exception.DataCreationFailedException;
 import com.example.fitrbackend.exception.DataNotFoundException;
 import com.example.fitrbackend.model.User;
 import com.example.fitrbackend.model.UserProfile;
@@ -33,8 +34,12 @@ public class UserProfileService {
 
     public UserProfileResponse createUserProfile(CreateUserProfileRequest req, Long id) {
         User user = userRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "user"));
-        UserProfile profile = new UserProfile(user, req.getGender(), req.getHeight(), req.getWeight(), req.getExperienceLevel(), req.getGoal(), req.getPreferredWeightUnit(), req.getPreferredDistanceUnit());
-        return toUserProfileResponse(profileRepo.save(profile));
+        UserProfile profile = profileRepo.findByUser(user);
+        if (profile != null) {
+            throw new DataCreationFailedException("User already has an existing profile");
+        }
+        UserProfile newProfile = new UserProfile(user, req.getGender(), req.getHeight(), req.getWeight(), req.getExperienceLevel(), req.getGoal(), req.getPreferredWeightUnit(), req.getPreferredDistanceUnit());
+        return toUserProfileResponse(profileRepo.save(newProfile));
     }
 
     private UserProfileResponse toUserProfileResponse(UserProfile profile) {
@@ -52,7 +57,6 @@ public class UserProfileService {
                 profile.getPreferredWeightUnit(),
                 profile.getPreferredDistanceUnit(),
                 profile.getCreatedAt()
-
         );
     }
 }

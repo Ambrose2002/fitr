@@ -29,4 +29,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAuthenticationFailed(AuthenticationFailedException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(e.getMessage(), 401));
     }
+
+    @ExceptionHandler(DataCreationFailedException.class)
+    public ResponseEntity<ErrorResponse> handleDataCreationFailed(DataCreationFailedException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(e.getMessage(), 400));
+    }
 }

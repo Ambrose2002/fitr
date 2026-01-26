@@ -29,7 +29,7 @@ public class UserProfile {
     @OneToOne
     @JoinColumn(name = "user_id")
     @Getter
-    private final User user;
+    private User user;
 
     /**
      * The user's height in meters.
@@ -83,6 +83,10 @@ public class UserProfile {
     @Getter
     @Setter
     private Instant createdAt;
+
+    public UserProfile() {
+
+    }
 
     /**
      * Constructs a new user profile.
