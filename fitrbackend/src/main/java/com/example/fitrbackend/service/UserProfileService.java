@@ -42,6 +42,44 @@ public class UserProfileService {
         return toUserProfileResponse(profileRepo.save(newProfile));
     }
 
+    public UserProfileResponse updateUserProfile(CreateUserProfileRequest req, Long id) {
+        User user = userRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "user"));
+        UserProfile profile = profileRepo.findByUser(user);
+        if (profile == null) {
+            throw new DataNotFoundException(id, "userProfile");
+        }
+
+        if (req.getGender() != null) {
+            profile.setGender(req.getGender());
+        }
+
+        if (req.getHeight() != 0) {
+            profile.setHeight(req.getHeight());
+        }
+
+        if (req.getWeight() != 0) {
+            profile.setWeight(req.getWeight());
+        }
+
+        if (req.getExperienceLevel() != null) {
+            profile.setExperienceLevel(req.getExperienceLevel());
+        }
+
+        if (req.getGoal() != null) {
+            profile.setGoal(req.getGoal());
+        }
+
+        if (req.getPreferredWeightUnit() != null) {
+            profile.setPreferredWeightUnit(req.getPreferredWeightUnit());
+        }
+
+        if (req.getPreferredDistanceUnit() != null) {
+            profile.setPreferredDistanceUnit(req.getPreferredDistanceUnit());
+        }
+
+        return toUserProfileResponse(profileRepo.save(profile));
+    }
+
     private UserProfileResponse toUserProfileResponse(UserProfile profile) {
         return new UserProfileResponse(
                 profile.getId(),
