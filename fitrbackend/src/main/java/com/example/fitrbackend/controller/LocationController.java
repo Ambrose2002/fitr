@@ -1,5 +1,6 @@
 package com.example.fitrbackend.controller;
 
+import com.example.fitrbackend.service.LocationService;
 import com.example.fitrbackend.service.UserService;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -9,9 +10,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class LocationController {
 
     private final UserService userService;
+    private final LocationService locationService;
 
-    public LocationController(UserService userService) {
+    public LocationController(UserService userService, LocationService locationService) {
         this.userService = userService;
+        this.locationService = locationService;
     }
+
+
 
 }

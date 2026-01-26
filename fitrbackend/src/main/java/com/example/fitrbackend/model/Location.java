@@ -45,14 +45,17 @@ public class Location {
     @Setter
     private String address;
 
+    public Location() {}
+
     /**
      * Constructs a new location.
      *
      * @param name    The name of the location.
      * @param address The address of the location.
      */
-    public Location(String name, String address) {
+    public Location(String name, String address, User user) {
         this.name = name;
         this.address = address;
+        this.user = user;
     }
 }
