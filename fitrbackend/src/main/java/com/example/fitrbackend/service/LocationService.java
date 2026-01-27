@@ -7,7 +7,6 @@ import com.example.fitrbackend.model.Location;
 import com.example.fitrbackend.model.User;
 import com.example.fitrbackend.repository.LocationRepository;
 import com.example.fitrbackend.repository.UserRepository;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
