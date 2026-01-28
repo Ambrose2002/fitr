@@ -23,9 +23,16 @@ public class ExerciseService {
         this.userRepo = userRepo;
     }
 
-    public ExerciseResponse getExercise(Long id) {
+    public ExerciseResponse getExercise(Long id, String email) {
         Exercise exercise = exerciseRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "exercise"));
-        return toExerciseResponse(exercise);
+        if(exercise.isSystemDefined()) {
+            return toExerciseResponse(exercise);
+        }
+
+        if (exercise.getUser() != null && Objects.equals(exercise.getUser().getEmail(), email)) {
+            return toExerciseResponse(exercise);
+        }
+        throw new DataNotFoundException(id, "exercise");
     }
 
     public List<ExerciseResponse> getAllSystemDefinedExercises() {

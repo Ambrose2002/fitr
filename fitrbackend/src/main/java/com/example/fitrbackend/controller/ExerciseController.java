@@ -44,8 +44,12 @@ public class ExerciseController {
 
     @GetMapping("/{id}")
     public ExerciseResponse getOneExercise(@PathVariable Long id) {
-
-        return exerciseService.getExercise(id);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        return exerciseService.getExercise(id, email);
     }
 
     @PostMapping
