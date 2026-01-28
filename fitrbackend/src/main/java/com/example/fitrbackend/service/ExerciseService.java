@@ -32,8 +32,8 @@ public class ExerciseService {
         return exerciseRepo.findAllSystemDefinedExercises().stream().map(this::toExerciseResponse).toList();
     }
 
-    public List<ExerciseResponse> getAllExercisesByUser(String email) {
-        return exerciseRepo.findExerciseByUserEmail(email).stream().map(this::toExerciseResponse).toList();
+    public List<ExerciseResponse> getAllExercisesByUserAndSystem(String email) {
+        return exerciseRepo.findByUserOrSystemDefined(email).stream().map(this::toExerciseResponse).toList();
     }
 
     public ExerciseResponse createExercise(String email, CreateExerciseRequest req) {
