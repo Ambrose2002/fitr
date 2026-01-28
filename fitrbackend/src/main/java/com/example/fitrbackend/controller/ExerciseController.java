@@ -2,13 +2,17 @@ package com.example.fitrbackend.controller;
 
 import com.example.fitrbackend.dto.CreateExerciseRequest;
 import com.example.fitrbackend.dto.ExerciseResponse;
+import com.example.fitrbackend.exception.AuthenticationFailedException;
 import com.example.fitrbackend.service.ExerciseService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -28,8 +32,20 @@ public class ExerciseController {
     }
 
     @PostMapping
-    public ExerciseResponse postExercise(@RequestBody CreateExerciseRequest req) {
-        return exerciseService.createExercise(req);
+    public ExerciseResponse createExercise(@RequestBody CreateExerciseRequest req, @RequestParam(required = false) boolean systemOnly) {
+
+        if (systemOnly) {
+            return exerciseService.createExercise(req);
+        } else {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null) {
+                throw new AuthenticationFailedException("auth not found");
+            }
+            String email = auth.getName();
+
+            return exerciseService.createExercise(email, req);
+        }
+
     }
 
     @PutMapping("/{id}")
