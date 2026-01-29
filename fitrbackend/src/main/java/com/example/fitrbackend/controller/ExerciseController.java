@@ -27,7 +27,7 @@ public class ExerciseController {
     }
 
     @GetMapping
-    public List<ExerciseResponse> getExercises(@RequestParam(required = true) boolean systemOnly) {
+    public List<ExerciseResponse> getExercises(@RequestParam(name = "systemOnly", required = true) boolean systemOnly) {
 
         if (systemOnly) {
             return exerciseService.getAllSystemDefinedExercises();
