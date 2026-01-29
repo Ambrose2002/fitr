@@ -74,6 +74,8 @@ public class Exercise {
         this.createdAt = Instant.now();
     }
 
+    public Exercise() {};
+
     /**
      * Sets the owner of the exercise.
      * If the user is null, isSystemDefined is set to true else false.
