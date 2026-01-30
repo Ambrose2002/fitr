@@ -32,6 +32,7 @@ public class ExerciseController {
         if (systemOnly) {
             return exerciseService.getAllSystemDefinedExercises();
         } else {
+            System.out.println("not system only");
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth == null) {
                 throw new AuthenticationFailedException("auth not found");

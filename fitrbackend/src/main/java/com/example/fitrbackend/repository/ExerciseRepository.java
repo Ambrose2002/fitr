@@ -14,6 +14,6 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
     @Query("SELECT e FROM Exercise e WHERE e.isSystemDefined = true")
     List<Exercise> findAllSystemDefinedExercises();
 
-    @Query("SELECT e FROM Exercise e WHERE e.user.email = ?1 OR e.isSystemDefined = true")
+    @Query("SELECT e FROM Exercise e WHERE e.isSystemDefined = true OR e.user.email = ?1")
     List<Exercise> findByUserOrSystemDefined(String email);
 }

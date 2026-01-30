@@ -10,6 +10,7 @@ import com.example.fitrbackend.repository.ExerciseRepository;
 import com.example.fitrbackend.repository.UserRepository;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -40,7 +41,12 @@ public class ExerciseService {
     }
 
     public List<ExerciseResponse> getAllExercisesByUserAndSystem(String email) {
-        return exerciseRepo.findByUserOrSystemDefined(email).stream().map(this::toExerciseResponse).toList();
+        List<Exercise> userExercises = exerciseRepo.findExerciseByUserEmail(email);
+        List<Exercise> systemExercises = exerciseRepo.findAllSystemDefinedExercises();
+        return Stream.concat(userExercises.stream(), systemExercises.stream())
+                .distinct()
+                .map(this::toExerciseResponse)
+                .toList();
     }
 
     public ExerciseResponse createExercise(String email, CreateExerciseRequest req) {
