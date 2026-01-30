@@ -45,6 +45,15 @@ public class WorkoutPlanService {
         return toWorkoutPlanResponse(workoutPlan);
     }
 
+    public WorkoutPlanResponse updateWorkoutPlan(String email, long id, CreateWorkoutPlanRequest req) {
+        WorkoutPlan workoutPlan = workoutPlanRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "workout plan"));
+        if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
+            throw new DataNotFoundException(id, "workout plan");
+        }
+        workoutPlan.setName(req.getName());
+        return toWorkoutPlanResponse(workoutPlanRepo.save(workoutPlan));
+    }
+
     private WorkoutPlanResponse toWorkoutPlanResponse(WorkoutPlan workoutPlan) {
         return new WorkoutPlanResponse(
                 workoutPlan.getId(),
