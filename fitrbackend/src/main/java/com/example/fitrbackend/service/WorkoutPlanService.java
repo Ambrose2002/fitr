@@ -54,6 +54,14 @@ public class WorkoutPlanService {
         return toWorkoutPlanResponse(workoutPlanRepo.save(workoutPlan));
     }
 
+    public void deleteWorkoutPlan(String email, long id) {
+        WorkoutPlan workoutPlan = workoutPlanRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "workout plan"));
+        if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
+            throw new DataNotFoundException(id, "workout plan");
+        }
+        workoutPlanRepo.delete(workoutPlan);
+    }
+
     private WorkoutPlanResponse toWorkoutPlanResponse(WorkoutPlan workoutPlan) {
         return new WorkoutPlanResponse(
                 workoutPlan.getId(),
