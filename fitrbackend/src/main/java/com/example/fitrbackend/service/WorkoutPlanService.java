@@ -8,6 +8,7 @@ import com.example.fitrbackend.model.WorkoutPlan;
 import com.example.fitrbackend.repository.UserRepository;
 import com.example.fitrbackend.repository.WorkoutPlanRepository;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -34,6 +35,14 @@ public class WorkoutPlanService {
 
         WorkoutPlan workoutPlan = new WorkoutPlan(user, req.getName());
         return toWorkoutPlanResponse(workoutPlanRepo.save(workoutPlan));
+    }
+
+    public WorkoutPlanResponse getWorkoutPlan(String email, long id) {
+        WorkoutPlan workoutPlan = workoutPlanRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "workout plan"));
+        if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
+            throw new DataNotFoundException(id, "workout plan");
+        }
+        return toWorkoutPlanResponse(workoutPlan);
     }
 
     private WorkoutPlanResponse toWorkoutPlanResponse(WorkoutPlan workoutPlan) {
