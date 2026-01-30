@@ -53,6 +53,11 @@ public class WorkoutPlan {
     private boolean isActive;
 
     /**
+     * No-argument constructor for JPA.
+     */
+    public WorkoutPlan() {}
+
+    /**
      * Creates a new workout plan with the specified user and name.
      *
      * @param user the user associated with the workout plan

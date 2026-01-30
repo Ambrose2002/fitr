@@ -1,7 +1,11 @@
 package com.example.fitrbackend.service;
 
+import com.example.fitrbackend.dto.CreateWorkoutPlanRequest;
 import com.example.fitrbackend.dto.WorkoutPlanResponse;
+import com.example.fitrbackend.exception.DataNotFoundException;
+import com.example.fitrbackend.model.User;
 import com.example.fitrbackend.model.WorkoutPlan;
+import com.example.fitrbackend.repository.UserRepository;
 import com.example.fitrbackend.repository.WorkoutPlanRepository;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -10,9 +14,11 @@ import org.springframework.stereotype.Service;
 public class WorkoutPlanService {
 
     private final WorkoutPlanRepository workoutPlanRepo;
+    private final UserRepository userRepo;
 
-    public WorkoutPlanService(WorkoutPlanRepository workoutPlanRepo) {
+    public WorkoutPlanService(WorkoutPlanRepository workoutPlanRepo, UserRepository userRepo) {
         this.workoutPlanRepo = workoutPlanRepo;
+        this.userRepo = userRepo;
     }
 
 
@@ -20,6 +26,15 @@ public class WorkoutPlanService {
         return workoutPlanRepo.findUserWorkoutPlans(email).stream().map(this::toWorkoutPlanResponse).toList();
     }
 
+    public WorkoutPlanResponse createWorkoutPlan(String email, CreateWorkoutPlanRequest req) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+
+        WorkoutPlan workoutPlan = new WorkoutPlan(user, req.getName());
+        return toWorkoutPlanResponse(workoutPlanRepo.save(workoutPlan));
+    }
 
     private WorkoutPlanResponse toWorkoutPlanResponse(WorkoutPlan workoutPlan) {
         return new WorkoutPlanResponse(
