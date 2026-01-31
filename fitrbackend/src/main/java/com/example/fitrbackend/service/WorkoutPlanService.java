@@ -81,6 +81,22 @@ public class WorkoutPlanService {
         return planDayRepo.findByWorkoutPlanId(planId).stream().map(this::toPlanDayResponse).toList();
     }
 
+    public PlanDayResponse getPlanDay(String email, long planId, long dayId) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+        WorkoutPlan workoutPlan = workoutPlanRepo.findById(planId).orElseThrow(() -> new DataNotFoundException(planId, "workout plan"));
+        if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
+            throw new DataNotFoundException(planId, "workout plan");
+        }
+        PlanDay planDay = planDayRepo.findById(dayId).orElseThrow(() -> new DataNotFoundException(dayId, "plan day"));
+        if (!Objects.equals(planDay.getWorkoutPlan().getId(), planId)) {
+            throw new DataNotFoundException(dayId, "plan day");
+        }
+        return toPlanDayResponse(planDay);
+    }
+
     public PlanDayResponse addDayToWorkoutPlan(String email, long planId, CreateWorkoutPlanDayRequest req) {
         User user = userRepo.findByEmail(email);
         if (user == null) {
