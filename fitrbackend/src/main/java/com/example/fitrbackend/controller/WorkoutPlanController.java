@@ -117,4 +117,14 @@ public class WorkoutPlanController {
         String email = auth.getName();
         return workoutPlanService.updateDayInWorkoutPlan(email, planId, dayId, req);
     }
+
+    @DeleteMapping("/{planId}/days/{dayId}")
+    public void deleteDayInWorkoutPlan(@PathVariable Long planId, @PathVariable Long dayId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        workoutPlanService.deleteDayInWorkoutPlan(email, planId, dayId);
+    }
 }
