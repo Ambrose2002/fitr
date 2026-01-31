@@ -87,4 +87,14 @@ public class WorkoutPlanController {
         String email = auth.getName();
         return workoutPlanService.addDayToWorkoutPlan(email, planId, req);
     }
+
+    @PutMapping("/{planId}/days/{dayId}")
+    public PlanDayResponse updateDayInWorkoutPlan(@PathVariable Long planId, @PathVariable Long dayId, @RequestBody CreateWorkoutPlanDayRequest req) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        return workoutPlanService.updateDayInWorkoutPlan(email, planId, dayId, req);
+    }
 }

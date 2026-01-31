@@ -4,6 +4,7 @@ import com.example.fitrbackend.dto.CreateWorkoutPlanDayRequest;
 import com.example.fitrbackend.dto.CreateWorkoutPlanRequest;
 import com.example.fitrbackend.dto.PlanDayResponse;
 import com.example.fitrbackend.dto.WorkoutPlanResponse;
+import com.example.fitrbackend.exception.DataCreationFailedException;
 import com.example.fitrbackend.exception.DataNotFoundException;
 import com.example.fitrbackend.model.PlanDay;
 import com.example.fitrbackend.model.User;
@@ -77,7 +78,36 @@ public class WorkoutPlanService {
         if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
             throw new DataNotFoundException(planId, "workout plan");
         }
+
+        if (req.getDayNumber() <= 0 || req.getDayNumber() > 7) {
+            throw new DataCreationFailedException("dayNumber must be between 1 and 7");
+        }
+        if (req.getName() == null || req.getName().isEmpty()) {
+            throw new DataCreationFailedException("name cannot be empty");
+        }
         PlanDay planDay = new PlanDay(workoutPlan, req.getDayNumber(), req.getName());
+        return toPlanDayResponse(planDayRepo.save(planDay));
+    }
+
+    public PlanDayResponse updateDayInWorkoutPlan(String email, long planId, long dayId, CreateWorkoutPlanDayRequest req) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+        WorkoutPlan workoutPlan = workoutPlanRepo.findById(planId).orElseThrow(() -> new DataNotFoundException(planId, "workout plan"));
+        if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
+            throw new DataNotFoundException(planId, "workout plan");
+        }
+        PlanDay planDay = planDayRepo.findById(dayId).orElseThrow(() -> new DataNotFoundException(dayId, "plan day"));
+        if (!Objects.equals(planDay.getWorkoutPlan().getId(), planId)) {
+            throw new DataNotFoundException(dayId, "plan day");
+        }
+        if (req.getDayNumber() >=1 && req.getDayNumber() <= 7) {
+            planDay.setDayNumber(req.getDayNumber());
+        }
+        if (req.getName() != null && !req.getName().isEmpty()) {
+            planDay.setName(req.getName());
+        }
         return toPlanDayResponse(planDayRepo.save(planDay));
     }
 
