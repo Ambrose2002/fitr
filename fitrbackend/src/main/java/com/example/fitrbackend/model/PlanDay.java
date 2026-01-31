@@ -46,6 +46,11 @@ public class PlanDay {
     private String name;
 
     /**
+     * No-argument constructor for PlanDay.
+     */
+    public PlanDay() {}
+
+    /**
      * Creates a new plan day with the given workout plan, day number, and name.
      * @param workoutPlan the workout plan that this day belongs to
      * @param dayNumber the number of the day in the workout plan

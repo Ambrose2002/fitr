@@ -1,6 +1,8 @@
 package com.example.fitrbackend.controller;
 
+import com.example.fitrbackend.dto.CreateWorkoutPlanDayRequest;
 import com.example.fitrbackend.dto.CreateWorkoutPlanRequest;
+import com.example.fitrbackend.dto.PlanDayResponse;
 import com.example.fitrbackend.dto.WorkoutPlanResponse;
 import com.example.fitrbackend.exception.AuthenticationFailedException;
 import com.example.fitrbackend.service.WorkoutPlanService;
@@ -74,5 +76,15 @@ public class WorkoutPlanController {
         }
         String email = auth.getName();
         workoutPlanService.deleteWorkoutPlan(email, id);
+    }
+
+    @PostMapping("/{planId}/days")
+    public PlanDayResponse addDayToWorkoutPlan(@PathVariable Long planId, @RequestBody CreateWorkoutPlanDayRequest req) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        return workoutPlanService.addDayToWorkoutPlan(email, planId, req);
     }
 }

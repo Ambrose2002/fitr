@@ -24,10 +24,5 @@ public class SecurityConfig {
                                 UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
-
-    @PostConstruct
-    public void loaded() {
-        System.out.println(">>> SecurityConfig LOADED <<<");
-    }
 }
 

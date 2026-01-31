@@ -1,10 +1,14 @@
 package com.example.fitrbackend.service;
 
+import com.example.fitrbackend.dto.CreateWorkoutPlanDayRequest;
 import com.example.fitrbackend.dto.CreateWorkoutPlanRequest;
+import com.example.fitrbackend.dto.PlanDayResponse;
 import com.example.fitrbackend.dto.WorkoutPlanResponse;
 import com.example.fitrbackend.exception.DataNotFoundException;
+import com.example.fitrbackend.model.PlanDay;
 import com.example.fitrbackend.model.User;
 import com.example.fitrbackend.model.WorkoutPlan;
+import com.example.fitrbackend.repository.PlanDayRepository;
 import com.example.fitrbackend.repository.UserRepository;
 import com.example.fitrbackend.repository.WorkoutPlanRepository;
 import java.util.List;
@@ -16,10 +20,12 @@ public class WorkoutPlanService {
 
     private final WorkoutPlanRepository workoutPlanRepo;
     private final UserRepository userRepo;
+    private final PlanDayRepository planDayRepo;
 
-    public WorkoutPlanService(WorkoutPlanRepository workoutPlanRepo, UserRepository userRepo) {
+    public WorkoutPlanService(WorkoutPlanRepository workoutPlanRepo, UserRepository userRepo, PlanDayRepository planDayRepo) {
         this.workoutPlanRepo = workoutPlanRepo;
         this.userRepo = userRepo;
+        this.planDayRepo = planDayRepo;
     }
 
 
@@ -62,6 +68,19 @@ public class WorkoutPlanService {
         workoutPlanRepo.delete(workoutPlan);
     }
 
+    public PlanDayResponse addDayToWorkoutPlan(String email, long planId, CreateWorkoutPlanDayRequest req) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+        WorkoutPlan workoutPlan = workoutPlanRepo.findById(planId).orElseThrow(() -> new DataNotFoundException(planId, "workout plan"));
+        if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
+            throw new DataNotFoundException(planId, "workout plan");
+        }
+        PlanDay planDay = new PlanDay(workoutPlan, req.getDayNumber(), req.getName());
+        return toPlanDayResponse(planDayRepo.save(planDay));
+    }
+
     private WorkoutPlanResponse toWorkoutPlanResponse(WorkoutPlan workoutPlan) {
         return new WorkoutPlanResponse(
                 workoutPlan.getId(),
@@ -69,5 +88,13 @@ public class WorkoutPlanService {
                 workoutPlan.getName(),
                 workoutPlan.getCreatedAt(),
                 workoutPlan.isActive());
+    }
+
+    private PlanDayResponse toPlanDayResponse(PlanDay planDay) {
+        return new PlanDayResponse(
+                planDay.getId(),
+                planDay.getWorkoutPlan().getId(),
+                planDay.getDayNumber(),
+                planDay.getName());
     }
 }
