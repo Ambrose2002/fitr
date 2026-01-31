@@ -78,6 +78,16 @@ public class WorkoutPlanController {
         workoutPlanService.deleteWorkoutPlan(email, id);
     }
 
+    @GetMapping("/{planId}/days")
+    public List<PlanDayResponse> getDaysInWorkoutPlan(@PathVariable Long planId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        return workoutPlanService.getPlanDays(email, planId);
+    }
+
     @PostMapping("/{planId}/days")
     public PlanDayResponse addDayToWorkoutPlan(@PathVariable Long planId, @RequestBody CreateWorkoutPlanDayRequest req) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
