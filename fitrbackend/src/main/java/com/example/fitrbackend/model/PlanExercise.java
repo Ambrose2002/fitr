@@ -75,6 +75,8 @@ public class PlanExercise {
     @Setter
     private float targetCalories;
 
+    public PlanExercise() {}
+
     /**
      * Constructs a new plan exercise.
      *
