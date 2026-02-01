@@ -10,4 +10,16 @@ public class CreatePlanDayExerciseRequest {
     private int targetDurationSeconds;
     private float targetDistance;
     private float targetCalories;
+
+    @Override
+    public String toString() {
+        return "CreatePlanDayExerciseRequest{" +
+                "exerciseId=" + exerciseId +
+                ", targetSets=" + targetSets +
+                ", targetReps=" + targetReps +
+                ", targetDurationSeconds=" + targetDurationSeconds +
+                ", targetDistance=" + targetDistance +
+                ", targetCalories=" + targetCalories +
+                '}';
+    }
 }

@@ -12,6 +12,7 @@ import lombok.Setter;
 /**
  * Represents a single day in a workout plan.
  */
+@Getter
 @Entity
 public class PlanDay {
 
@@ -20,7 +21,6 @@ public class PlanDay {
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Getter
     private long id;
 
     /**
@@ -28,20 +28,17 @@ public class PlanDay {
      */
     @ManyToOne
     @JoinColumn(name = "workout_plan_id")
-    @Getter
     private WorkoutPlan workoutPlan;
 
     /**
      * The number of the day in the workout plan.
      */
-    @Getter
     @Setter
     private int dayNumber;
 
     /**
      * The name of the day in the workout plan.
      */
-    @Getter
     @Setter
     private String name;
 

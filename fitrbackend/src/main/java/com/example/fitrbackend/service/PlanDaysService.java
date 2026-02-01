@@ -12,8 +12,11 @@ import com.example.fitrbackend.repository.ExerciseRepository;
 import com.example.fitrbackend.repository.PlanDayRepository;
 import com.example.fitrbackend.repository.PlanExerciseRepository;
 import com.example.fitrbackend.repository.UserRepository;
+import java.util.List;
 import java.util.Objects;
+import org.springframework.stereotype.Service;
 
+@Service
 public class PlanDaysService {
 
     private final PlanExerciseRepository planExerciseRepo;
@@ -28,9 +31,9 @@ public class PlanDaysService {
         this.userRepo = userRepo;
     }
 
-    public PlanExerciseResponse getPlanExercise(Long id) {
-        PlanExercise planExercise = planExerciseRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "plan exercise"));
-        return toPlanExerciseResponse(planExercise);
+    public List<PlanExerciseResponse> getPlanDayExercises(String email, Long dayId) {
+        List<PlanExercise> planExercises = planExerciseRepo.findByPlanDayId(dayId);
+        return planExercises.stream().map(this::toPlanExerciseResponse).toList();
     }
 
     public PlanExerciseResponse addExerciseToPlanDay(String email, long dayId, CreatePlanDayExerciseRequest req) {
@@ -47,7 +50,8 @@ public class PlanDaysService {
             throw new DataCreationFailedException("user does not own exercise");
         }
         PlanExercise planExercise = new PlanExercise(
-                planDay, exercise,
+                planDay,
+                exercise,
                 req.getTargetSets(),
                 req.getTargetReps(),
                 req.getTargetDurationSeconds(),
