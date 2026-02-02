@@ -60,6 +60,8 @@ public class WorkoutSession {
     @Setter
     private String notes;
 
+    public WorkoutSession() {}
+
     /**
      * Creates a new workout session.
      *
