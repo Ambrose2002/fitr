@@ -44,4 +44,14 @@ public class PlanDaysController {
         String email = auth.getName();
         return planDaysService.getPlanDayExercises(email, dayId);
     }
+
+    @GetMapping("/{dayId}/exercises/{exerciseId}")
+    public PlanExerciseResponse getPlanDayExercise(@PathVariable Long dayId, @PathVariable Long exerciseId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        return planDaysService.getPlanDayExercise(email, dayId, exerciseId);
+    }
 }
