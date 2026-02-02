@@ -6,7 +6,7 @@ public class DataNotFoundException extends RuntimeException {
         super(dataName + " not found: " + id);
     }
 
-    public DataNotFoundException(String email) {
-        super("User not found: " + email);
+    public DataNotFoundException(String message) {
+        super("Data not found: " + message);
     }
 }

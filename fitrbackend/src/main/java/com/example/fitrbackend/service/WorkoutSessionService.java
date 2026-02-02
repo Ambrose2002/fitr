@@ -10,6 +10,8 @@ import com.example.fitrbackend.repository.LocationRepository;
 import com.example.fitrbackend.repository.UserRepository;
 import com.example.fitrbackend.repository.WorkoutSessionRepository;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -21,7 +23,8 @@ public class WorkoutSessionService {
     private final UserRepository userRepo;
     private final LocationRepository locationRepo;
 
-    public WorkoutSessionService(WorkoutSessionRepository workoutSessionRepo, UserRepository userRepo, LocationRepository locationRepo) {
+    public WorkoutSessionService(WorkoutSessionRepository workoutSessionRepo, UserRepository userRepo,
+            LocationRepository locationRepo) {
         this.workoutSessionRepo = workoutSessionRepo;
         this.userRepo = userRepo;
         this.locationRepo = locationRepo;
@@ -33,25 +36,40 @@ public class WorkoutSessionService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        Location location = locationRepo.findById(req.getLocationId()).orElseThrow(() -> new DataNotFoundException("location not found"));
+        Location location = locationRepo.findById(req.getLocationId())
+                .orElseThrow(() -> new DataNotFoundException("location not found"));
         WorkoutSession workoutSession = new WorkoutSession(user, Instant.now(), null, req.getNotes(), location);
         return toWorkoutSessionResponse(workoutSessionRepo.save(workoutSession));
     }
 
-    public List<WorkoutSessionResponse> getWorkoutSessions(String email, String fromDate, String toDate, int limit) {
+    public List<WorkoutSessionResponse> getWorkoutSessions(String email, String fromDate, String toDate,
+            Integer limit) {
         List<WorkoutSession> workoutSessions = workoutSessionRepo.findByUserEmail(email);
+
         if (fromDate != null && !fromDate.isEmpty()) {
-            Instant fromDateInstant = Instant.parse(fromDate);
+            Instant fromDateInstant = parseDate(fromDate);
             workoutSessions = workoutSessions.stream().filter(w -> w.getStartTime().isAfter(fromDateInstant)).toList();
         }
+
         if (toDate != null && !toDate.isEmpty()) {
-            Instant toDateInstant = Instant.parse(toDate);
+            Instant toDateInstant = parseDate(toDate);
             workoutSessions = workoutSessions.stream().filter(w -> w.getStartTime().isBefore(toDateInstant)).toList();
         }
-        if (limit > 0) {
+
+        if (limit != null && limit > 0) {
             return workoutSessions.stream().limit(limit).map(this::toWorkoutSessionResponse).toList();
         }
-        return new ArrayList<>();
+        return workoutSessions.stream().map(this::toWorkoutSessionResponse).toList();
+    }
+
+    private Instant parseDate(String dateStr) {
+        try {
+            // Try parsing as ISO 8601 instant first
+            return Instant.parse(dateStr);
+        } catch (Exception e) {
+            // Fall back to parsing as date only (e.g., 2026-01-01)
+            return LocalDate.parse(dateStr).atStartOfDay().toInstant(ZoneOffset.UTC);
+        }
     }
 
     private WorkoutSessionResponse toWorkoutSessionResponse(WorkoutSession workoutSession) {
@@ -61,7 +79,6 @@ public class WorkoutSessionService {
                 workoutSession.getWorkoutLocation().getId(),
                 workoutSession.getStartTime(),
                 workoutSession.getEndTime(),
-                workoutSession.getNotes()
-        );
+                workoutSession.getNotes());
     }
 }

@@ -3,7 +3,7 @@ package com.example.fitrbackend.controller;
 import com.example.fitrbackend.dto.CreateWorkoutSessionRequest;
 import com.example.fitrbackend.dto.WorkoutSessionResponse;
 import com.example.fitrbackend.exception.AuthenticationFailedException;
-import com.example.fitrbackend.model.WorkoutSession;
+import com.example.fitrbackend.exception.DataNotFoundException;
 import com.example.fitrbackend.service.WorkoutSessionService;
 import java.util.List;
 import org.springframework.security.core.Authentication;
@@ -36,12 +36,17 @@ public class WorkoutSessionController {
     }
 
     @GetMapping
-    public List<WorkoutSessionResponse> getWorkoutSessions(@RequestParam(name = "limit", required = false) int limit, @RequestParam(name = "startDate", required = false) String fromDate, @RequestParam(name = "endDate", required = false) String toDate) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) {
-            throw new AuthenticationFailedException("auth not found");
+    public List<WorkoutSessionResponse> getWorkoutSessions(@RequestParam(name = "limit", required = false) Integer limit, @RequestParam(name = "startDate", required = false) String fromDate, @RequestParam(name = "endDate", required = false) String toDate) {
+        try
+        {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null) {
+                throw new AuthenticationFailedException("auth not found");
+            }
+            String email = auth.getName();
+            return workoutSessionService.getWorkoutSessions(email, fromDate, toDate, limit);
+        } catch (Exception e) {
+            throw new DataNotFoundException("Could not find workouts within the constraints");
         }
-        String email = auth.getName();
-        return workoutSessionService.getWorkoutSessions(email, fromDate, toDate, limit);
     }
 }
