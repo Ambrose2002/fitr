@@ -1,6 +1,7 @@
 package com.example.fitrbackend.service;
 
 import com.example.fitrbackend.dto.CreatePlanDayExerciseRequest;
+import com.example.fitrbackend.dto.PlanDayResponse;
 import com.example.fitrbackend.dto.PlanExerciseResponse;
 import com.example.fitrbackend.exception.DataCreationFailedException;
 import com.example.fitrbackend.exception.DataNotFoundException;
@@ -69,6 +70,32 @@ public class PlanDaysService {
                 req.getTargetDistance(),
                 req.getTargetCalories()
         );
+        return toPlanExerciseResponse(planExerciseRepo.save(planExercise));
+    }
+
+    public PlanExerciseResponse updatePlanDayExercise(String email, long dayId, long exerciseId, CreatePlanDayExerciseRequest req) {
+        PlanExercise planExercise = planExerciseRepo.findById(exerciseId).orElseThrow(() -> new DataNotFoundException(exerciseId, "plan exercise"));
+        if (!Objects.equals(planExercise.getPlanDay().getId(), dayId)) {
+            throw new DataNotFoundException(exerciseId, "plan exercise");
+        }
+        if (!Objects.equals(planExercise.getPlanDay().getWorkoutPlan().getUser().getEmail(), email)) {
+            throw new DataNotFoundException(exerciseId, "plan exercise");
+        }
+        if (req.getTargetSets() > 0) {
+            planExercise.setTargetSets(req.getTargetSets());
+        }
+        if (req.getTargetReps() > 0) {
+            planExercise.setTargetReps(req.getTargetReps());
+        }
+        if (req.getTargetDurationSeconds() > 0) {
+            planExercise.setTargetDurationSeconds(req.getTargetDurationSeconds());
+        }
+        if (req.getTargetDistance() > 0) {
+            planExercise.setTargetDistance(req.getTargetDistance());
+        }
+        if (req.getTargetCalories() > 0) {
+            planExercise.setTargetCalories(req.getTargetCalories());
+        }
         return toPlanExerciseResponse(planExerciseRepo.save(planExercise));
     }
 
