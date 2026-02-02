@@ -81,22 +81,33 @@ public class PlanDaysService {
         if (!Objects.equals(planExercise.getPlanDay().getWorkoutPlan().getUser().getEmail(), email)) {
             throw new DataNotFoundException(exerciseId, "plan exercise");
         }
-        if (req.getTargetSets() > 0) {
+        if (req.getTargetSets() >= 0) {
             planExercise.setTargetSets(req.getTargetSets());
         }
-        if (req.getTargetReps() > 0) {
+        if (req.getTargetReps() >= 0) {
             planExercise.setTargetReps(req.getTargetReps());
         }
-        if (req.getTargetDurationSeconds() > 0) {
+        if (req.getTargetDurationSeconds() >= 0) {
             planExercise.setTargetDurationSeconds(req.getTargetDurationSeconds());
         }
-        if (req.getTargetDistance() > 0) {
+        if (req.getTargetDistance() >= 0) {
             planExercise.setTargetDistance(req.getTargetDistance());
         }
-        if (req.getTargetCalories() > 0) {
+        if (req.getTargetCalories() >= 0) {
             planExercise.setTargetCalories(req.getTargetCalories());
         }
         return toPlanExerciseResponse(planExerciseRepo.save(planExercise));
+    }
+
+    public void deletePlanDayExercise(String email, long dayId, long exerciseId) {
+        PlanExercise planExercise = planExerciseRepo.findById(exerciseId).orElseThrow(() -> new DataNotFoundException(exerciseId, "plan exercise"));
+        if (!Objects.equals(planExercise.getPlanDay().getId(), dayId)) {
+            throw new DataNotFoundException(exerciseId, "plan exercise");
+        }
+        if (!Objects.equals(planExercise.getPlanDay().getWorkoutPlan().getUser().getEmail(), email)) {
+            throw new DataNotFoundException(exerciseId, "plan exercise");
+        }
+        planExerciseRepo.delete(planExercise);
     }
 
     private PlanExerciseResponse toPlanExerciseResponse(PlanExercise planExercise) {
