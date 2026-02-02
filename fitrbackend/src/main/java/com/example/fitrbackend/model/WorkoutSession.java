@@ -13,6 +13,7 @@ import lombok.Setter;
 /**
  * Represents a single workout session.
  */
+@Getter
 @Entity
 public class WorkoutSession {
 
@@ -21,7 +22,6 @@ public class WorkoutSession {
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Getter
     private long id;
 
     /**
@@ -29,7 +29,6 @@ public class WorkoutSession {
      */
     @ManyToOne
     @JoinColumn(name = "user_id")
-    @Getter
     private User user;
 
     /**
@@ -37,26 +36,22 @@ public class WorkoutSession {
      */
     @ManyToOne
     @JoinColumn(name = "workout_location_id")
-    @Getter
     @Setter
     private Location workoutLocation;
 
     /**
      * The start time of the workout session.
      */
-    @Getter
     private Instant startTime;
 
     /**
      * The end time of the workout session.
      */
-    @Getter
     private Instant endTime;
 
     /**
      * Any notes made about the workout session.
      */
-    @Getter
     @Setter
     private String notes;
 
