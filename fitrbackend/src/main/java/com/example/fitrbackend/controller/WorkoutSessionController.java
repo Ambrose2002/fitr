@@ -9,6 +9,7 @@ import java.util.List;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,5 +49,15 @@ public class WorkoutSessionController {
         } catch (Exception e) {
             throw new DataNotFoundException("Could not find workouts within the constraints");
         }
+    }
+
+    @GetMapping("/{id}")
+    public WorkoutSessionResponse getWorkoutSession(@PathVariable Long id) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        return workoutSessionService.getWorkoutSession(email, id);
     }
 }

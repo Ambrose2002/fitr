@@ -62,6 +62,18 @@ public class WorkoutSessionService {
         return workoutSessions.stream().map(this::toWorkoutSessionResponse).toList();
     }
 
+    public WorkoutSessionResponse getWorkoutSession(String email, Long id) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+        WorkoutSession workoutSession = workoutSessionRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "WorkoutSession"));
+        if (!workoutSession.getUser().getEmail().equals(email)) {
+            throw new DataNotFoundException(id, "WorkoutSession");
+        }
+        return toWorkoutSessionResponse(workoutSession);
+    }
+
     private Instant parseDate(String dateStr) {
         try {
             // Try parsing as ISO 8601 instant first
