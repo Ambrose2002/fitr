@@ -1,20 +1,24 @@
 package com.example.fitrbackend.service;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
 import com.example.fitrbackend.dto.CreateWorkoutSessionRequest;
+import com.example.fitrbackend.dto.WorkoutExerciseResponse;
 import com.example.fitrbackend.dto.WorkoutSessionResponse;
 import com.example.fitrbackend.exception.DataNotFoundException;
 import com.example.fitrbackend.model.Location;
 import com.example.fitrbackend.model.User;
+import com.example.fitrbackend.model.WorkoutExercise;
 import com.example.fitrbackend.model.WorkoutSession;
 import com.example.fitrbackend.repository.LocationRepository;
 import com.example.fitrbackend.repository.UserRepository;
+import com.example.fitrbackend.repository.WorkoutExerciseRepository;
 import com.example.fitrbackend.repository.WorkoutSessionRepository;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.List;
-import org.springframework.stereotype.Service;
 
 @Service
 public class WorkoutSessionService {
@@ -22,12 +26,14 @@ public class WorkoutSessionService {
     private final WorkoutSessionRepository workoutSessionRepo;
     private final UserRepository userRepo;
     private final LocationRepository locationRepo;
+    private final WorkoutExerciseRepository workoutExerciseRepo;
 
     public WorkoutSessionService(WorkoutSessionRepository workoutSessionRepo, UserRepository userRepo,
-            LocationRepository locationRepo) {
+            LocationRepository locationRepo, WorkoutExerciseRepository workoutExerciseRepo) {
         this.workoutSessionRepo = workoutSessionRepo;
         this.userRepo = userRepo;
         this.locationRepo = locationRepo;
+        this.workoutExerciseRepo = workoutExerciseRepo;
     }
 
     public WorkoutSessionResponse createWorkoutSession(String email, CreateWorkoutSessionRequest req) {
@@ -39,7 +45,11 @@ public class WorkoutSessionService {
         Location location = locationRepo.findById(req.getLocationId())
                 .orElseThrow(() -> new DataNotFoundException("location not found"));
         WorkoutSession workoutSession = new WorkoutSession(user, Instant.now(), null, req.getNotes(), location);
-        return toWorkoutSessionResponse(workoutSessionRepo.save(workoutSession));
+        WorkoutSession savedSession = workoutSessionRepo.save(workoutSession);
+        List<WorkoutExercise> workoutExercises = workoutExerciseRepo.findByWorkoutSessionId(savedSession.getId());
+        List<WorkoutExerciseResponse> workoutExerciseResponses = workoutExercises.stream()
+                .map(this::toWorkoutExerciseResponse).toList();
+        return toWorkoutSessionResponse(savedSession, workoutExerciseResponses);
     }
 
     public List<WorkoutSessionResponse> getWorkoutSessions(String email, String fromDate, String toDate,
@@ -57,9 +67,19 @@ public class WorkoutSessionService {
         }
 
         if (limit != null && limit > 0) {
-            return workoutSessions.stream().limit(limit).map(this::toWorkoutSessionResponse).toList();
+            return workoutSessions.stream().limit(limit).map(ws -> {
+                List<WorkoutExercise> exercises = workoutExerciseRepo.findByWorkoutSessionId(ws.getId());
+                List<WorkoutExerciseResponse> exerciseResponses = exercises.stream()
+                        .map(this::toWorkoutExerciseResponse).toList();
+                return toWorkoutSessionResponse(ws, exerciseResponses);
+            }).toList();
         }
-        return workoutSessions.stream().map(this::toWorkoutSessionResponse).toList();
+        return workoutSessions.stream().map(ws -> {
+            List<WorkoutExercise> exercises = workoutExerciseRepo.findByWorkoutSessionId(ws.getId());
+            List<WorkoutExerciseResponse> exerciseResponses = exercises.stream()
+                    .map(this::toWorkoutExerciseResponse).toList();
+            return toWorkoutSessionResponse(ws, exerciseResponses);
+        }).toList();
     }
 
     public WorkoutSessionResponse getWorkoutSession(String email, Long id) {
@@ -71,7 +91,10 @@ public class WorkoutSessionService {
         if (!workoutSession.getUser().getEmail().equals(email)) {
             throw new DataNotFoundException(id, "WorkoutSession");
         }
-        return toWorkoutSessionResponse(workoutSession);
+        List<WorkoutExercise> workoutExercises = workoutExerciseRepo.findByWorkoutSessionId(
+                workoutSession.getId());
+        List<WorkoutExerciseResponse> workoutExerciseResponses = workoutExercises.stream().map(this::toWorkoutExerciseResponse).toList();
+        return toWorkoutSessionResponse(workoutSession, workoutExerciseResponses);
     }
 
     private Instant parseDate(String dateStr) {
@@ -84,13 +107,23 @@ public class WorkoutSessionService {
         }
     }
 
-    private WorkoutSessionResponse toWorkoutSessionResponse(WorkoutSession workoutSession) {
+    private WorkoutExerciseResponse toWorkoutExerciseResponse(WorkoutExercise workoutExercise) {
+        return new WorkoutExerciseResponse(
+                workoutExercise.getId(),
+                workoutExercise.getWorkoutSession().getId(),
+                workoutExercise.getExercise().getId(),
+                workoutExercise.getMeasurementType());
+    }
+
+    private WorkoutSessionResponse toWorkoutSessionResponse(WorkoutSession workoutSession, List<WorkoutExerciseResponse> workoutExerciseResponses) {
         return new WorkoutSessionResponse(
                 workoutSession.getId(),
                 workoutSession.getUser().getId(),
                 workoutSession.getWorkoutLocation().getId(),
                 workoutSession.getStartTime(),
                 workoutSession.getEndTime(),
-                workoutSession.getNotes());
+                workoutSession.getNotes(),
+                workoutExerciseResponses
+        );
     }
 }

@@ -11,6 +11,7 @@ import lombok.Setter;
 /**
  * Represents an exercise performed in a workout session.
  */
+@Getter
 @Entity
 public class WorkoutExercise {
 
@@ -26,7 +27,6 @@ public class WorkoutExercise {
      */
     @ManyToOne
     @JoinColumn(name = "workout_session_id")
-    @Getter
     @Setter
     private WorkoutSession workoutSession;
 
@@ -35,16 +35,16 @@ public class WorkoutExercise {
      */
     @ManyToOne
     @JoinColumn(name = "exercise_id")
-    @Getter
     @Setter
     private Exercise exercise;
 
     /**
      * The measurement type of the exercise.
      */
-    @Getter
     @Setter
     private MeasurementType measurementType;
+
+    public WorkoutExercise() {}
 
     /**
      * Constructor for WorkoutExercise.
