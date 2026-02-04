@@ -42,11 +42,13 @@ public class WorkoutSession {
     /**
      * The start time of the workout session.
      */
+    @Setter
     private Instant startTime;
 
     /**
      * The end time of the workout session.
      */
+    @Setter
     private Instant endTime;
 
     /**

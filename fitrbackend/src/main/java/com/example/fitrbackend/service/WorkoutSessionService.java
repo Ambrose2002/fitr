@@ -1,5 +1,6 @@
 package com.example.fitrbackend.service;
 
+import com.example.fitrbackend.exception.DataCreationFailedException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -45,6 +46,9 @@ public class WorkoutSessionService {
         Location location = locationRepo.findById(req.getLocationId())
                 .orElseThrow(() -> new DataNotFoundException("location not found"));
         WorkoutSession workoutSession = new WorkoutSession(user, Instant.now(), null, req.getNotes(), location);
+        if (req.getEndTime() != null && !req.getEndTime().isEmpty()) {
+            workoutSession.setEndTime(parseDate(req.getEndTime()));
+        }
         WorkoutSession savedSession = workoutSessionRepo.save(workoutSession);
         List<WorkoutExercise> workoutExercises = workoutExerciseRepo.findByWorkoutSessionId(savedSession.getId());
         List<WorkoutExerciseResponse> workoutExerciseResponses = workoutExercises.stream()
@@ -97,13 +101,40 @@ public class WorkoutSessionService {
         return toWorkoutSessionResponse(workoutSession, workoutExerciseResponses);
     }
 
+    public WorkoutSessionResponse updateWorkoutSession(String email, Long id, CreateWorkoutSessionRequest req) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+        WorkoutSession workoutSession = workoutSessionRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "WorkoutSession"));
+        if (!workoutSession.getUser().getEmail().equals(email)) {
+            throw new DataNotFoundException(id, "WorkoutSession");
+        }
+        if (req.getNotes() != null && !req.getNotes().isEmpty()) {
+            workoutSession.setNotes(req.getNotes());
+        }
+
+        if (req.getEndTime() != null && !req.getEndTime().isEmpty()) {
+            workoutSession.setEndTime(parseDate(req.getEndTime()));
+        }
+        WorkoutSession savedSession = workoutSessionRepo.save(workoutSession);
+        List<WorkoutExercise> workoutExercises = workoutExerciseRepo.findByWorkoutSessionId(savedSession.getId());
+        List<WorkoutExerciseResponse> workoutExerciseResponses = workoutExercises.stream()
+                .map(this::toWorkoutExerciseResponse).toList();
+        return toWorkoutSessionResponse(savedSession, workoutExerciseResponses);
+    }
+
     private Instant parseDate(String dateStr) {
         try {
             // Try parsing as ISO 8601 instant first
             return Instant.parse(dateStr);
         } catch (Exception e) {
             // Fall back to parsing as date only (e.g., 2026-01-01)
-            return LocalDate.parse(dateStr).atStartOfDay().toInstant(ZoneOffset.UTC);
+            try {
+                return LocalDate.parse(dateStr).atStartOfDay().toInstant(ZoneOffset.UTC);
+            } catch (Exception ex) {
+                throw new DataCreationFailedException("Invalid date format");
+            }
         }
     }
 

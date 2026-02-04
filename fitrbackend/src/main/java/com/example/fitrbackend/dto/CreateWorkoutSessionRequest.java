@@ -6,4 +6,5 @@ import lombok.Getter;
 public class CreateWorkoutSessionRequest {
     private Long locationId;
     private String notes;
+    private String endTime;
 }
