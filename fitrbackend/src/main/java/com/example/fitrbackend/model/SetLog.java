@@ -12,6 +12,7 @@ import lombok.Setter;
 /**
  * Represents a set log in a workout session.
  */
+@Getter
 @Entity
 public class SetLog {
 
@@ -26,62 +27,56 @@ public class SetLog {
      * The workout session this set log belongs to.
      */
     @ManyToOne
-    @JoinColumn(name = "workout_session_id")
-    @Getter
+    @JoinColumn(name = "workout_exercise_id")
     @Setter
-    private WorkoutSession workoutSession;
+    private WorkoutExercise workoutExercise;
 
     /**
      * The number of the set in the workout session.
      */
-    @Getter
     @Setter
     private int setNumber;
 
     /**
      * The time at which the set was completed.
      */
-    @Getter
     private Instant completedAt;
 
     /**
      * The weight used in the set.
      */
-    @Getter
     @Setter
     private float weight;
 
     /**
      * The number of repetitions in the set.
      */
-    @Getter
     @Setter
     private int reps;
 
     /**
      * The duration of the set in seconds.
      */
-    @Getter
     @Setter
     private Long durationSeconds;
 
     /**
      * The distance covered in the set.
      */
-    @Getter
     @Setter
     private float distance;
 
     /**
      * The number of calories burned in the set.
      */
-    @Getter
     @Setter
     private float calories;
 
+    public SetLog() {}
+
     /**
      * Creates a new set log with the given parameters.
-     * @param workoutSession The workout session this set log belongs to.
+     * @param workoutExercise The workout exercise this set log belongs to.
      * @param setNumber The number of the set in the workout session.
      * @param weight The weight used in the set.
      * @param reps The number of repetitions in the set.
@@ -89,8 +84,8 @@ public class SetLog {
      * @param distance The distance covered in the set.
      * @param calories The number of calories burned in the set.
      */
-    public SetLog(WorkoutSession workoutSession, int setNumber, float weight, int reps, Long durationSeconds, float distance, float calories) {
-        this.workoutSession = workoutSession;
+    public SetLog(WorkoutExercise workoutExercise, int setNumber, float weight, int reps, Long durationSeconds, float distance, float calories) {
+        this.workoutExercise = workoutExercise;
         this.setNumber = setNumber;
         this.completedAt = Instant.now();
         this.weight = weight;

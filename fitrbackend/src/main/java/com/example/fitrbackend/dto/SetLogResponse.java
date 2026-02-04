@@ -8,7 +8,7 @@ public class SetLogResponse {
     @Getter
     private final long id;
     @Getter
-    private final long workout_session_id;
+    private final long workout_exercise_id;
     @Getter
     private final int setNumber;
     @Getter
@@ -24,9 +24,9 @@ public class SetLogResponse {
     @Getter
     private final float calories;
 
-    public SetLogResponse(long id, long workout_session_id, int setNumber, Instant completedAt, float weight, int reps, Long durantionSeconds, float distance, float calories) {
+    public SetLogResponse(long id, long workout_exercise_id, int setNumber, Instant completedAt, float weight, int reps, Long durantionSeconds, float distance, float calories) {
         this.id = id;
-        this.workout_session_id = workout_session_id;
+        this.workout_exercise_id = workout_exercise_id;
         this.setNumber = setNumber;
         this.completedAt = completedAt;
         this.weight = weight;

@@ -1,6 +1,9 @@
 package com.example.fitrbackend.service;
 
+import com.example.fitrbackend.dto.SetLogResponse;
 import com.example.fitrbackend.exception.DataCreationFailedException;
+import com.example.fitrbackend.model.SetLog;
+import com.example.fitrbackend.repository.SetLogRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -28,13 +31,16 @@ public class WorkoutSessionService {
     private final UserRepository userRepo;
     private final LocationRepository locationRepo;
     private final WorkoutExerciseRepository workoutExerciseRepo;
+    private final SetLogRepository setLogRepo;
 
     public WorkoutSessionService(WorkoutSessionRepository workoutSessionRepo, UserRepository userRepo,
-            LocationRepository locationRepo, WorkoutExerciseRepository workoutExerciseRepo) {
+            LocationRepository locationRepo, WorkoutExerciseRepository workoutExerciseRepo,
+            SetLogRepository setLogRepo) {
         this.workoutSessionRepo = workoutSessionRepo;
         this.userRepo = userRepo;
         this.locationRepo = locationRepo;
         this.workoutExerciseRepo = workoutExerciseRepo;
+        this.setLogRepo = setLogRepo;
     }
 
     public WorkoutSessionResponse createWorkoutSession(String email, CreateWorkoutSessionRequest req) {
@@ -52,7 +58,7 @@ public class WorkoutSessionService {
         WorkoutSession savedSession = workoutSessionRepo.save(workoutSession);
         List<WorkoutExercise> workoutExercises = workoutExerciseRepo.findByWorkoutSessionId(savedSession.getId());
         List<WorkoutExerciseResponse> workoutExerciseResponses = workoutExercises.stream()
-                .map(this::toWorkoutExerciseResponse).toList();
+                .map(we -> toWorkoutExerciseResponse(we, setLogRepo.findByWorkoutExerciseId(we.getId()))).toList();
         return toWorkoutSessionResponse(savedSession, workoutExerciseResponses);
     }
 
@@ -74,14 +80,14 @@ public class WorkoutSessionService {
             return workoutSessions.stream().limit(limit).map(ws -> {
                 List<WorkoutExercise> exercises = workoutExerciseRepo.findByWorkoutSessionId(ws.getId());
                 List<WorkoutExerciseResponse> exerciseResponses = exercises.stream()
-                        .map(this::toWorkoutExerciseResponse).toList();
+                        .map(we -> toWorkoutExerciseResponse(we, setLogRepo.findByWorkoutExerciseId(we.getId()))).toList();
                 return toWorkoutSessionResponse(ws, exerciseResponses);
             }).toList();
         }
         return workoutSessions.stream().map(ws -> {
             List<WorkoutExercise> exercises = workoutExerciseRepo.findByWorkoutSessionId(ws.getId());
             List<WorkoutExerciseResponse> exerciseResponses = exercises.stream()
-                    .map(this::toWorkoutExerciseResponse).toList();
+                    .map(we -> toWorkoutExerciseResponse(we, setLogRepo.findByWorkoutExerciseId(we.getId()))).toList();
             return toWorkoutSessionResponse(ws, exerciseResponses);
         }).toList();
     }
@@ -97,7 +103,7 @@ public class WorkoutSessionService {
         }
         List<WorkoutExercise> workoutExercises = workoutExerciseRepo.findByWorkoutSessionId(
                 workoutSession.getId());
-        List<WorkoutExerciseResponse> workoutExerciseResponses = workoutExercises.stream().map(this::toWorkoutExerciseResponse).toList();
+        List<WorkoutExerciseResponse> workoutExerciseResponses = workoutExercises.stream().map(we -> toWorkoutExerciseResponse(we, setLogRepo.findByWorkoutExerciseId(we.getId()))).toList();
         return toWorkoutSessionResponse(workoutSession, workoutExerciseResponses);
     }
 
@@ -120,7 +126,7 @@ public class WorkoutSessionService {
         WorkoutSession savedSession = workoutSessionRepo.save(workoutSession);
         List<WorkoutExercise> workoutExercises = workoutExerciseRepo.findByWorkoutSessionId(savedSession.getId());
         List<WorkoutExerciseResponse> workoutExerciseResponses = workoutExercises.stream()
-                .map(this::toWorkoutExerciseResponse).toList();
+                .map(we -> toWorkoutExerciseResponse(we, setLogRepo.findByWorkoutExerciseId(we.getId()))).toList();
         return toWorkoutSessionResponse(savedSession, workoutExerciseResponses);
     }
 
@@ -138,12 +144,27 @@ public class WorkoutSessionService {
         }
     }
 
-    private WorkoutExerciseResponse toWorkoutExerciseResponse(WorkoutExercise workoutExercise) {
+    private WorkoutExerciseResponse toWorkoutExerciseResponse(WorkoutExercise workoutExercise, List<SetLog> setLogs) {
         return new WorkoutExerciseResponse(
                 workoutExercise.getId(),
                 workoutExercise.getWorkoutSession().getId(),
                 workoutExercise.getExercise().getId(),
-                workoutExercise.getMeasurementType());
+                workoutExercise.getMeasurementType(),
+                setLogs.stream().map(this::toSetLogResponse).toList());
+    }
+
+    private SetLogResponse toSetLogResponse(SetLog setLog) {
+        return new SetLogResponse(
+                setLog.getId(),
+                setLog.getWorkoutExercise().getId(),
+                setLog.getSetNumber(),
+                setLog.getCompletedAt(),
+                setLog.getWeight(),
+                setLog.getReps(),
+                setLog.getDurationSeconds(),
+                setLog.getDistance(),
+                setLog.getCalories()
+        );
     }
 
     private WorkoutSessionResponse toWorkoutSessionResponse(WorkoutSession workoutSession, List<WorkoutExerciseResponse> workoutExerciseResponses) {

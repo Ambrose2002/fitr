@@ -12,6 +12,7 @@ import lombok.Setter;
 /**
  * Represents a physical location.
  */
+@Getter
 @Entity
 public class Location {
 
@@ -20,7 +21,6 @@ public class Location {
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Getter
     private long id;
 
     /**
@@ -28,20 +28,17 @@ public class Location {
      */
     @ManyToOne
     @JoinColumn(name = "user_id")
-    @Getter
     private User user;
 
     /**
      * The name of the location.
      */
-    @Getter
     @Setter
     private String name;
 
     /**
      * The address of the location.
      */
-    @Getter
     @Setter
     private String address;
 
