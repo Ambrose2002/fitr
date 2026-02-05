@@ -1,16 +1,19 @@
 package com.example.fitrbackend.service;
 
+import com.example.fitrbackend.dto.CreateSetLogRequest;
 import com.example.fitrbackend.dto.CreateWorkoutExerciseReqeust;
 import com.example.fitrbackend.dto.ExerciseResponse;
 import com.example.fitrbackend.dto.SetLogResponse;
 import com.example.fitrbackend.exception.DataCreationFailedException;
 import com.example.fitrbackend.model.Exercise;
+import com.example.fitrbackend.model.MeasurementType;
 import com.example.fitrbackend.model.SetLog;
 import com.example.fitrbackend.repository.ExerciseRepository;
 import com.example.fitrbackend.repository.SetLogRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -192,6 +195,124 @@ public class WorkoutSessionService {
             throw new DataNotFoundException(exerciseId, "Exercise");
         }
         workoutExerciseRepo.delete(workoutExercise);
+    }
+
+    public List<SetLogResponse> createSetLog(String email, Long workoutExerciseId, CreateSetLogRequest req) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(workoutExerciseId).orElseThrow(() -> new DataNotFoundException(workoutExerciseId, "WorkoutExercise"));
+
+
+        MeasurementType measurementType = workoutExercise.getExercise().getMeasurementType();
+
+        if (req.getSets() == 0) {
+            throw new DataCreationFailedException("sets is required");
+        }
+        int num_sets = req.getSets();
+        List<SetLog> setLogs = new ArrayList<>();
+        switch (measurementType) {
+            case REPS:
+                if (req.getAverageReps() == 0) {
+                    throw new DataCreationFailedException("reps is required");
+                }
+                for (int i = 0; i < num_sets; i++) {
+                    SetLog newLog = new SetLog();
+                    newLog.setReps(req.getAverageReps());
+                    setLogs.add(newLog);
+                }
+                break;
+            case TIME:
+                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                for (int i = 0; i < num_sets; i++) {
+                    SetLog newLog = new SetLog();
+                    newLog.setDurationSeconds(req.getAverageDurationSeconds());
+                    setLogs.add(newLog);
+                }
+                break;
+            case REPS_AND_TIME:
+                if (req.getAverageReps() == 0) {
+                    throw new DataCreationFailedException("reps is required");
+                }
+                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                for (int i = 0; i < num_sets; i++) {
+                    SetLog newLog = new SetLog();
+                    newLog.setReps(req.getAverageReps());
+                    newLog.setDurationSeconds(req.getAverageDurationSeconds());
+                    setLogs.add(newLog);
+                }
+                break;
+            case REPS_AND_WEIGHT:
+                if (req.getAverageReps() == 0) {
+                    throw new DataCreationFailedException("reps is required");
+                }
+                if (req.getAverageWeight() == 0) {
+                    throw new DataCreationFailedException("weight is required");
+                }
+                for (int i = 0; i < num_sets; i++) {
+                    SetLog newLog = new SetLog();
+                    newLog.setReps(req.getAverageReps());
+                    newLog.setWeight(req.getAverageWeight());
+                    setLogs.add(newLog);
+                }
+                break;
+            case DISTANCE_AND_TIME:
+                if (req.getAverageDistance() == 0) {
+                    throw new DataCreationFailedException("distance is required");
+                }
+                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                for (int i = 0; i < num_sets; i++) {
+                    SetLog newLog = new SetLog();
+                    newLog.setDistance(req.getAverageDistance());
+                    newLog.setDurationSeconds(req.getAverageDurationSeconds());
+                    setLogs.add(newLog);
+                }
+                break;
+            case CALORIES_AND_TIME:
+                if (req.getAverageCalories() == 0) {
+                    throw new DataCreationFailedException("calories is required");
+                }
+                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                for (int i = 0; i < num_sets; i++) {
+                    SetLog newLog = new SetLog();
+                    newLog.setCalories(req.getAverageCalories());
+                    newLog.setDurationSeconds(req.getAverageDurationSeconds());
+                    setLogs.add(newLog);
+                }
+                break;
+            case TIME_AND_WEIGHT:
+                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                if (req.getAverageWeight() == 0) {
+                    throw new DataCreationFailedException("weight is required");
+                }
+                for (int i = 0; i < num_sets; i++) {
+                    SetLog newLog = new SetLog();
+                    newLog.setDurationSeconds(req.getAverageDurationSeconds());
+                    newLog.setWeight(req.getAverageWeight());
+                    setLogs.add(newLog);
+                }
+                break;
+            default:
+                throw new DataCreationFailedException("invalid measurement type");
+        }
+        List<SetLogResponse> response = new ArrayList<>();
+        for (SetLog setLog : setLogs) {
+            setLog.setWorkoutExercise(workoutExercise);
+            response.add(toSetLogResponse(setLogRepo.save(setLog)));
+        }
+
+        return response;
     }
 
     private Instant parseDate(String dateStr) {
