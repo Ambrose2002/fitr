@@ -204,6 +204,9 @@ public class WorkoutSessionService {
         }
         WorkoutExercise workoutExercise = workoutExerciseRepo.findById(workoutExerciseId).orElseThrow(() -> new DataNotFoundException(workoutExerciseId, "WorkoutExercise"));
 
+        if (!workoutExercise.getWorkoutSession().getUser().getEmail().equals(email)) {
+            throw new DataNotFoundException(workoutExerciseId, "WorkoutExercise");
+        }
 
         MeasurementType measurementType = workoutExercise.getExercise().getMeasurementType();
 
