@@ -165,6 +165,35 @@ public class WorkoutSessionService {
         workoutSessionRepo.delete(workoutSession);
     }
 
+    public List<WorkoutExerciseResponse> getWorkoutExercises(String email, Long workoutId) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+        WorkoutSession workoutSession = workoutSessionRepo.findById(workoutId).orElseThrow(() -> new DataNotFoundException(workoutId, "WorkoutSession"));
+        if (!workoutSession.getUser().getEmail().equals(email)) {
+            throw new DataNotFoundException(workoutId, "WorkoutSession");
+        }
+        List<WorkoutExercise> workoutExercises = workoutExerciseRepo.findByWorkoutSessionId(workoutId);
+        return workoutExercises.stream().map(we -> toWorkoutExerciseResponse(we, setLogRepo.findByWorkoutExerciseId(we.getId()))).toList();
+    }
+
+    public void deleteWorkoutExercise(String email, Long workoutId, Long exerciseId) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+        WorkoutSession workoutSession = workoutSessionRepo.findById(workoutId).orElseThrow(() -> new DataNotFoundException(workoutId, "WorkoutSession"));
+        if (!workoutSession.getUser().getEmail().equals(email)) {
+            throw new DataNotFoundException(workoutId, "WorkoutSession");
+        }
+        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(exerciseId).orElseThrow(() -> new DataNotFoundException(exerciseId, "WorkoutExercise"));
+        if (workoutExercise.getWorkoutSession().getId() != workoutId) {
+            throw new DataNotFoundException(exerciseId, "Exercise");
+        }
+        workoutExerciseRepo.delete(workoutExercise);
+    }
+
     private Instant parseDate(String dateStr) {
         try {
             // Try parsing as ISO 8601 instant first

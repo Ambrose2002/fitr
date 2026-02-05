@@ -94,4 +94,24 @@ public class WorkoutSessionController {
         String email = auth.getName();
         return workoutSessionService.createWorkoutExercise(email, workoutId, req);
     }
+
+    @GetMapping("/{workoutId}/exercises")
+    public List<WorkoutExerciseResponse> getWorkoutExercises(@PathVariable Long workoutId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        return workoutSessionService.getWorkoutExercises(email, workoutId);
+    }
+
+    @DeleteMapping("/{workoutId}/exercises/{exerciseId}")
+    public void removeWorkoutExerciseFromWorkout(@PathVariable Long workoutId, @PathVariable Long exerciseId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        workoutSessionService.deleteWorkoutExercise(email, workoutId, exerciseId);
+    }
 }
