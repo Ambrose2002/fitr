@@ -10,6 +10,7 @@ import com.example.fitrbackend.service.WorkoutSessionService;
 import java.util.List;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -72,6 +73,16 @@ public class WorkoutSessionController {
         }
         String email = auth.getName();
         return workoutSessionService.updateWorkoutSession(email, id, req);
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteWorkoutSession(@PathVariable Long id) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        workoutSessionService.deleteWorkoutSession(email, id);
     }
 
     @PostMapping("/{workoutId}/exercises")
