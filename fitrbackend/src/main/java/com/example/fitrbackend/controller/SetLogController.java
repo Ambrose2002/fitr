@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,5 +32,15 @@ public class SetLogController {
         }
         String email = auth.getName();
         return workoutSessionService.createSetLog( email, workoutExerciseId, req);
+    }
+
+    @PutMapping("/{setLogId}")
+    public SetLogResponse updateSetLog(@PathVariable Long workoutExerciseId, @PathVariable Long setLogId, @RequestBody CreateSetLogRequest req) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        return workoutSessionService.updateSetLog(email, workoutExerciseId, setLogId, req);
     }
 }

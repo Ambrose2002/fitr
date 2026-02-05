@@ -318,6 +318,91 @@ public class WorkoutSessionService {
         return response;
     }
 
+    public SetLogResponse updateSetLog(String email, Long workoutExerciseId, Long setLogId, CreateSetLogRequest req) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(workoutExerciseId).orElseThrow(() -> new DataNotFoundException(workoutExerciseId, "WorkoutExercise"));
+
+        if (!workoutExercise.getWorkoutSession().getUser().getEmail().equals(email)) {
+            throw new DataNotFoundException(workoutExerciseId, "WorkoutExercise");
+        }
+
+        SetLog setLog = setLogRepo.findById(setLogId).orElseThrow(() -> new DataNotFoundException(setLogId, "SetLog"));
+
+        MeasurementType measurementType = workoutExercise.getExercise().getMeasurementType();
+
+        switch (measurementType) {
+            case REPS:
+                if (req.getAverageReps() == 0) {
+                    throw new DataCreationFailedException("reps is required");
+                }
+                setLog.setReps(req.getAverageReps());
+                break;
+            case TIME:
+                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                setLog.setDurationSeconds(req.getAverageDurationSeconds());
+                break;
+            case REPS_AND_TIME:
+                if (req.getAverageReps() == 0) {
+                    throw new DataCreationFailedException("reps is required");
+                }
+                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                setLog.setReps(req.getAverageReps());
+                setLog.setDurationSeconds(req.getAverageDurationSeconds());
+                break;
+            case REPS_AND_WEIGHT:
+                if (req.getAverageReps() == 0) {
+                    throw new DataCreationFailedException("reps is required");
+                }
+                if (req.getAverageWeight() == 0) {
+                    throw new DataCreationFailedException("weight is required");
+                }
+                setLog.setReps(req.getAverageReps());
+                setLog.setWeight(req.getAverageWeight());
+                break;
+            case DISTANCE_AND_TIME:
+                if (req.getAverageDistance() == 0) {
+                    throw new DataCreationFailedException("distance is required");
+                }
+                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                setLog.setDistance(req.getAverageDistance());
+                setLog.setDurationSeconds(req.getAverageDurationSeconds());
+                break;
+            case CALORIES_AND_TIME:
+                if (req.getAverageCalories() == 0) {
+                    throw new DataCreationFailedException("calories is required");
+                }
+                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                setLog.setCalories(req.getAverageCalories());
+                setLog.setDurationSeconds(req.getAverageDurationSeconds());
+                break;
+            case TIME_AND_WEIGHT:
+                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                if (req.getAverageWeight() == 0) {
+                    throw new DataCreationFailedException("weight is required");
+                }
+                setLog.setDurationSeconds(req.getAverageDurationSeconds());
+                setLog.setWeight(req.getAverageWeight());
+                break;
+            default:
+                throw new DataCreationFailedException("invalid measurement type");
+        }
+
+        return toSetLogResponse(setLogRepo.save(setLog));
+    }
+
     private Instant parseDate(String dateStr) {
         try {
             // Try parsing as ISO 8601 instant first
