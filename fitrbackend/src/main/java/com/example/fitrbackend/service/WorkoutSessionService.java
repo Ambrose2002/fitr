@@ -330,6 +330,9 @@ public class WorkoutSessionService {
         }
 
         SetLog setLog = setLogRepo.findById(setLogId).orElseThrow(() -> new DataNotFoundException(setLogId, "SetLog"));
+        if (setLog.getWorkoutExercise().getId() != workoutExerciseId) {
+            throw new DataNotFoundException(setLogId, "SetLog");
+        }
 
         MeasurementType measurementType = workoutExercise.getExercise().getMeasurementType();
 
@@ -401,6 +404,22 @@ public class WorkoutSessionService {
         }
 
         return toSetLogResponse(setLogRepo.save(setLog));
+    }
+
+    public void deleteSetLog(String email, Long workoutExerciseId, Long setLogId) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(workoutExerciseId).orElseThrow(() -> new DataNotFoundException(workoutExerciseId, "WorkoutExercise"));
+        if (!workoutExercise.getWorkoutSession().getUser().getEmail().equals(email)) {
+            throw new DataNotFoundException(workoutExerciseId, "WorkoutExercise");
+        }
+        SetLog setLog = setLogRepo.findById(setLogId).orElseThrow(() -> new DataNotFoundException(setLogId, "SetLog"));
+        if (setLog.getWorkoutExercise().getId() != workoutExerciseId) {
+            throw new DataNotFoundException(setLogId, "SetLog");
+        }
+        setLogRepo.delete(setLog);
     }
 
     private Instant parseDate(String dateStr) {
