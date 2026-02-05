@@ -38,12 +38,6 @@ public class WorkoutExercise {
     @Setter
     private Exercise exercise;
 
-    /**
-     * The measurement type of the exercise.
-     */
-    @Setter
-    private MeasurementType measurementType;
-
     public WorkoutExercise() {}
 
     /**
@@ -51,11 +45,9 @@ public class WorkoutExercise {
      *
      * @param workoutSession the workout session that the exercise was performed in
      * @param exercise the exercise that was performed
-     * @param measurementType the measurement type of the exercise
      */
-    public WorkoutExercise(WorkoutSession workoutSession, Exercise exercise, MeasurementType measurementType) {
+    public WorkoutExercise(WorkoutSession workoutSession, Exercise exercise) {
         this.workoutSession = workoutSession;
         this.exercise = exercise;
-        this.measurementType = measurementType;
     }
 }

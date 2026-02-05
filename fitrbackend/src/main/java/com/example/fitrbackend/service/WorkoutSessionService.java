@@ -1,8 +1,12 @@
 package com.example.fitrbackend.service;
 
+import com.example.fitrbackend.dto.CreateWorkoutExerciseReqeust;
+import com.example.fitrbackend.dto.ExerciseResponse;
 import com.example.fitrbackend.dto.SetLogResponse;
 import com.example.fitrbackend.exception.DataCreationFailedException;
+import com.example.fitrbackend.model.Exercise;
 import com.example.fitrbackend.model.SetLog;
+import com.example.fitrbackend.repository.ExerciseRepository;
 import com.example.fitrbackend.repository.SetLogRepository;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -31,15 +35,17 @@ public class WorkoutSessionService {
     private final UserRepository userRepo;
     private final LocationRepository locationRepo;
     private final WorkoutExerciseRepository workoutExerciseRepo;
+    private final ExerciseRepository exerciseRepo;
     private final SetLogRepository setLogRepo;
 
     public WorkoutSessionService(WorkoutSessionRepository workoutSessionRepo, UserRepository userRepo,
             LocationRepository locationRepo, WorkoutExerciseRepository workoutExerciseRepo,
-            SetLogRepository setLogRepo) {
+            SetLogRepository setLogRepo, ExerciseRepository exerciseRepo) {
         this.workoutSessionRepo = workoutSessionRepo;
         this.userRepo = userRepo;
         this.locationRepo = locationRepo;
         this.workoutExerciseRepo = workoutExerciseRepo;
+        this.exerciseRepo = exerciseRepo;
         this.setLogRepo = setLogRepo;
     }
 
@@ -130,6 +136,23 @@ public class WorkoutSessionService {
         return toWorkoutSessionResponse(savedSession, workoutExerciseResponses);
     }
 
+    public WorkoutExerciseResponse createWorkoutExercise(String email, Long workoutId, CreateWorkoutExerciseReqeust req) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+        WorkoutSession workoutSession = workoutSessionRepo.findById(workoutId).orElseThrow(() -> new DataNotFoundException(workoutId, "WorkoutSession"));
+        if (!workoutSession.getUser().getEmail().equals(email)) {
+            throw new DataNotFoundException(workoutId, "WorkoutSession");
+        }
+        Exercise exercise = exerciseRepo.findById(req.getExerciseId()).orElseThrow(() -> new DataNotFoundException(req.getExerciseId(), "Exercise"));
+
+        WorkoutExercise workoutExercise = new WorkoutExercise(workoutSession, exercise);
+        WorkoutExercise savedWorkoutExercise = workoutExerciseRepo.save(workoutExercise);
+        List<SetLog> setLogs = setLogRepo.findByWorkoutExerciseId(savedWorkoutExercise.getId());
+        return toWorkoutExerciseResponse(savedWorkoutExercise, setLogs);
+    }
+
     private Instant parseDate(String dateStr) {
         try {
             // Try parsing as ISO 8601 instant first
@@ -148,9 +171,18 @@ public class WorkoutSessionService {
         return new WorkoutExerciseResponse(
                 workoutExercise.getId(),
                 workoutExercise.getWorkoutSession().getId(),
-                workoutExercise.getExercise().getId(),
-                workoutExercise.getMeasurementType(),
+                toExerciseResponse(workoutExercise.getExercise()),
                 setLogs.stream().map(this::toSetLogResponse).toList());
+    }
+
+    private ExerciseResponse toExerciseResponse(Exercise exercise) {
+        return new ExerciseResponse(
+                exercise.getId(),
+                exercise.getName(),
+                exercise.getMeasurementType(),
+                exercise.isSystemDefined(),
+                exercise.getCreatedAt()
+        );
     }
 
     private SetLogResponse toSetLogResponse(SetLog setLog) {

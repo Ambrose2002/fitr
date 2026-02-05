@@ -1,6 +1,8 @@
 package com.example.fitrbackend.controller;
 
+import com.example.fitrbackend.dto.CreateWorkoutExerciseReqeust;
 import com.example.fitrbackend.dto.CreateWorkoutSessionRequest;
+import com.example.fitrbackend.dto.WorkoutExerciseResponse;
 import com.example.fitrbackend.dto.WorkoutSessionResponse;
 import com.example.fitrbackend.exception.AuthenticationFailedException;
 import com.example.fitrbackend.exception.DataNotFoundException;
@@ -70,5 +72,15 @@ public class WorkoutSessionController {
         }
         String email = auth.getName();
         return workoutSessionService.updateWorkoutSession(email, id, req);
+    }
+
+    @PostMapping("/{workoutId}/exercises")
+    public WorkoutExerciseResponse createWorkoutExercise(@PathVariable Long workoutId, @RequestBody CreateWorkoutExerciseReqeust req) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        return workoutSessionService.createWorkoutExercise(email, workoutId, req);
     }
 }
