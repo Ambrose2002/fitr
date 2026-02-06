@@ -222,16 +222,18 @@ public class WorkoutSessionService {
                 }
                 for (int i = 0; i < num_sets; i++) {
                     SetLog newLog = new SetLog();
+                    newLog.setSetNumber(i + 1);
                     newLog.setReps(req.getAverageReps());
                     setLogs.add(newLog);
                 }
                 break;
             case TIME:
-                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                if (req.getAverageDurationSeconds() == null || req.getAverageDurationSeconds() == 0) {
                     throw new DataCreationFailedException("duration is required");
                 }
                 for (int i = 0; i < num_sets; i++) {
                     SetLog newLog = new SetLog();
+                    newLog.setSetNumber(i + 1);
                     newLog.setDurationSeconds(req.getAverageDurationSeconds());
                     setLogs.add(newLog);
                 }
@@ -240,11 +242,12 @@ public class WorkoutSessionService {
                 if (req.getAverageReps() == 0) {
                     throw new DataCreationFailedException("reps is required");
                 }
-                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                if (req.getAverageDurationSeconds() == null || req.getAverageDurationSeconds() == 0) {
                     throw new DataCreationFailedException("duration is required");
                 }
                 for (int i = 0; i < num_sets; i++) {
                     SetLog newLog = new SetLog();
+                    newLog.setSetNumber(i + 1);
                     newLog.setReps(req.getAverageReps());
                     newLog.setDurationSeconds(req.getAverageDurationSeconds());
                     setLogs.add(newLog);
@@ -259,6 +262,7 @@ public class WorkoutSessionService {
                 }
                 for (int i = 0; i < num_sets; i++) {
                     SetLog newLog = new SetLog();
+                    newLog.setSetNumber(i + 1);
                     newLog.setReps(req.getAverageReps());
                     newLog.setWeight(req.getAverageWeight());
                     setLogs.add(newLog);
@@ -268,11 +272,12 @@ public class WorkoutSessionService {
                 if (req.getAverageDistance() == 0) {
                     throw new DataCreationFailedException("distance is required");
                 }
-                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                if (req.getAverageDurationSeconds() == null || req.getAverageDurationSeconds() == 0) {
                     throw new DataCreationFailedException("duration is required");
                 }
                 for (int i = 0; i < num_sets; i++) {
                     SetLog newLog = new SetLog();
+                    newLog.setSetNumber(i + 1);
                     newLog.setDistance(req.getAverageDistance());
                     newLog.setDurationSeconds(req.getAverageDurationSeconds());
                     setLogs.add(newLog);
@@ -282,18 +287,19 @@ public class WorkoutSessionService {
                 if (req.getAverageCalories() == 0) {
                     throw new DataCreationFailedException("calories is required");
                 }
-                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                if (req.getAverageDurationSeconds() == null || req.getAverageDurationSeconds() == 0) {
                     throw new DataCreationFailedException("duration is required");
                 }
                 for (int i = 0; i < num_sets; i++) {
                     SetLog newLog = new SetLog();
+                    newLog.setSetNumber(i + 1);
                     newLog.setCalories(req.getAverageCalories());
                     newLog.setDurationSeconds(req.getAverageDurationSeconds());
                     setLogs.add(newLog);
                 }
                 break;
             case TIME_AND_WEIGHT:
-                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                if (req.getAverageDurationSeconds() == null || req.getAverageDurationSeconds() == 0) {
                     throw new DataCreationFailedException("duration is required");
                 }
                 if (req.getAverageWeight() == 0) {
@@ -301,6 +307,7 @@ public class WorkoutSessionService {
                 }
                 for (int i = 0; i < num_sets; i++) {
                     SetLog newLog = new SetLog();
+                    newLog.setSetNumber(i + 1);
                     newLog.setDurationSeconds(req.getAverageDurationSeconds());
                     newLog.setWeight(req.getAverageWeight());
                     setLogs.add(newLog);
@@ -344,7 +351,7 @@ public class WorkoutSessionService {
                 setLog.setReps(req.getAverageReps());
                 break;
             case TIME:
-                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                if (req.getAverageDurationSeconds() == null || req.getAverageDurationSeconds() == 0) {
                     throw new DataCreationFailedException("duration is required");
                 }
                 setLog.setDurationSeconds(req.getAverageDurationSeconds());
@@ -353,7 +360,7 @@ public class WorkoutSessionService {
                 if (req.getAverageReps() == 0) {
                     throw new DataCreationFailedException("reps is required");
                 }
-                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                if (req.getAverageDurationSeconds() == null || req.getAverageDurationSeconds() == 0) {
                     throw new DataCreationFailedException("duration is required");
                 }
                 setLog.setReps(req.getAverageReps());
@@ -373,7 +380,7 @@ public class WorkoutSessionService {
                 if (req.getAverageDistance() == 0) {
                     throw new DataCreationFailedException("distance is required");
                 }
-                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                if (req.getAverageDurationSeconds() == null || req.getAverageDurationSeconds() == 0) {
                     throw new DataCreationFailedException("duration is required");
                 }
                 setLog.setDistance(req.getAverageDistance());
@@ -383,14 +390,14 @@ public class WorkoutSessionService {
                 if (req.getAverageCalories() == 0) {
                     throw new DataCreationFailedException("calories is required");
                 }
-                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                if (req.getAverageDurationSeconds() == null || req.getAverageDurationSeconds() == 0) {
                     throw new DataCreationFailedException("duration is required");
                 }
                 setLog.setCalories(req.getAverageCalories());
                 setLog.setDurationSeconds(req.getAverageDurationSeconds());
                 break;
             case TIME_AND_WEIGHT:
-                if (req.getAverageDurationSeconds() != null &&req.getAverageDurationSeconds() == 0) {
+                if (req.getAverageDurationSeconds() == null || req.getAverageDurationSeconds() == 0) {
                     throw new DataCreationFailedException("duration is required");
                 }
                 if (req.getAverageWeight() == 0) {
