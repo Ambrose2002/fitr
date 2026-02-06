@@ -319,6 +319,7 @@ public class WorkoutSessionService {
         List<SetLogResponse> response = new ArrayList<>();
         for (SetLog setLog : setLogs) {
             setLog.setWorkoutExercise(workoutExercise);
+            setLog.setCompletedAt(Instant.now());
             response.add(toSetLogResponse(setLogRepo.save(setLog)));
         }
 

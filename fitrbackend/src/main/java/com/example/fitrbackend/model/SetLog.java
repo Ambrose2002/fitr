@@ -40,6 +40,7 @@ public class SetLog {
     /**
      * The time at which the set was completed.
      */
+    @Setter
     private Instant completedAt;
 
     /**
