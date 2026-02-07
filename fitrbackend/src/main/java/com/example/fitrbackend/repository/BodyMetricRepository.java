@@ -15,6 +15,6 @@ public interface BodyMetricRepository extends JpaRepository<BodyMetric, Long> {
     @Query("SELECT b FROM BodyMetric b WHERE b.user = ?1 AND b.metricType = ?2")
     List<BodyMetric> findByUserAndMetricType(User user, MetricType metricType);
 
-    @Query("SELECT b FROM BodyMetric b WHERE b.user = ?1 AND b.metricType = ?2 ORDER BY b.recordedAt DESC")
+    @Query("SELECT b FROM BodyMetric b WHERE b.user = ?1 AND b.metricType = ?2 ORDER BY b.recordedAt DESC LIMIT 1")
     BodyMetric findLatestByUserAndMetricType(User user, MetricType metricType);
 }

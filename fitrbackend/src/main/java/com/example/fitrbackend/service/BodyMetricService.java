@@ -32,6 +32,12 @@ public class BodyMetricService {
         if (user == null) {
             throw new DataNotFoundException("user not found: " + email);
         }
+        if (req.getMetricType() == null) {
+            throw new DataCreationFailedException("metricType missing");
+        }
+        if (req.getValue() <= 0.0) {
+            throw new DataCreationFailedException("value must be greater than 0");
+        }
         BodyMetric bodyMetric = new BodyMetric(user, req.getMetricType(), req.getValue());
         bodyMetricRepo.save(bodyMetric);
         return toBodyMetricResponse(bodyMetric);
