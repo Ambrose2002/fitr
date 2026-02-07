@@ -23,6 +23,6 @@ Fitr allows users to manage workout plans, track exercise sessions, log performa
 
 ## Getting Started
 
-For detailed API documentation including endpoints, request/response formats, and authentication, see [API_DOCUMENTATION.md](API_DOCUMENTATION.md).
+For detailed API documentation including endpoints, request/response formats, and authentication, see [API_DOCUMENTATION.md](fitrbackend/API_DOCUMENTATION.md).
 
 The frontend is coming soon.
