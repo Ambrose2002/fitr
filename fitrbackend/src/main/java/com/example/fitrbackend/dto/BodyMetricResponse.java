@@ -11,13 +11,15 @@ public class BodyMetricResponse {
     private final long user_id;
     private final MetricType metricType;
     private final float value;
-    private final Instant recordedAt;
+    private final Instant updatedAt;
+    private final Instant createdAt;
 
-    public BodyMetricResponse(long id, long user_id, MetricType metricType, float value, Instant recordedAt) {
+    public BodyMetricResponse(long id, long user_id, MetricType metricType, float value, Instant updatedAt, Instant createdAt) {
         this.id = id;
         this.user_id = user_id;
         this.metricType = metricType;
         this.value = value;
-        this.recordedAt = recordedAt;
+        this.updatedAt = updatedAt;
+        this.createdAt = createdAt;
     }
 }
