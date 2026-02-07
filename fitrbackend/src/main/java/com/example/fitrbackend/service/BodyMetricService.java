@@ -12,6 +12,7 @@ import com.example.fitrbackend.repository.UserRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -68,16 +69,28 @@ public class BodyMetricService {
         return bodyMetrics.stream().map(this::toBodyMetricResponse).toList();
     }
 
-    public BodyMetricResponse getLatestBodyMetric(String email, MetricType metricType) {
+    public List<BodyMetricResponse> getLatestBodyMetrics(String email, MetricType metricType) {
         User user = userRepo.findByEmail(email);
         if (user == null) {
             throw new DataNotFoundException("user not found: " + email);
         }
-        BodyMetric bodyMetric = bodyMetricRepo.findLatestByUserAndMetricType(user, metricType);
-        if (bodyMetric == null) {
-            throw new DataNotFoundException("body metric not found: " + metricType);
+        if (metricType != null) {
+            BodyMetric bodyMetric = bodyMetricRepo.findLatestByUserAndMetricType(user, metricType);
+            if (bodyMetric != null) {
+                return List.of(toBodyMetricResponse(bodyMetric));
+            }
+            return new ArrayList<>();
         }
-        return toBodyMetricResponse(bodyMetric);
+        List<BodyMetricResponse> bodyMetrics = new ArrayList<>();
+        BodyMetric height = bodyMetricRepo.findLatestByUserAndMetricType(user, MetricType.HEIGHT);
+        if (height != null) {
+            bodyMetrics.add(toBodyMetricResponse(height));
+        }
+        BodyMetric weight = bodyMetricRepo.findLatestByUserAndMetricType(user, MetricType.WEIGHT);
+        if (weight != null) {
+            bodyMetrics.add(toBodyMetricResponse(weight));
+        }
+        return bodyMetrics;
     }
 
     public BodyMetricResponse updateBodyMetric(String email, long id, CreateBodyMetricRequest req) {
@@ -99,6 +112,18 @@ public class BodyMetricService {
         bodyMetric.setUpdatedAt(Instant.now());
         bodyMetricRepo.save(bodyMetric);
         return toBodyMetricResponse(bodyMetric);
+    }
+
+    public void deleteBodyMetric(String email, long id) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException("user not found: " + email);
+        }
+        BodyMetric bodyMetric = bodyMetricRepo.findById(id).orElseThrow(() -> new DataNotFoundException("body metric not found: " + id));
+        if (!bodyMetric.getUser().getEmail().equals(email)) {
+            throw new DataNotFoundException("body metric not found: " + id);
+        }
+        bodyMetricRepo.delete(bodyMetric);
     }
 
     private Instant parseDate(String dateStr) {
