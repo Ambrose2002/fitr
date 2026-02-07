@@ -47,10 +47,13 @@ public class BodyMetric {
     /**
      * The time at which the body metric was recorded.
      */
-    private final Instant recordedAt;
+    @Setter
+    private Instant recordedAt;
 
     @Setter
     private Instant updatedAt;
+
+    public BodyMetric() {}
 
     /**
      * Creates a new body metric.
