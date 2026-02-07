@@ -8,6 +8,7 @@ import java.util.List;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -53,5 +54,15 @@ public class SetLogController {
         }
         String email = auth.getName();
         workoutSessionService.deleteSetLog(email, workoutExerciseId, setLogId);
+    }
+
+    @GetMapping
+    public List<SetLogResponse> getSetLogs(@PathVariable Long workoutExerciseId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        return workoutSessionService.getSetLogs(email, workoutExerciseId);
     }
 }

@@ -430,6 +430,19 @@ public class WorkoutSessionService {
         setLogRepo.delete(setLog);
     }
 
+    public List<SetLogResponse> getSetLogs(String email, Long workoutExerciseId) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(workoutExerciseId).orElseThrow(() -> new DataNotFoundException(workoutExerciseId, "WorkoutExercise"));
+        if (!workoutExercise.getWorkoutSession().getUser().getEmail().equals(email)) {
+            throw new DataNotFoundException(workoutExerciseId, "WorkoutExercise");
+        }
+        List<SetLog> setLogs = setLogRepo.findByWorkoutExerciseId(workoutExerciseId);
+        return setLogs.stream().map(this::toSetLogResponse).toList();
+    }
+
     private Instant parseDate(String dateStr) {
         try {
             // Try parsing as ISO 8601 instant first
