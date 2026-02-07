@@ -68,6 +68,39 @@ public class BodyMetricService {
         return bodyMetrics.stream().map(this::toBodyMetricResponse).toList();
     }
 
+    public BodyMetricResponse getLatestBodyMetric(String email, MetricType metricType) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException("user not found: " + email);
+        }
+        BodyMetric bodyMetric = bodyMetricRepo.findLatestByUserAndMetricType(user, metricType);
+        if (bodyMetric == null) {
+            throw new DataNotFoundException("body metric not found: " + metricType);
+        }
+        return toBodyMetricResponse(bodyMetric);
+    }
+
+    public BodyMetricResponse updateBodyMetric(String email, long id, CreateBodyMetricRequest req) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException("user not found: " + email);
+        }
+        BodyMetric bodyMetric = bodyMetricRepo.findById(id).orElseThrow(() -> new DataNotFoundException("body metric not found: " + id));
+        if (!bodyMetric.getUser().getEmail().equals(email)) {
+            throw new DataNotFoundException("body metric not found: " + id);
+        }
+        if (req.getMetricType() != null) {
+            bodyMetric.setMetricType(req.getMetricType());
+        }
+        if (req.getValue() > 0.0) {
+            bodyMetric.setValue(req.getValue());
+        }
+
+        bodyMetric.setUpdatedAt(Instant.now());
+        bodyMetricRepo.save(bodyMetric);
+        return toBodyMetricResponse(bodyMetric);
+    }
+
     private Instant parseDate(String dateStr) {
         try {
             // Try parsing as ISO 8601 instant first

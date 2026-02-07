@@ -36,6 +36,7 @@ public class BodyMetric {
     /**
      * The type of metric associated with the body metric.
      */
+    @Setter
     private MetricType metricType;
 
     /**
