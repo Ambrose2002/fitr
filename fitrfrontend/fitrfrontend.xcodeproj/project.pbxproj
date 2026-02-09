@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		AB42E4202F38FD88006B92C8 /* fitrfrontend.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = fitrfrontend.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB42E4202F38FD88006B92C8 /* fitrfrontend.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = fitrfrontend.app; path = "/Users/ambroseblay/Developer/fitr/fitrfrontend/build/Debug-iphoneos/fitrfrontend.app"; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -33,16 +33,7 @@
 			isa = PBXGroup;
 			children = (
 				AB42E4222F38FD88006B92C8 /* fitrfrontend */,
-				AB42E4212F38FD88006B92C8 /* Products */,
 			);
-			sourceTree = "<group>";
-		};
-		AB42E4212F38FD88006B92C8 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				AB42E4202F38FD88006B92C8 /* fitrfrontend.app */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -95,7 +86,7 @@
 			mainGroup = AB42E4172F38FD88006B92C8;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = AB42E4212F38FD88006B92C8 /* Products */;
+			productRefGroup = AB42E4172F38FD88006B92C8;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
