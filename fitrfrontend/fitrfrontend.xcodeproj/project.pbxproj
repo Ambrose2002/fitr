@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		AB42E4202F38FD88006B92C8 /* fitrfrontend.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = fitrfrontend.app; path = "/Users/ambroseblay/Developer/fitr/fitrfrontend/build/Debug-iphoneos/fitrfrontend.app"; sourceTree = "<absolute>"; };
+		AB5933362F3BC4B4003BE021 /* fitrfrontend.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = fitrfrontend.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -33,6 +33,7 @@
 			isa = PBXGroup;
 			children = (
 				AB42E4222F38FD88006B92C8 /* fitrfrontend */,
+				AB5933362F3BC4B4003BE021 /* fitrfrontend.app */,
 			);
 			sourceTree = "<group>";
 		};
@@ -58,7 +59,7 @@
 			packageProductDependencies = (
 			);
 			productName = fitrfrontend;
-			productReference = AB42E4202F38FD88006B92C8 /* fitrfrontend.app */;
+			productReference = AB5933362F3BC4B4003BE021 /* fitrfrontend.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
