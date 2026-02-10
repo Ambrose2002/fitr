@@ -9,9 +9,11 @@ import SwiftUI
 
 @main
 struct fitrfrontendApp: App {
+    
+    @StateObject private var sessionStore = SessionStore()
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView().environmentObject(sessionStore)
         }
     }
 }
