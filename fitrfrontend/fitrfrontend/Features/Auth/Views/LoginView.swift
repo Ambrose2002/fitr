@@ -10,6 +10,8 @@ import SwiftUI
 struct LoginView: View {
     @State private var email: String = ""
     @State private var password: String = ""
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
 
     var body: some View {
         
@@ -36,6 +38,15 @@ struct LoginView: View {
                 .background(Color(.secondarySystemBackground))
                 .cornerRadius(8)
 
+            if let error = errorMessage, !error.isEmpty {
+                Text(error)
+                    .foregroundColor(.red)
+                    .font(.callout)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 4)
+            }
+            
             Button("Sign In") {
                 // Handle login action
             }
@@ -49,6 +60,19 @@ struct LoginView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .padding()
+        .overlay {
+            // Loading overlay
+            if isLoading {
+                ZStack {
+                    Color.black.opacity(0.2).ignoresSafeArea()
+                    ProgressView("Signing in…")
+                        .padding(24)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(12)
+                }
+            }
+        }
+        .animation(.default, value: isLoading)
     }
 }
 
