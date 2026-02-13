@@ -9,6 +9,8 @@ import SwiftUI
 
 struct SignUpView: View {
     @State private var email: String = ""
+    @State private var firstName: String = ""
+    @State private var lastName: String = ""
     @State private var password: String = ""
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
@@ -27,6 +29,29 @@ struct SignUpView: View {
                     .keyboardType(.emailAddress)
                     .autocapitalization(.none)
                     .textInputAutocapitalization(.never) // iOS 15+
+                    .disableAutocorrection(true)
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(8)
+                
+                // First name field
+                TextField("First Name", text: $firstName)
+                    .textContentType(.emailAddress)
+                    .keyboardType(.emailAddress)
+                    .autocapitalization(.none)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(8)
+                
+                
+                // Last name field
+                TextField("Last Name", text: $lastName)
+                    .textContentType(.emailAddress)
+                    .keyboardType(.emailAddress)
+                    .autocapitalization(.none)
+                    .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                     .padding()
                     .background(Color(.secondarySystemBackground))
