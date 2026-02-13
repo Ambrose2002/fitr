@@ -5,22 +5,23 @@
 //  Created by Ambrose Blay on 2/13/26.
 //
 import SwiftUI
+internal import Combine
 
-struct SignUpViewModel {
-    private var email : String = ""
-    private var password : String = ""
-    private var firstName : String = ""
-    private var lastName : String = ""
-    private var isLoading : Bool = false
-    private var errorMessage : String?
+class SignUpViewModel : ObservableObject {
+    @Published var email : String = ""
+    @Published var password : String = ""
+    @Published var firstName : String = ""
+    @Published var lastName : String = ""
+    @Published var isLoading : Bool = false
+    @Published var errorMessage : String?
     
     // Expose ways to set email/password from your UI
-    public mutating func setEmail(_ value: String) { email = value }
-    public mutating func setPassword(_ value: String) { password = value }
-    public mutating func setFirstName(_ value: String) { firstName = value }
-    public mutating func setLastName(_ value: String) { lastName = value }
+    public func setEmail(_ value: String) { email = value }
+    public func setPassword(_ value: String) { password = value }
+    public func setFirstName(_ value: String) { firstName = value }
+    public func setLastName(_ value: String) { lastName = value }
 
-    public mutating func signUp() {
+    public func signUp() {
         errorMessage = nil
 
         let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)

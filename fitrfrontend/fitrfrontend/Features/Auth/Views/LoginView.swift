@@ -8,10 +8,7 @@
 import SwiftUI
 
 struct LoginView: View {
-    @State private var email: String = ""
-    @State private var password: String = ""
-    @State private var isLoading: Bool = false
-    @State private var errorMessage: String? = nil
+    @StateObject var loginViewModel: LoginViewModel
 
     var body: some View {
         
