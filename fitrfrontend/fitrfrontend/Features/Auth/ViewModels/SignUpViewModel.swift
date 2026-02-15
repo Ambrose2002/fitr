@@ -15,13 +15,15 @@ class SignUpViewModel : ObservableObject {
     @Published var isLoading : Bool = false
     @Published var errorMessage : String?
     
+    let authService : AuthService = AuthService()
+    
     // Expose ways to set email/password from your UI
     public func setEmail(_ value: String) { email = value }
     public func setPassword(_ value: String) { password = value }
     public func setFirstName(_ value: String) { firstName = value }
     public func setLastName(_ value: String) { lastName = value }
 
-    public func signUp() {
+    public func signUp() async {
         errorMessage = nil
 
         let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -53,12 +55,17 @@ class SignUpViewModel : ObservableObject {
             errorMessage = "Please enter a valid email address."
             return
         }
-        
-        
 
         isLoading = true
-        // Proceed with your async signup call...
-        // On completion, set isLoading = false and handle any errors by setting errorMessage
+        
+        do {
+            defer {self.isLoading = false}
+            let token = try await self.authService.signup(self.email, self.password, self.firstName, self.lastName)
+        } catch let apiError as APIErrorResponse {
+            self.errorMessage = apiError.message
+        } catch {
+            self.errorMessage = "Something went wront. Please try again"
+        }
     }
 
     // Simple email validation (good enough for UI-level checks)
