@@ -191,7 +191,7 @@ Content-Type: application/json
 {
   "message": "Invalid email or password",
   "timestamp": "2024-02-07T10:30:45.123Z",
-  "path": "/auth/login"
+  "status": 401
 }
 ```
 
@@ -239,7 +239,7 @@ Content-Type: application/json
 {
   "message": "User with email newuser@example.com exists",
   "timestamp": "2024-02-07T10:30:45.123Z",
-  "path": "/auth/signup"
+  "status": 409
 }
 ```
 
