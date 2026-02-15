@@ -47,7 +47,9 @@ struct LoginView: View {
                 
                 Button("Sign In") {
                     // Handle login action
-                    loginViewModel.login()
+                    Task {
+                        await loginViewModel.login()
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -76,7 +78,7 @@ struct LoginView: View {
     }
 }
 
-//#Preview {
-//    LoginView()
-//}
+#Preview {
+    LoginView()
+}
 

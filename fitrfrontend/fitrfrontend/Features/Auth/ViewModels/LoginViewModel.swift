@@ -13,11 +13,13 @@ final class LoginViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     
+    let authService : AuthService = AuthService()
+    
     // Expose ways to set email/password from your UI
     public func setEmail(_ value: String) { email = value }
     public func setPassword(_ value: String) { password = value }
 
-    public func login() {
+    public func login() async {
         errorMessage = nil
 
         let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -39,8 +41,15 @@ final class LoginViewModel: ObservableObject {
         }
 
         isLoading = true
-        // Proceed with your async login call...
-        // On completion, set isLoading = false and handle any errors by setting errorMessage
+
+        do {
+            defer { self.isLoading = false }
+            let token = try await self.authService.login(self.email, self.password)
+            // TODO: Persist token or update app state as needed
+        } catch {
+            self.errorMessage = error.localizedDescription
+            self.isLoading = false
+        }
     }
 
     // Simple email validation (good enough for UI-level checks)
