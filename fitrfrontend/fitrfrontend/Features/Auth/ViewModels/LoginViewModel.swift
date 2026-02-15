@@ -45,7 +45,6 @@ final class LoginViewModel: ObservableObject {
 
     // Simple email validation (good enough for UI-level checks)
     private func isValidEmail(_ value: String) -> Bool {
-        // A commonly used lightweight regex for emails (not perfect, but practical)
         let pattern = #"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$"#
         return value.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
     }

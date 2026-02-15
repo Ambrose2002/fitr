@@ -8,12 +8,7 @@
 import SwiftUI
 
 struct SignUpView: View {
-    @State private var email: String = ""
-    @State private var firstName: String = ""
-    @State private var lastName: String = ""
-    @State private var password: String = ""
-    @State private var isLoading: Bool = false
-    @State private var errorMessage: String? = nil
+    @StateObject var signUpViewModel: SignUpViewModel = SignUpViewModel()
 
     var body: some View {
         
@@ -24,7 +19,7 @@ struct SignUpView: View {
                     .bold()
 
                 // Email field
-                TextField("Email", text: $email)
+                TextField("Email", text: $signUpViewModel.email)
                     .textContentType(.emailAddress)
                     .keyboardType(.emailAddress)
                     .autocapitalization(.none)
@@ -35,7 +30,7 @@ struct SignUpView: View {
                     .cornerRadius(8)
                 
                 // First name field
-                TextField("First Name", text: $firstName)
+                TextField("First Name", text: $signUpViewModel.firstName)
                     .textContentType(.emailAddress)
                     .keyboardType(.emailAddress)
                     .autocapitalization(.none)
@@ -47,7 +42,7 @@ struct SignUpView: View {
                 
                 
                 // Last name field
-                TextField("Last Name", text: $lastName)
+                TextField("Last Name", text: $signUpViewModel.lastName)
                     .textContentType(.emailAddress)
                     .keyboardType(.emailAddress)
                     .autocapitalization(.none)
@@ -58,13 +53,13 @@ struct SignUpView: View {
                     .cornerRadius(8)
 
                 // Password field
-                SecureField("Password", text: $password)
+                SecureField("Password", text: $signUpViewModel.password)
                     .textContentType(.password)
                     .padding()
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(8)
 
-                if let error = errorMessage, !error.isEmpty {
+                if let error = signUpViewModel.errorMessage, !error.isEmpty {
                     Text(error)
                         .foregroundColor(.red)
                         .font(.callout)
@@ -75,7 +70,7 @@ struct SignUpView: View {
                 
                 Button("Sign Up") {
                     // Handle login action
-                    signUp()
+                    signUpViewModel.signUp()
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -89,7 +84,7 @@ struct SignUpView: View {
             .padding()
             .overlay {
                 // Loading overlay
-                if isLoading {
+                if signUpViewModel.isLoading {
                     ZStack {
                         Color.black.opacity(0.2).ignoresSafeArea()
                         ProgressView("Signing up…")
@@ -99,17 +94,12 @@ struct SignUpView: View {
                     }
                 }
             }
-            .animation(.default, value: isLoading)
+            .animation(.default, value: signUpViewModel.isLoading)
         }
-    }
-    
-    private func signUp() {
-        isLoading = true
-        errorMessage = nil
     }
 }
 
-//#Preview {
-//    SignUpView()
-//}
+#Preview {
+    SignUpView()
+}
 

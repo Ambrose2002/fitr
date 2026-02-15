@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct LoginView: View {
-    @StateObject var loginViewModel: LoginViewModel
+    @StateObject var loginViewModel: LoginViewModel = LoginViewModel()
 
     var body: some View {
         
@@ -19,7 +19,7 @@ struct LoginView: View {
                     .bold()
 
                 // Email field
-                TextField("Email", text: $email)
+                TextField("Email", text: $loginViewModel.email)
                     .textContentType(.emailAddress)
                     .keyboardType(.emailAddress)
                     .autocapitalization(.none)
@@ -30,13 +30,13 @@ struct LoginView: View {
                     .cornerRadius(8)
 
                 // Password field
-                SecureField("Password", text: $password)
+                SecureField("Password", text: $loginViewModel.password)
                     .textContentType(.password)
                     .padding()
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(8)
 
-                if let error = errorMessage, !error.isEmpty {
+                if let error = loginViewModel.errorMessage, !error.isEmpty {
                     Text(error)
                         .foregroundColor(.red)
                         .font(.callout)
@@ -47,7 +47,7 @@ struct LoginView: View {
                 
                 Button("Sign In") {
                     // Handle login action
-                    signIn()
+                    loginViewModel.login()
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -61,7 +61,7 @@ struct LoginView: View {
             .padding()
             .overlay {
                 // Loading overlay
-                if isLoading {
+                if loginViewModel.isLoading {
                     ZStack {
                         Color.black.opacity(0.2).ignoresSafeArea()
                         ProgressView("Signing in…")
@@ -71,16 +71,12 @@ struct LoginView: View {
                     }
                 }
             }
-            .animation(.default, value: isLoading)
+            .animation(.default, value: loginViewModel.isLoading)
         }
-    }
-    
-    private func signIn() {
-        isLoading = true
-        errorMessage = nil
     }
 }
 
 //#Preview {
 //    LoginView()
 //}
+
