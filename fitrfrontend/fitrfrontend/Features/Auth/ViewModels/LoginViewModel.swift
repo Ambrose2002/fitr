@@ -7,6 +7,7 @@
 import SwiftUI
 internal import Combine
 
+@MainActor
 final class LoginViewModel: ObservableObject {
     @Published var email: String = ""
     @Published var password: String = ""
@@ -46,9 +47,10 @@ final class LoginViewModel: ObservableObject {
             defer { self.isLoading = false }
             let token = try await self.authService.login(self.email, self.password)
             // TODO: Persist token or update app state as needed
+        } catch let apiError as APIErrorResponse {
+            self.errorMessage = apiError.message
         } catch {
-            self.errorMessage = error.localizedDescription
-            self.isLoading = false
+            self.errorMessage = "Something went wrong. Please try again."
         }
     }
 
@@ -58,3 +60,4 @@ final class LoginViewModel: ObservableObject {
         return value.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
     }
 }
+

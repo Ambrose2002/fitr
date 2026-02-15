@@ -11,6 +11,12 @@ struct Token: Codable {
     let token: String
 }
 
+struct APIErrorResponse: Codable, Error {
+    let message: String
+    let timestamp: String
+    let path: String
+}
+
 struct AuthService {
     
     var baseUrl = "http://127.0.0.1:8080/auth"
@@ -36,11 +42,30 @@ struct AuthService {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw URLError(.userAuthenticationRequired)
-        }
         
-        let token = try JSONDecoder().decode(Token.self, from: data)
-        return token
+        switch httpResponse.statusCode {
+        case 200...299:
+            // Success: decode the token
+            return try JSONDecoder().decode(Token.self, from: data)
+
+        case 400...499:
+            // Client error: try to decode server-provided error
+            if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
+                throw apiError
+            } else {
+                throw URLError(.userAuthenticationRequired)
+            }
+
+        case 500...599:
+            // Server error: decode error if possible
+            if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
+                throw apiError
+            } else {
+                throw URLError(.badServerResponse)
+            }
+
+        default:
+            throw URLError(.unknown)
+        }
     }
 }
