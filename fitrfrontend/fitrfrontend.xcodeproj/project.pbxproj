@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		ABCCC24B2F429656003657B2 /* KeychainSwift in Frameworks */ = {isa = PBXBuildFile; productRef = ABCCC24A2F429656003657B2 /* KeychainSwift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		AB5933362F3BC4B4003BE021 /* fitrfrontend.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = fitrfrontend.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ABCCC24B2F429656003657B2 /* KeychainSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -57,6 +62,7 @@
 			);
 			name = fitrfrontend;
 			packageProductDependencies = (
+				ABCCC24A2F429656003657B2 /* KeychainSwift */,
 			);
 			productName = fitrfrontend;
 			productReference = AB5933362F3BC4B4003BE021 /* fitrfrontend.app */;
@@ -86,6 +92,9 @@
 			);
 			mainGroup = AB42E4172F38FD88006B92C8;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				ABCCC2492F429656003657B2 /* XCRemoteSwiftPackageReference "keychain-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AB42E4172F38FD88006B92C8;
 			projectDirPath = "";
@@ -320,6 +329,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		ABCCC2492F429656003657B2 /* XCRemoteSwiftPackageReference "keychain-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/evgenyneu/keychain-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 24.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		ABCCC24A2F429656003657B2 /* KeychainSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ABCCC2492F429656003657B2 /* XCRemoteSwiftPackageReference "keychain-swift" */;
+			productName = KeychainSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = AB42E4182F38FD88006B92C8 /* Project object */;
 }

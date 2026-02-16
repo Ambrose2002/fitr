@@ -16,6 +16,7 @@ class SignUpViewModel : ObservableObject {
     @Published var errorMessage : String?
     
     let authService : AuthService = AuthService()
+    @EnvironmentObject var sessionStore : SessionStore
     
     // Expose ways to set email/password from your UI
     public func setEmail(_ value: String) { email = value }
@@ -61,6 +62,7 @@ class SignUpViewModel : ObservableObject {
         do {
             defer {self.isLoading = false}
             let token = try await self.authService.signup(self.email, self.password, self.firstName, self.lastName)
+            sessionStore.login(token)
         } catch let apiError as APIErrorResponse {
             self.errorMessage = apiError.message
         } catch {

@@ -70,7 +70,10 @@ struct SignUpView: View {
                 
                 Button("Sign Up") {
                     // Handle login action
-                    signUpViewModel.signUp()
+                    Task {
+                        await signUpViewModel.signUp()
+                    }
+                    
                 }
                 .frame(maxWidth: .infinity)
                 .padding()

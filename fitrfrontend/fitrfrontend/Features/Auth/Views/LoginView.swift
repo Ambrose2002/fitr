@@ -8,7 +8,12 @@
 import SwiftUI
 
 struct LoginView: View {
-    @StateObject var loginViewModel: LoginViewModel = LoginViewModel()
+    @EnvironmentObject var sessionStore: SessionStore
+    @StateObject private var loginViewModel: LoginViewModel
+    
+    init(sessionStore: SessionStore) {
+        _loginViewModel = StateObject(wrappedValue: LoginViewModel( sessionStore: sessionStore))
+    }
 
     var body: some View {
         
@@ -78,7 +83,7 @@ struct LoginView: View {
     }
 }
 
-#Preview {
-    LoginView()
-}
+//#Preview {
+//    LoginView()
+//}
 

@@ -15,6 +15,11 @@ final class LoginViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     let authService : AuthService = AuthService()
+    private let sessionStore : SessionStore
+    
+    init(sessionStore: SessionStore) {
+        self.sessionStore = sessionStore
+    }
     
     // Expose ways to set email/password from your UI
     public func setEmail(_ value: String) { email = value }
@@ -46,7 +51,7 @@ final class LoginViewModel: ObservableObject {
         do {
             defer { self.isLoading = false }
             let token = try await self.authService.login(self.email, self.password)
-            // TODO: Persist token or update app state as needed
+            sessionStore.login(token)
         } catch let apiError as APIErrorResponse {
             self.errorMessage = apiError.message
         } catch {

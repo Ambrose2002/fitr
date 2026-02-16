@@ -18,7 +18,7 @@ struct RootView : View {
         case .authenticated:
             MainAppView()
         case .unauthenticated:
-            AuthRootView()
+            LoginView(sessionStore: sessionStore)
         }
     }
 }
