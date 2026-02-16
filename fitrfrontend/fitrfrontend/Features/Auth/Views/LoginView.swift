@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct LoginView: View {
-    @EnvironmentObject var sessionStore: SessionStore
     @StateObject private var loginViewModel: LoginViewModel
     
     init(sessionStore: SessionStore) {

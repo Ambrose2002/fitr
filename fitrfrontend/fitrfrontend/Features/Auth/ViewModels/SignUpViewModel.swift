@@ -16,7 +16,11 @@ class SignUpViewModel : ObservableObject {
     @Published var errorMessage : String?
     
     let authService : AuthService = AuthService()
-    @EnvironmentObject var sessionStore : SessionStore
+    private let sessionStore : SessionStore
+    
+    init(sessionStore: SessionStore) {
+        self.sessionStore = sessionStore
+    }
     
     // Expose ways to set email/password from your UI
     public func setEmail(_ value: String) { email = value }

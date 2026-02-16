@@ -8,7 +8,11 @@
 import SwiftUI
 
 struct SignUpView: View {
-    @StateObject var signUpViewModel: SignUpViewModel = SignUpViewModel()
+    @StateObject var signUpViewModel: SignUpViewModel
+    
+    init(sessionStore: SessionStore) {
+        _signUpViewModel = StateObject(wrappedValue: SignUpViewModel(sessionStore: sessionStore))
+    }
 
     var body: some View {
         
