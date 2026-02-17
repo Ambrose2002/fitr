@@ -9,6 +9,10 @@ import SwiftUI
 
 struct WelcomeView: View {
     
+    @State private var navigationPath = NavigationPath()
+    
+    var sessionStore: SessionStore
+    
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
@@ -16,6 +20,9 @@ struct WelcomeView: View {
             // Logo and branding section
             VStack(spacing: 24) {
                 // App icon/logo
+                Text("Fitr")
+                    .font(.system(size: 32, weight: .bold))
+                    .multilineTextAlignment(.center)
                 AppIcons.appIcon
                     .font(.system(size: 80))
                     .foregroundColor(.white)
@@ -43,6 +50,7 @@ struct WelcomeView: View {
                 // Login button
                 Button {
                     // Navigate to login
+                    navigationPath.append("login")
                 } label: {
                     HStack {
                         AppIcons.loginIcon
@@ -59,6 +67,7 @@ struct WelcomeView: View {
                 // Sign up button
                 Button {
                     // Navigate to sign up
+                    navigationPath.append("signup")
                 } label: {
                     HStack {
                         AppIcons.signupIcon
@@ -100,10 +109,20 @@ struct WelcomeView: View {
             .padding(.bottom, 40)
         }
         .background(Color(.systemBackground))
+        .navigationDestination(for: String.self) {destination in
+            switch destination {
+            case "login":
+                LoginView(sessionStore: sessionStore)
+            case "signup":
+                SignUpView(sessionStore: sessionStore)
+            default:
+                EmptyView()
+            }
+        }
     }
 }
 
-#Preview {
-    WelcomeView()
-}
+//#Preview {
+//    WelcomeView(sessionStore: SessionStore())
+//}
 

@@ -18,7 +18,8 @@ struct RootView : View {
         case .authenticated:
             MainAppView()
         case .unauthenticated:
-            LoginView(sessionStore: sessionStore)
-        }
+            NavigationStack{
+                WelcomeView(sessionStore: sessionStore)}
+            }
     }
 }
