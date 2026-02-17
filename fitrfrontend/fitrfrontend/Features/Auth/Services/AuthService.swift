@@ -57,18 +57,13 @@ struct AuthService {
             throw URLError(.badURL)
         }
         
+        let createRequest = CreateUserRequest(email: email, password: password, firstname: firstName, lastname: lastName)
+        
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let body: [String: String] = [
-            "email": email,
-            "firstname": firstName,
-            "lastname": lastName,
-            "password": password
-        ]
-        
-        request.httpBody = try JSONEncoder().encode(body)
+        request.httpBody = try JSONEncoder().encode(createRequest)
         
         let (data, response) = try await URLSession.shared.data(for: request)
         

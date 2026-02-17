@@ -13,12 +13,18 @@ struct AppIcons {
     
     // MARK: - User & Profile Icons
     
+    static let appIcon = Image(systemName: "bolt.fill")
+    
     /// User profile icon
     /// Usage: Profile screen, user avatar, account settings
     static let userProfile = Image(systemName: "person.circle.fill")
     
     /// User profile outline (unfilled)
     static let userProfileOutline = Image(systemName: "person.circle")
+    
+    static let loginIcon = Image(systemName: "arrow.right.square")
+    
+    static let signupIcon = Image(systemName: "person.badge.plus")
     
     // MARK: - Authentication Icons
     
