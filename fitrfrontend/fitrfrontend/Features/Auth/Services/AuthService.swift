@@ -11,12 +11,6 @@ struct Token: Codable {
     let token: String
 }
 
-struct APIErrorResponse: Codable, Error {
-    let message: String
-    let timestamp: String
-    let status: Int
-}
-
 struct AuthService {
     
     var baseUrl = "http://127.0.0.1:8080/auth"
