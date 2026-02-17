@@ -13,11 +13,9 @@ struct Token: Codable {
 
 struct AuthService {
     
-    var baseUrl = "http://127.0.0.1:8080/auth"
-    
     func login(_ email: String, _ password: String) async throws -> Token {
         
-        guard let url = URL(string: baseUrl + "/login") else {
+        guard let url = URL(string: Constants.baseUrl + APIEndpoints.login) else {
             throw URLError(.badURL)
         }
         
@@ -66,7 +64,7 @@ struct AuthService {
     
     func signup(_ email: String, _ password: String, _ firstName: String, _ lastName: String) async throws -> Token{
         
-        guard let url = URL(string: baseUrl + "/signup") else {
+        guard let url = URL(string: Constants.baseUrl + APIEndpoints.signup) else {
             throw URLError(.badURL)
         }
         
