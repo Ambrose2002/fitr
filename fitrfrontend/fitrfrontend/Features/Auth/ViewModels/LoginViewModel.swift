@@ -50,8 +50,8 @@ final class LoginViewModel: ObservableObject {
 
         do {
             defer { self.isLoading = false }
-            let token = try await self.authService.login(self.email, self.password)
-            sessionStore.login(token)
+            let loginResponse = try await self.authService.login(self.email, self.password)
+            sessionStore.login(loginResponse)
         } catch let apiError as APIErrorResponse {
             self.errorMessage = apiError.message
         } catch {

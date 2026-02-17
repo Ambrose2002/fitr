@@ -65,8 +65,8 @@ class SignUpViewModel : ObservableObject {
         
         do {
             defer {self.isLoading = false}
-            let token = try await self.authService.signup(self.email, self.password, self.firstName, self.lastName)
-            sessionStore.login(token)
+            let loginResonse = try await self.authService.signup(self.email, self.password, self.firstName, self.lastName)
+            sessionStore.login(loginResponse)
         } catch let apiError as APIErrorResponse {
             self.errorMessage = apiError.message
         } catch {

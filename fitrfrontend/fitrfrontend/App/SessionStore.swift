@@ -44,8 +44,8 @@ final class SessionStore : ObservableObject {
         }
     }
     
-    func login(_ token: Token) {
-        self.accessToken = token.token
+    func login(_ loginResponse: LoginResponse) {
+        self.accessToken = loginResponse.token
         authState = .authenticated
     }
     
