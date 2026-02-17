@@ -9,8 +9,6 @@ import SwiftUI
 
 struct WelcomeView: View {
     
-    @State private var navigationPath = NavigationPath()
-    
     var sessionStore: SessionStore
     
     var body: some View {
@@ -48,10 +46,7 @@ struct WelcomeView: View {
             // Buttons section
             VStack(spacing: 16) {
                 // Login button
-                Button {
-                    // Navigate to login
-                    navigationPath.append("login")
-                } label: {
+                NavigationLink(value: "login") {
                     HStack {
                         AppIcons.loginIcon
                         Text("Log In to Account")
@@ -65,10 +60,7 @@ struct WelcomeView: View {
                 }
                 
                 // Sign up button
-                Button {
-                    // Navigate to sign up
-                    navigationPath.append("signup")
-                } label: {
+                NavigationLink(value: "signup") {
                     HStack {
                         AppIcons.signupIcon
                         Text("New to Fitr? Sign Up")
@@ -108,7 +100,7 @@ struct WelcomeView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 40)
         }
-        .background(Color(.systemBackground))
+        .background(AppColors.backgroundLight)
         .navigationDestination(for: String.self) {destination in
             switch destination {
             case "login":

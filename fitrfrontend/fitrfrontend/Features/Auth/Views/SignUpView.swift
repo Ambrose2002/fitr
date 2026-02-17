@@ -103,6 +103,25 @@ struct SignUpView: View {
             }
             .animation(.default, value: signUpViewModel.isLoading)
         }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("SIGN UP")
+                    .font(.headline)
+                    .foregroundColor(AppColors.textPrimary)
+            }
+        }
+        .overlay(alignment: .top) {
+            GeometryReader { proxy in
+                VStack(spacing: 0) {
+                    Color.clear.frame(height: proxy.safeAreaInsets.top)
+                    Divider()
+                    Spacer()
+                }
+                .ignoresSafeArea(edges: .top)
+            }
+        }
     }
 }
 
