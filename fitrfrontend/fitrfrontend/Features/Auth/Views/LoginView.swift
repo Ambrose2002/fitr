@@ -38,7 +38,7 @@ struct LoginView: View {
                         .multilineTextAlignment(.center)
                 }
                 
-                VStack(spacing: 10) {
+                VStack(spacing: 15) {
                     Text("EMAIL ADDRESS")
                         .font(.system(size: 16))
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -81,6 +81,15 @@ struct LoginView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .foregroundColor(AppColors.textPrimary)
+                
+                if let error = loginViewModel.errorMessage, !error.isEmpty {
+                    Text(error)
+                        .foregroundColor(AppColors.errorRed)
+                        .font(.callout)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.top, 4)
+                }
                 
                 Button {
                     Task {
@@ -138,10 +147,42 @@ struct LoginView: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 40)
+        .overlay {
+            // Loading overlay
+            if loginViewModel.isLoading {
+                ZStack {
+                    Color.black.opacity(0.2).ignoresSafeArea()
+                    ProgressView("Signing in…")
+                        .padding(24)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(12)
+                }
+            }
+        }
+        .animation(.default, value: loginViewModel.isLoading)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("LOG IN")
+                    .font(.headline)
+                    .foregroundColor(AppColors.textPrimary)
+            }
+        }
+        .overlay(alignment: .top) {
+            GeometryReader { proxy in
+                VStack(spacing: 0) {
+                    Color.clear.frame(height: proxy.safeAreaInsets.top)
+                    Divider()
+                    Spacer()
+                }
+                .ignoresSafeArea(edges: .top)
+            }
+        }
     }
 }
 
-#Preview {
-    LoginView(sessionStore: SessionStore())
-}
+//#Preview {
+//    LoginView(sessionStore: SessionStore())
+//}
 
