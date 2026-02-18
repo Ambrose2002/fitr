@@ -291,7 +291,7 @@ struct SignUpView: View {
     }
 }
 
-#Preview {
-    SignUpView(sessionStore: SessionStore())
-}
+//#Preview {
+//    SignUpView(sessionStore: SessionStore())
+//}
 

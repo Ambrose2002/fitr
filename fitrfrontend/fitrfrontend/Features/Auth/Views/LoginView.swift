@@ -9,6 +9,7 @@ import SwiftUI
 
 struct LoginView: View {
     @StateObject private var loginViewModel: LoginViewModel
+    @State private var isPasswordVisible: Bool = false
     
     init(sessionStore: SessionStore) {
         _loginViewModel = StateObject(wrappedValue: LoginViewModel( sessionStore: sessionStore))
@@ -65,20 +66,44 @@ struct LoginView: View {
                         
                     }
                     
-                    SecureField("password", text: $loginViewModel.password)
-                        .padding(.leading, 40)
-                        .overlay(
-                            AppIcons.lock
+                    HStack {
+                        if isPasswordVisible {
+                            TextField("password", text: $loginViewModel.password)
+                                .textContentType(.password)
+                                .autocapitalization(.none)
+                                .textInputAutocapitalization(.never)
+                                .disableAutocorrection(true)
+                                .padding(.leading, 40)
+                                .overlay(
+                                    AppIcons.lock
+                                        .foregroundColor(.gray)
+                                        .padding(.leading, 12),
+                                    alignment: .leading
+                                )
+                        } else {
+                            SecureField("password", text: $loginViewModel.password)
+                                .textContentType(.password)
+                                .padding(.leading, 40)
+                                .overlay(
+                                    AppIcons.lock
+                                        .foregroundColor(.gray)
+                                        .padding(.leading, 12),
+                                    alignment: .leading
+                                )
+                        }
+                        Button {
+                            isPasswordVisible.toggle()
+                        } label: {
+                            Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
                                 .foregroundColor(.gray)
-                                .padding(.leading, 12),
-                            alignment: .leading
-                        )
-                        .frame(height: 44)
-                        .textContentType(.password)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                        .foregroundColor(AppColors.textPrimary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.trailing, 12)
+                        }
+                    }
+                    .frame(height: 44)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    .foregroundColor(AppColors.textPrimary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .foregroundColor(AppColors.textPrimary)
                 
