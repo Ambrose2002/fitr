@@ -131,8 +131,8 @@ struct LoginView: View {
                 HStack(spacing: 4) {
                     Text("Don't have an account?")
                         .foregroundColor(.black)
-                    Button {
-                        // Navigate to sign up or perform sign up action
+                    NavigationLink {
+                        SignUpView(sessionStore: loginViewModel.sessionStore)
                     } label: {
                         HStack(spacing: 4) {
                             Text("Join Fitr")

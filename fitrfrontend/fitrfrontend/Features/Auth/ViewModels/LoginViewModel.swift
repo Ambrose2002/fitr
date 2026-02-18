@@ -15,7 +15,7 @@ final class LoginViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     let authService : AuthService = AuthService()
-    private let sessionStore : SessionStore
+    let sessionStore : SessionStore
     
     init(sessionStore: SessionStore) {
         self.sessionStore = sessionStore
