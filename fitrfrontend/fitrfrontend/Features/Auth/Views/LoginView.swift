@@ -39,7 +39,7 @@ struct LoginView: View {
                 }
                 
                 VStack(spacing: 15) {
-                    Text("EMAIL ADDRESS")
+                    Text("Email Address")
                         .font(.system(size: 16))
                         .frame(maxWidth: .infinity, alignment: .leading)
                     
@@ -59,7 +59,7 @@ struct LoginView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     
                     HStack{
-                        Text("PASSWORD")
+                        Text("Password")
                             .font(.system(size: 16))
                             .frame(maxWidth: .infinity, alignment: .leading)
                         
