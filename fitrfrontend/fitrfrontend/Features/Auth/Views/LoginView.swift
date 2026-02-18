@@ -18,7 +18,10 @@ struct LoginView: View {
         
         VStack(spacing: 0) {
             
-            VStack (spacing: 38){
+            Spacer()
+                .frame(height: 60)
+            
+            VStack (spacing: 40){
                 VStack(spacing: 16) {
                     AppIcons.appIcon
                         .font(.system(size: 40))
@@ -97,7 +100,39 @@ struct LoginView: View {
                     .cornerRadius(16)
                 }
                 
+                HStack(spacing: 12) {
+                    Rectangle()
+                        .frame(height: 0.5)
+                            .frame(maxWidth: 100)
+                            .foregroundColor(.gray)
+                    
+                    Text("SECURE AUTHENTICATION")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.gray)
+                        .lineLimit(1)
+                    
+                    Rectangle()
+                        .frame(height: 0.5)
+                        .frame(maxWidth: 100)
+                        .foregroundColor(.gray)
+                }
                 
+                Spacer()
+                
+                HStack(spacing: 4) {
+                    Text("Don't have an account?")
+                        .foregroundColor(.black)
+                    Button {
+                        // Navigate to sign up or perform sign up action
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("Join Fitr")
+                                .foregroundColor(AppColors.primaryTeal)
+                            Image(systemName: "arrow.right")
+                                .foregroundColor(AppColors.primaryTeal)
+                        }
+                    }
+                }
             }
             
         }
