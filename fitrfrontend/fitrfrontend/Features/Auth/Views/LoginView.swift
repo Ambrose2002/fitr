@@ -16,92 +16,72 @@ struct LoginView: View {
 
     var body: some View {
         
-        ZStack{
+        VStack(spacing: 0) {
+            Spacer()
+            
             VStack(spacing: 16) {
-                Text("Login")
-                    .font(.largeTitle)
-                    .bold()
-
-                // Email field
-                TextField("Email", text: $loginViewModel.email)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .autocapitalization(.none)
-                    .textInputAutocapitalization(.never) // iOS 15+
-                    .disableAutocorrection(true)
-                    .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(8)
-
-                // Password field
-                SecureField("Password", text: $loginViewModel.password)
-                    .textContentType(.password)
-                    .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(8)
-
-                if let error = loginViewModel.errorMessage, !error.isEmpty {
-                    Text(error)
-                        .foregroundColor(.red)
-                        .font(.callout)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.top, 4)
-                }
+                AppIcons.appIcon
+                    .font(.system(size: 40))
+                    .foregroundColor(.white)
+                    .frame(width: 80, height: 80)
+                    .background(Color.black)
+                    .cornerRadius(11)
+                Text("Fitr")
+                    .font(.system(size: 22, weight: .bold))
+                    .multilineTextAlignment(.center)
                 
-                Button("Sign In") {
-                    // Handle login action
-                    Task {
-                        await loginViewModel.login()
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.accentColor)
-                .foregroundColor(.white)
-                .cornerRadius(8)
-
-                Spacer()
+                Text("Welcome back, athlete.")
+                    .font(.system(size: 14, weight: .medium))
+                    .multilineTextAlignment(.center)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-            .padding()
-            .overlay {
-                // Loading overlay
-                if loginViewModel.isLoading {
-                    ZStack {
-                        Color.black.opacity(0.2).ignoresSafeArea()
-                        ProgressView("Signing in…")
-                            .padding(24)
-                            .background(.ultraThinMaterial)
-                            .cornerRadius(12)
-                    }
-                }
-            }
-            .animation(.default, value: loginViewModel.isLoading)
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text("LOG IN")
-                    .font(.headline)
+            
+            Spacer()
+            
+            VStack(spacing: 10) {
+                Text("EMAIL ADDRESS")
+                
+                TextField("name@example.com", text: $loginViewModel.email)
+                    .padding(.leading, 40)
+                    .overlay(
+                        AppIcons.email
+                            .foregroundColor(.gray)
+                            .padding(.leading, 12),
+                        alignment: .leading
+                    )
+                    .frame(height: 44)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
                     .foregroundColor(AppColors.textPrimary)
+
             }
-        }
-        .overlay(alignment: .top) {
-            GeometryReader { proxy in
-                VStack(spacing: 0) {
-                    Color.clear.frame(height: proxy.safeAreaInsets.top)
-                    Divider()
-                    Spacer()
+            
+            Spacer()
+            
+            Button {
+                Task {
+                    await loginViewModel.login()
                 }
-                .ignoresSafeArea(edges: .top)
+            } label: {
+                HStack {
+                    AppIcons.loginIcon
+                    Text("Sign In")
+                        
+                }
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(AppColors.primaryTeal)
+                .cornerRadius(16)
             }
+            
         }
+        .padding(.horizontal, 15)
+        .padding(.bottom, 40)
     }
 }
 
-//#Preview {
-//    LoginView()
-//}
+#Preview {
+    LoginView(sessionStore: SessionStore())
+}
 
