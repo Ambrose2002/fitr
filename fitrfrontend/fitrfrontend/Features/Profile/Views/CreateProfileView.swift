@@ -10,10 +10,10 @@ import SwiftUI
 struct CreateProfileView: View {
 
     @State private var selectedGender: Gender? = .male
-    
-    @State private var height = 180
-    
-    @State private var weight = 75
+    @State private var selectedExperience: ExperienceLevel? = .beginner
+    @State private var selectedGoal: Goal? = .strength
+    @State private var selectedWeightUnit: Unit = .kg
+    @State private var selectedDistanceUnit: Unit = .km
 
     @StateObject private var viewModel: CreateProfileViewModel
     
@@ -54,6 +54,88 @@ struct CreateProfileView: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
     
+    @ViewBuilder
+    private func experienceCard(for experience: ExperienceLevel) -> some View {
+        let isSelected = selectedExperience == experience
+        Button {
+            selectedExperience = experience
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(experience.rawValue.uppercased())
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(isSelected ? AppColors.accent : AppColors.textPrimary)
+                    Text(experience.description)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(AppColors.accent)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(isSelected ? AppColors.accent.opacity(0.2) : Color(.systemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(isSelected ? AppColors.accent : Color(.systemGray4), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(experience.rawValue))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+    
+    @ViewBuilder
+    private func goalCard(for goal: Goal) -> some View {
+        let isSelected = selectedGoal == goal
+        Button {
+            selectedGoal = goal
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(goal.rawValue.uppercased())
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(isSelected ? AppColors.accent : AppColors.textPrimary)
+                    Text(goal.description)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(AppColors.accent)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(isSelected ? AppColors.accent.opacity(0.2) : Color(.systemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(isSelected ? AppColors.accent : Color(.systemGray4), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(goal.rawValue))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+    
     var body: some View {
         ScrollView {
             VStack (spacing: 38){
@@ -69,7 +151,6 @@ struct CreateProfileView: View {
                 }
                 
                 // GENDER SECTION
-                
                 VStack(alignment: .leading, spacing: 12) {
                     Text("WHAT IS YOUR GENDER?")
                         .font(.system(size: 12, weight: .semibold))
