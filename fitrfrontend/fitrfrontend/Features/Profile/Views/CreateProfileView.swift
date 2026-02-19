@@ -68,6 +68,8 @@ struct CreateProfileView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 
+                // GENDER SECTION
+                
                 VStack(alignment: .leading, spacing: 12) {
                     Text("WHAT IS YOUR GENDER?")
                         .font(.system(size: 12, weight: .semibold))
@@ -82,10 +84,68 @@ struct CreateProfileView: View {
                     
                 }
                 
-                HStack (spacing: 16) {
-                    
+                // HEIGHT AND WEIGHT SECTION
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 16) {
+                        // Height Input
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("CURRENT HEIGHT")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(AppColors.textPrimary)
+                                .textCase(.uppercase)
+                            
+                            HStack(spacing: 8) {
+                                AppIcons.height
+                                    .foregroundColor(.gray)
+                                    .frame(width: 20)
+                                    .padding(.leading, 10)
+                                
+                                TextField("180", value: $height, format: .number)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(AppColors.textPrimary)
+                                    .keyboardType(.numberPad)
+                                
+                                Text("CM")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.gray)
+                                    .padding(.trailing, 10)
+                            }
+                            .frame(height: 48)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                            
+                        }
+                        
+                        // Weight Input
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("CURRENT WEIGHT")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(AppColors.textPrimary)
+                                .textCase(.uppercase)
+                            
+                            HStack(spacing: 8) {
+                                AppIcons.weight
+                                    .foregroundColor(.gray)
+                                    .frame(width: 20)
+                                    .padding(.leading, 10)
+                                
+                                TextField("75", value: $weight, format: .number)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(AppColors.textPrimary)
+                                    .keyboardType(.numberPad)
+                                
+                                Text("KG")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.gray)
+                                    .padding(.trailing, 10)
+                            }
+                            .frame(height: 48)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                        }
+                    }
                 }
-                
+
             }
         }
         .padding(.horizontal, 16)
