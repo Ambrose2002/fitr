@@ -7,10 +7,6 @@
 
 import Foundation
 
-struct Token: Codable {
-    let token: String
-}
-
 struct AuthService {
     
     func login(_ email: String, _ password: String) async throws -> LoginResponse {
