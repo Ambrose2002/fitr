@@ -14,6 +14,9 @@ struct CreateProfileView: View {
     @State private var selectedGoal: Goal? = .strength
     @State private var selectedWeightUnit: Unit = .kg
     @State private var selectedDistanceUnit: Unit = .km
+    
+    @State private var height = 180
+    @State private var weight = 75
 
     @StateObject private var viewModel: CreateProfileViewModel
     
@@ -73,7 +76,7 @@ struct CreateProfileView: View {
                 Spacer()
                 
                 if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
+                    AppIcons.checkmark
                         .font(.system(size: 20))
                         .foregroundStyle(AppColors.accent)
                 }
@@ -224,6 +227,20 @@ struct CreateProfileView: View {
                             .background(Color(.systemGray6))
                             .cornerRadius(12)
                         }
+                    }
+                }
+                
+                // EXPERIENCE LEVEL SECTION
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("EXPERIENCE LEVEL")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppColors.textPrimary)
+                        .textCase(.uppercase)
+                    
+                    VStack(spacing: 12) {
+                        experienceCard(for: .beginner)
+                        experienceCard(for: .intermediate)
+                        experienceCard(for: .advanced)
                     }
                 }
 
