@@ -19,4 +19,12 @@ enum Gender: String, Codable, CaseIterable, Identifiable {
         case .other: return "person"
         }
     }
+    
+    var representation: String {
+        switch self {
+        case .male: return "Male"
+        case .female: return "Female"
+        case .other: return "Other"
+        }
+    }
 }

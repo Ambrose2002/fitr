@@ -26,4 +26,12 @@ enum ExperienceLevel: String, Codable, CaseIterable, Identifiable {
         case .advanced: return "Expert level performance (3+ years)"
         }
     }
+    
+    var representation: String {
+        switch self {
+        case .beginner: return "Beginner"
+        case .advanced: return "Advanced"
+        case .intermediate: return "Intermediate"
+        }
+    }
 }

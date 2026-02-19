@@ -35,7 +35,7 @@ struct CreateProfileView: View {
                     .font(.system(size: 24, weight: .semibold))
                     .foregroundStyle(isSelected ? AppColors.accent : Color.primary)
                     .frame(height: 28)
-                Text(gender.rawValue.uppercased())
+                Text(gender.representation)
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(isSelected ? AppColors.accent : AppColors.textPrimary)
             }
@@ -65,7 +65,7 @@ struct CreateProfileView: View {
         } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(experience.rawValue.uppercased())
+                    Text(experience.representation)
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(isSelected ? AppColors.accent : AppColors.textPrimary)
                     Text(experience.description)
@@ -106,7 +106,7 @@ struct CreateProfileView: View {
         } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(goal.rawValue.uppercased())
+                    Text(goal.representation)
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(isSelected ? AppColors.accent : AppColors.textPrimary)
                     Text(goal.description)
@@ -117,7 +117,7 @@ struct CreateProfileView: View {
                 Spacer()
                 
                 if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
+                    AppIcons.checkmark
                         .font(.system(size: 20))
                         .foregroundStyle(AppColors.accent)
                 }
@@ -241,6 +241,21 @@ struct CreateProfileView: View {
                         experienceCard(for: .beginner)
                         experienceCard(for: .intermediate)
                         experienceCard(for: .advanced)
+                    }
+                }
+                
+                // FITNESS GOAL SECTION
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("MAIN FITNESS GOAL")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppColors.textPrimary)
+                        .textCase(.uppercase)
+                    
+                    VStack(spacing: 12) {
+                        goalCard(for: .strength)
+                        goalCard(for: .hypertrophy)
+                        goalCard(for: .fatLoss)
+                        goalCard(for: .general)
                     }
                 }
 

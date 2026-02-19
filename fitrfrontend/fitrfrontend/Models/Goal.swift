@@ -23,4 +23,13 @@ enum Goal: String, Codable, CaseIterable, Identifiable {
         case .general: return "General fitness"
         }
     }
+    
+    var representation: String {
+        switch self {
+        case .strength: return "Strength"
+        case .hypertrophy: return "Hypertrophy"
+        case .fatLoss: return "Fat Loss"
+        case .general: return "General"
+        }
+    }
 }
