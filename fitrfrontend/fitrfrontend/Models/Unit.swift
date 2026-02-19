@@ -8,7 +8,7 @@
 import Foundation
 
 /// Represents a unit of measurement.
-enum Unit: String, Codable, CaseIterable {
+enum Unit: String, Codable, CaseIterable, Identifiable {
     /// Kilograms
     case kg = "KG"
     
@@ -23,4 +23,6 @@ enum Unit: String, Codable, CaseIterable {
     
     /// Centimeters
     case cm = "CM"
+    
+    var id: String { rawValue }
 }

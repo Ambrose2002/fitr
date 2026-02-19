@@ -8,7 +8,7 @@
 import Foundation
 
 /// Represents the experience level of a user.
-enum ExperienceLevel: String, Codable, CaseIterable {
+enum ExperienceLevel: String, Codable, CaseIterable, Identifiable {
     /// A beginner user is one who is just starting out with fitness
     case beginner = "BEGINNER"
     
@@ -17,4 +17,13 @@ enum ExperienceLevel: String, Codable, CaseIterable {
     
     /// An advanced user is one who is an expert in fitness
     case advanced = "ADVANCED"
+    
+    var id: String { rawValue }
+    var description: String {
+        switch self {
+        case .beginner: return "New to consistent training (0-1 years)"
+        case .intermediate: return "Consistent training (1-3 years)"
+        case .advanced: return "Expert level performance (3+ years)"
+        }
+    }
 }

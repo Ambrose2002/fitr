@@ -8,22 +8,12 @@
 import SwiftUI
 
 struct CreateProfileView: View {
-    
-    private enum Gender: String, CaseIterable, Identifiable {
-        case male = "Male"
-        case female = "Female"
-        case other = "Other"
-        var id: String { rawValue }
-        var systemImageName: String {
-            switch self {
-            case .male: return "person.badge.plus"
-            case .female: return "person.badge.minus"
-            case .other: return "person"
-            }
-        }
-    }
 
     @State private var selectedGender: Gender? = .male
+    
+    @State private var height = 180
+    
+    @State private var weight = 75
 
     @StateObject private var viewModel: CreateProfileViewModel
     
@@ -84,11 +74,16 @@ struct CreateProfileView: View {
                         .foregroundColor(AppColors.textPrimary)
                         .textCase(.uppercase)
                     
-                    HStack(spacing: 12) {
+                    HStack(spacing: 11) {
                         genderCard(for: .male)
                         genderCard(for: .female)
                         genderCard(for: .other)
                     }
+                    
+                }
+                
+                HStack (spacing: 16) {
+                    
                 }
                 
             }
