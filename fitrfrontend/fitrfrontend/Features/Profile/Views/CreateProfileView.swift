@@ -12,8 +12,8 @@ struct CreateProfileView: View {
     @State private var selectedGender: Gender? = .male
     @State private var selectedExperience: ExperienceLevel? = .beginner
     @State private var selectedGoal: Goal? = .strength
-    @State private var selectedWeightUnit: Unit = .kg
-    @State private var selectedDistanceUnit: Unit = .km
+    @State private var selectedWeightUnit: WeightUnit = .kg
+    @State private var selectedDistanceUnit: DistanceUnit = .km
     
     @State private var height = 180
     @State private var weight = 75
@@ -257,6 +257,65 @@ struct CreateProfileView: View {
                         goalCard(for: .fatLoss)
                         goalCard(for: .general)
                     }
+                }
+                
+                // PREFERRED UNITS SECTION
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("PREFERRED UNITS")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppColors.textPrimary)
+                        .textCase(.uppercase)
+                    
+                    HStack(spacing: 16) {
+                        // Weight Unit Picker
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("WEIGHT UNIT")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.gray)
+                                .textCase(.uppercase)
+                            
+                            Picker("Weight Unit", selection: $selectedWeightUnit) {
+                                ForEach(WeightUnit.allCases) { unit in
+                                    Text(unit.abbreviation).tag(unit)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                        
+                        // Distance Unit Picker
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("DISTANCE UNIT")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.gray)
+                                .textCase(.uppercase)
+                            
+                            Picker("Distance Unit", selection: $selectedDistanceUnit) {
+                                ForEach(DistanceUnit.allCases) { unit in
+                                    Text(unit.abbreviation).tag(unit)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                    }
+                    
+                    // SUBMIT BUTTON
+                    Button {
+                        // Handle profile creation
+                        
+                    } label: {
+                        HStack (spacing: 16){
+                            Text("COMPLETE PROFILE")
+                            Image(systemName: "chevron.right")
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(AppColors.accent)
+                        .cornerRadius(14)
+                    }
+                    .padding(.top, 20)
+                    .padding(.bottom, 20)
                 }
 
             }
