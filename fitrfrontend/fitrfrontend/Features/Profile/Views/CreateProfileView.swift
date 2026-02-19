@@ -9,17 +9,109 @@ import SwiftUI
 
 struct CreateProfileView: View {
     
+    private enum Gender: String, CaseIterable, Identifiable {
+        case male = "Male"
+        case female = "Female"
+        case other = "Other"
+        var id: String { rawValue }
+        var systemImageName: String {
+            switch self {
+            case .male: return "person.badge.plus"
+            case .female: return "person.badge.minus"
+            case .other: return "person"
+            }
+        }
+    }
+
+    @State private var selectedGender: Gender? = .male
+
     @StateObject private var viewModel: CreateProfileViewModel
+    
+    init(sessionStore: SessionStore) {
+        _viewModel = StateObject(wrappedValue: CreateProfileViewModel(sessionStore: sessionStore))
+    }
+    
+    @ViewBuilder
+    private func genderCard(for gender: Gender) -> some View {
+        let isSelected = selectedGender == gender
+        Button {
+            selectedGender = gender
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: gender.systemImageName)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(isSelected ? AppColors.accent : Color.primary)
+                    .frame(height: 28)
+                Text(gender.rawValue.uppercased())
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(isSelected ? AppColors.accent : AppColors.textPrimary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .padding(.horizontal, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(isSelected ? AppColors.accent.opacity(0.2) : Color(.systemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(isSelected ? AppColors.accent : Color(.systemGray4), lineWidth: 1)
+            )
+            .shadow(color: isSelected ? Color.accentColor.opacity(0.25) : Color.clear, radius: 10, x: 0, y: 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(gender.rawValue))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+    
     var body: some View {
-        VStack {
-            Text("CreateProfileView")
+        ScrollView {
+            VStack (spacing: 38){
+                VStack (spacing: 3){
+                    Text("Create Your Profile")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Text("We'll use this data to calculate your calorie needs and suggest optimal workout volumes.")
+                        .font(.system(size: 14))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("WHAT IS YOUR GENDER?")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppColors.textPrimary)
+                        .textCase(.uppercase)
+                    
+                    HStack(spacing: 12) {
+                        genderCard(for: .male)
+                        genderCard(for: .female)
+                        genderCard(for: .other)
+                    }
+                }
+                
+            }
+        }
+        .padding(.horizontal, 16)
+        .overlay {
+            // Loading overlay
+            if viewModel.isLoading {
+                ZStack {
+                    Color.black.opacity(0.2).ignoresSafeArea()
+                    ProgressView("Creating profile…")
+                        .padding(24)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(12)
+                }
+            }
         }
         .animation(.default, value: viewModel.isLoading)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text("LOG IN")
+                Text("TELL US ABOUT YOU")
                     .font(.headline)
                     .foregroundColor(AppColors.textPrimary)
             }
@@ -35,4 +127,9 @@ struct CreateProfileView: View {
             }
         }
     }
+}
+
+
+#Preview {
+    CreateProfileView(sessionStore: SessionStore())
 }
