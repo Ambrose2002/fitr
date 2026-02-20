@@ -337,6 +337,46 @@ struct CreateProfileView: View {
             .cornerRadius(12)
         }
       }
+
+      // Success overlay
+      if viewModel.profileCreated {
+        ZStack {
+          Color.black.opacity(0.4).ignoresSafeArea()
+
+          VStack(spacing: 20) {
+            ZStack {
+              Circle()
+                .fill(AppColors.accent)
+                .frame(width: 80, height: 80)
+
+              Image(systemName: "checkmark")
+                .font(.system(size: 32, weight: .semibold))
+                .foregroundColor(.white)
+            }
+
+            VStack(spacing: 8) {
+              Text("Profile Complete!")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(AppColors.textPrimary)
+
+              Text("Your profile has been created successfully.")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            }
+
+            Text("Welcome to Fitr")
+              .font(.system(size: 12, weight: .semibold))
+              .foregroundColor(AppColors.accent)
+              .textCase(.uppercase)
+              .tracking(0.5)
+          }
+          .padding(32)
+          .background(.ultraThinMaterial)
+          .cornerRadius(20)
+          .padding(24)
+        }
+      }
     }
     .animation(.default, value: viewModel.isLoading)
     .navigationBarTitleDisplayMode(.inline)
