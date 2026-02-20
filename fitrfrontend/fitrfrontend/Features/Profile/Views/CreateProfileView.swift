@@ -9,15 +9,6 @@ import SwiftUI
 
 struct CreateProfileView: View {
 
-    @State private var selectedGender: Gender? = .male
-    @State private var selectedExperience: ExperienceLevel? = .beginner
-    @State private var selectedGoal: Goal? = .strength
-    @State private var selectedWeightUnit: WeightUnit = .kg
-    @State private var selectedDistanceUnit: DistanceUnit = .km
-    
-    @State private var height = 180
-    @State private var weight = 75
-
     @StateObject private var viewModel: CreateProfileViewModel
     
     init(sessionStore: SessionStore) {
@@ -26,9 +17,9 @@ struct CreateProfileView: View {
     
     @ViewBuilder
     private func genderCard(for gender: Gender) -> some View {
-        let isSelected = selectedGender == gender
+        let isSelected = viewModel.selectedGender == gender
         Button {
-            selectedGender = gender
+            viewModel.selectedGender = gender
         } label: {
             VStack(spacing: 8) {
                 Image(systemName: gender.systemImageName)
@@ -59,9 +50,9 @@ struct CreateProfileView: View {
     
     @ViewBuilder
     private func experienceCard(for experience: ExperienceLevel) -> some View {
-        let isSelected = selectedExperience == experience
+        let isSelected = viewModel.selectedExperience == experience
         Button {
-            selectedExperience = experience
+            viewModel.selectedExperience = experience
         } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -100,9 +91,9 @@ struct CreateProfileView: View {
     
     @ViewBuilder
     private func goalCard(for goal: Goal) -> some View {
-        let isSelected = selectedGoal == goal
+        let isSelected = viewModel.selectedGoal == goal
         Button {
-            selectedGoal = goal
+            viewModel.selectedGoal = goal
         } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -184,7 +175,7 @@ struct CreateProfileView: View {
                                     .frame(width: 20)
                                     .padding(.leading, 10)
                                 
-                                TextField("180", value: $height, format: .number)
+                                TextField("180", value: $viewModel.height, format: .number)
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(AppColors.textPrimary)
                                     .keyboardType(.numberPad)
@@ -213,7 +204,7 @@ struct CreateProfileView: View {
                                     .frame(width: 20)
                                     .padding(.leading, 10)
                                 
-                                TextField("75", value: $weight, format: .number)
+                                TextField("75", value: $viewModel.weight, format: .number)
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(AppColors.textPrimary)
                                     .keyboardType(.numberPad)
@@ -274,7 +265,7 @@ struct CreateProfileView: View {
                                 .foregroundColor(.gray)
                                 .textCase(.uppercase)
                             
-                            Picker("Weight Unit", selection: $selectedWeightUnit) {
+                            Picker("Weight Unit", selection: $viewModel.selectedWeightUnit) {
                                 ForEach(WeightUnit.allCases) { unit in
                                     Text(unit.abbreviation).tag(unit)
                                 }
@@ -289,7 +280,7 @@ struct CreateProfileView: View {
                                 .foregroundColor(.gray)
                                 .textCase(.uppercase)
                             
-                            Picker("Distance Unit", selection: $selectedDistanceUnit) {
+                            Picker("Distance Unit", selection: $viewModel.selectedDistanceUnit) {
                                 ForEach(DistanceUnit.allCases) { unit in
                                     Text(unit.abbreviation).tag(unit)
                                 }
@@ -358,6 +349,6 @@ struct CreateProfileView: View {
 }
 
 
-#Preview {
-    CreateProfileView(sessionStore: SessionStore())
-}
+//#Preview {
+//    CreateProfileView(sessionStore: SessionStore())
+//}

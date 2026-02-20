@@ -65,12 +65,23 @@ class SignUpViewModel : ObservableObject {
         
         do {
             defer {self.isLoading = false}
+            
+            // Try to login first - if user exists, just login instead of creating a new one
+            do {
+                let loginResponse = try await self.authService.login(self.email.lowercased(), self.password)
+                sessionStore.login(loginResponse)
+                return
+            } catch {
+                // User doesn't exist or credentials are wrong, proceed with signup
+            }
+            
+            // User doesn't exist, so create a new account
             let loginResponse = try await self.authService.signup(self.email.lowercased(), self.password, self.firstName, self.lastName)
             sessionStore.login(loginResponse)
         } catch let apiError as APIErrorResponse {
             self.errorMessage = apiError.message
         } catch {
-            self.errorMessage = "Something went wront. Please try again"
+            self.errorMessage = "Something went wrong. Please try again"
         }
     }
 

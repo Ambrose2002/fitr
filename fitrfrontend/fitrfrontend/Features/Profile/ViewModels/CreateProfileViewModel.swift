@@ -6,13 +6,20 @@
 //
 internal import Combine
 
-@MainActor
-final class CreateProfileViewModel: ObservableObject {
+class CreateProfileViewModel: ObservableObject {
     
     @Published var isLoading: Bool = false
+    @Published var selectedGender: Gender? = .male
+    @Published var selectedExperience: ExperienceLevel? = .beginner
+    @Published var selectedGoal: Goal? = .strength
+    @Published var selectedWeightUnit: WeightUnit = .kg
+    @Published var selectedDistanceUnit: DistanceUnit = .km
+    
+    @Published var height = 180
+    @Published var weight = 75
     
     let sessionStore: SessionStore
-    let profileService: ProfileService = ProfileServiceImpl()
+    let profileService: ProfileService = ProfileService()
     
     
     init (sessionStore: SessionStore) {
