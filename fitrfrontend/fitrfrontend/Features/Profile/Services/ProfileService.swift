@@ -48,7 +48,7 @@ struct ProfileService {
 
     switch httpResponse.statusCode {
     case 200...299:
-      return try JSONDecoder().decode(UserProfileResponse.self, from: data)
+      return try createDecoder().decode(UserProfileResponse.self, from: data)
 
     case 400...599:
       if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
@@ -118,7 +118,7 @@ struct ProfileService {
 
     switch httpResponse.statusCode {
     case 200...299:
-      return try JSONDecoder().decode(UserProfileResponse.self, from: data)
+      return try createDecoder().decode(UserProfileResponse.self, from: data)
 
     case 400...599:
       if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
@@ -153,7 +153,7 @@ struct ProfileService {
 
     switch httpResponse.statusCode {
     case 200...299:
-      return try JSONDecoder().decode(UserResponse.self, from: data)
+      return try createDecoder().decode(UserResponse.self, from: data)
 
     case 400...599:
       if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
