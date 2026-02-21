@@ -1,5 +1,7 @@
 package com.example.fitrbackend.service;
 
+import org.springframework.stereotype.Service;
+
 import com.example.fitrbackend.dto.CreateUserProfileRequest;
 import com.example.fitrbackend.dto.UserProfileResponse;
 import com.example.fitrbackend.exception.DataCreationFailedException;
@@ -8,7 +10,6 @@ import com.example.fitrbackend.model.User;
 import com.example.fitrbackend.model.UserProfile;
 import com.example.fitrbackend.repository.UserProfileRepository;
 import com.example.fitrbackend.repository.UserRepository;
-import org.springframework.stereotype.Service;
 
 @Service
 public class UserProfileService {
@@ -23,7 +24,6 @@ public class UserProfileService {
     }
 
     public UserProfileResponse getUserProfile(Long id) {
-        System.out.println("getting profile");
         User user = userRepo.findById((id)).orElseThrow(() -> new DataNotFoundException(id, "user"));
         UserProfile profile = profileRepo.findByUser(user);
         if (profile == null) {

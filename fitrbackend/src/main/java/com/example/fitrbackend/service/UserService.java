@@ -1,24 +1,31 @@
 package com.example.fitrbackend.service;
 
+import java.time.Instant;
+import java.util.Objects;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
 import com.example.fitrbackend.dto.UpdateUserRequest;
 import com.example.fitrbackend.dto.UserResponse;
 import com.example.fitrbackend.exception.DataNotFoundException;
 import com.example.fitrbackend.model.User;
+import com.example.fitrbackend.repository.UserProfileRepository;
 import com.example.fitrbackend.repository.UserRepository;
-import java.time.Instant;
-import java.util.Objects;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
 
 @Service
 public class UserService {
 
     private final UserRepository repo;
 
+    private final UserProfileRepository userProfileRepository;
+
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository repo, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository repo, UserProfileRepository userProfileRepository,
+            PasswordEncoder passwordEncoder) {
         this.repo = repo;
+        this.userProfileRepository = userProfileRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -71,12 +78,14 @@ public class UserService {
     }
 
     private UserResponse toResponse(User user) {
+        boolean hasProfile = userProfileRepository.findByUser(user) != null;
         return new UserResponse(
                 user.getId(),
                 user.getFirstname(),
                 user.getLastname(),
                 user.getEmail(),
                 user.getCreatedAt(),
-                user.isActive());
+                user.isActive(),
+                hasProfile);
     }
 }
