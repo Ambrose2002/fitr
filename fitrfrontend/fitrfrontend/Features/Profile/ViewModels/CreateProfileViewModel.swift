@@ -83,8 +83,10 @@ class CreateProfileViewModel: ObservableObject {
         preferredDistanceUnit: preferredDistanceUnit
       )
 
-      _ = try await profileService.createProfile(profileRequest)
-      // Profile created successfully - show success overlay
+      let profileResponse = try await profileService.createProfile(profileRequest)
+      // Profile created successfully - update SessionStore with the new profile
+      self.sessionStore.updateUserProfile(profileResponse)
+      // Show success overlay
       self.profileCreated = true
       // Wait 1.5 seconds to show the success message, then navigate
       try? await Task.sleep(nanoseconds: 1_500_000_000)

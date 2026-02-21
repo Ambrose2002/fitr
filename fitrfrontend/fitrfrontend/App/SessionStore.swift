@@ -22,6 +22,7 @@ final class SessionStore: ObservableObject {
   @Published private(set) var authState: AuthState = .loading
   @Published var hasCreatedProfile: Bool = false
   @Published var isCheckingProfile: Bool = false
+  @Published var userProfile: UserProfileResponse? = nil
 
   @Published var accessToken: String? = nil {
     didSet {
@@ -59,6 +60,7 @@ final class SessionStore: ObservableObject {
     accessToken = nil
     hasCreatedProfile = false
     isCheckingProfile = false
+    userProfile = nil
     authState = .unauthenticated
   }
 
@@ -71,6 +73,12 @@ final class SessionStore: ObservableObject {
         await MainActor.run {
           self.hasCreatedProfile = userResponse.isProfileCreated
           self.isCheckingProfile = false
+          // If profile exists, fetch it
+          if userResponse.isProfileCreated {
+            Task {
+              await self.fetchUserProfile()
+            }
+          }
         }
       } catch {
         // Token expired or other error - logout user
@@ -79,5 +87,24 @@ final class SessionStore: ObservableObject {
         }
       }
     }
+  }
+
+  /// Fetches the user's profile from the backend and stores it in SessionStore
+  private func fetchUserProfile() async {
+    do {
+      let profile = try await profileService.getProfile()
+      await MainActor.run {
+        self.userProfile = profile
+      }
+    } catch {
+      // Log error but don't logout - profile fetch failure is not critical
+      print("Failed to fetch user profile: \(error)")
+    }
+  }
+
+  /// Updates the stored user profile in SessionStore after a successful API update
+  /// - Parameter profile: The updated user profile from the API response
+  func updateUserProfile(_ profile: UserProfileResponse) {
+    self.userProfile = profile
   }
 }
