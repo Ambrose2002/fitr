@@ -37,7 +37,7 @@ struct MainAppView: View {
             Group {
                 switch selectedTab {
                 case .home:
-                    HomeView()
+                    HomeView(sessionStore: sessionStore)
                 case .plans:
                     PlansView()
                 case .workouts:

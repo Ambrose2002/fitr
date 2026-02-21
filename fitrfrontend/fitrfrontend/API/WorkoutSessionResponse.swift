@@ -14,6 +14,7 @@ struct WorkoutSessionResponse: Codable, Identifiable {
     let startTime: Date
     let endTime: Date
     let notes: String?
+    let title: String?
     let workoutExercises: [WorkoutExerciseResponse]
     
     enum CodingKeys: String, CodingKey {
@@ -23,6 +24,7 @@ struct WorkoutSessionResponse: Codable, Identifiable {
         case startTime
         case endTime
         case notes
+        case title
         case workoutExercises
     }
 }

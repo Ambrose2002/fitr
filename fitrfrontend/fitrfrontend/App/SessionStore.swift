@@ -34,8 +34,10 @@ final class SessionStore: ObservableObject {
     }
   }
 
-  init() {
-    restoreSession()
+  init(skipRestore: Bool = false) {
+    if !skipRestore {
+      restoreSession()
+    }
   }
 
   func restoreSession() {
@@ -108,3 +110,14 @@ final class SessionStore: ObservableObject {
     self.userProfile = profile
   }
 }
+
+#if DEBUG
+extension SessionStore {
+  static func mock(userProfile: UserProfileResponse? = nil) -> SessionStore {
+    let store = SessionStore(skipRestore: true)
+    store.hasCreatedProfile = userProfile != nil
+    store.userProfile = userProfile
+    return store
+  }
+}
+#endif
