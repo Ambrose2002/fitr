@@ -21,6 +21,16 @@ final class SessionStore : ObservableObject {
     
     @Published private(set) var authState: AuthState = .loading
     
+    @Published var hasCreatedProfile: Bool = false {
+        didSet {
+            if hasCreatedProfile {
+                keychain.set("true", forKey: "hasCreatedProfile")
+            } else {
+                keychain.delete("hasCreatedProfile")
+            }
+        }
+    }
+    
     @Published var accessToken: String? = nil {
         didSet {
             if let token = accessToken {
@@ -39,6 +49,7 @@ final class SessionStore : ObservableObject {
         if let token = keychain.get("userAccessToken") {
             accessToken = token
             authState = .authenticated
+            hasCreatedProfile = keychain.get("hasCreatedProfile") == "true"
         } else {
             authState = .unauthenticated
         }
@@ -51,6 +62,7 @@ final class SessionStore : ObservableObject {
     
     func logout() {
         accessToken = nil
+        hasCreatedProfile = false
         authState = .unauthenticated
     }
 }

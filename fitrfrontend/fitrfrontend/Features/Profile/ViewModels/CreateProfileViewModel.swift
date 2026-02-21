@@ -84,8 +84,11 @@ class CreateProfileViewModel: ObservableObject {
 		)
 
 		_ = try await profileService.createProfile(profileRequest)
-		// Profile created successfully
+		// Profile created successfully - show success overlay
 		self.profileCreated = true
+		// Wait 1.5 seconds to show the success message, then navigate
+		try? await Task.sleep(nanoseconds: 1_500_000_000)
+		self.sessionStore.hasCreatedProfile = true
 		} catch let apiError as APIErrorResponse {
 		self.errorMessage = apiError.message
 		} catch {

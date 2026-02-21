@@ -398,16 +398,6 @@ struct CreateProfileView: View {
         .ignoresSafeArea(edges: .top)
       }
     }
-    .background(
-      NavigationLink(
-        destination: MainAppView()
-          .navigationBarBackButtonHidden(true),
-        isActive: $viewModel.profileCreated
-      ) {
-        EmptyView()
-      }
-      .hidden()
-    )
   }
 }
 

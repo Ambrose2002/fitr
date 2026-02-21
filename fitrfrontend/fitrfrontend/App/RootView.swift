@@ -16,7 +16,11 @@ struct RootView : View {
         case .loading:
             ProgressView()
         case .authenticated:
-            MainAppView()
+            if sessionStore.hasCreatedProfile {
+                MainAppView()
+            } else {
+                CreateProfileView(sessionStore: sessionStore)
+            }
         case .unauthenticated:
             NavigationStack{
                 WelcomeView(sessionStore: sessionStore)}
