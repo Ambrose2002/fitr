@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct ProgressMainView: View {
+    @EnvironmentObject var sessionStore: SessionStore
+    
     var body: some View {
         NavigationStack {
             VStack {

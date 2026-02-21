@@ -1,5 +1,5 @@
 //
-//  ProfileView.swift
+//  PlansView.swift
 //  fitrfrontend
 //
 //  Created by Ambrose Blay on 2/21/26.
@@ -7,19 +7,21 @@
 
 import SwiftUI
 
-struct ProfileView: View {
+struct PlansView: View {
+    @EnvironmentObject var sessionStore: SessionStore
+    
     var body: some View {
         NavigationStack {
             VStack {
-                Text("Profile")
+                Text("Plans")
                     .font(.title)
             }
-            .navigationTitle("PROFILE")
+            .navigationTitle("PLANS")
             .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
 
 //#Preview {
-//    ProfileView()
+//    PlansView()
 //}

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct MainAppView: View {
     @State private var selectedTab: AppTab = .home
+    @EnvironmentObject var sessionStore: SessionStore
     
     enum AppTab: String, CaseIterable, Identifiable {
         case home = "Home"
@@ -79,7 +80,7 @@ struct MainAppView: View {
     }
 }
 
-#Preview {
-    MainAppView()
-}
+//#Preview {
+//    MainAppView()
+//}
 
