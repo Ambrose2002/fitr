@@ -17,18 +17,11 @@ final class SessionStore: ObservableObject {
   }
 
   private let keychain = KeychainSwift()
+  private let profileService = ProfileService()
 
   @Published private(set) var authState: AuthState = .loading
-
-  @Published var hasCreatedProfile: Bool = false {
-    didSet {
-      if hasCreatedProfile {
-        keychain.set("true", forKey: "hasCreatedProfile")
-      } else {
-        keychain.delete("hasCreatedProfile")
-      }
-    }
-  }
+  @Published var hasCreatedProfile: Bool = false
+  @Published var isCheckingProfile: Bool = false
 
   @Published var accessToken: String? = nil {
     didSet {
@@ -48,7 +41,8 @@ final class SessionStore: ObservableObject {
     if let token = keychain.get("userAccessToken") {
       accessToken = token
       authState = .authenticated
-      hasCreatedProfile = keychain.get("hasCreatedProfile") == "true"
+      // Check if profile exists on the backend
+      checkProfileOnBackend()
     } else {
       authState = .unauthenticated
     }
@@ -57,11 +51,34 @@ final class SessionStore: ObservableObject {
   func login(_ loginResponse: LoginResponse) {
     self.accessToken = loginResponse.token
     authState = .authenticated
+    // Check if profile exists on the backend
+    checkProfileOnBackend()
   }
 
   func logout() {
     accessToken = nil
     hasCreatedProfile = false
+    isCheckingProfile = false
     authState = .unauthenticated
+  }
+
+  private func checkProfileOnBackend() {
+    isCheckingProfile = true
+    Task {
+      do {
+        _ = try await profileService.getProfile()
+        // Profile exists
+        await MainActor.run {
+          self.hasCreatedProfile = true
+          self.isCheckingProfile = false
+        }
+      } catch {
+        // Profile doesn't exist or error occurred
+        await MainActor.run {
+          self.hasCreatedProfile = false
+          self.isCheckingProfile = false
+        }
+      }
+    }
   }
 }

@@ -15,7 +15,9 @@ struct RootView: View {
     case .loading:
       ProgressView()
     case .authenticated:
-      if sessionStore.hasCreatedProfile {
+      if sessionStore.isCheckingProfile {
+        ProgressView("Setting up your profile...")
+      } else if sessionStore.hasCreatedProfile {
         MainAppView()
       } else {
         CreateProfileView(sessionStore: sessionStore)
