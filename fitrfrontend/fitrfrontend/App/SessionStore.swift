@@ -66,17 +66,16 @@ final class SessionStore: ObservableObject {
     isCheckingProfile = true
     Task {
       do {
-        _ = try await profileService.getProfile()
-        // Profile exists
+        let userResponse = try await profileService.getCurrentUser()
+        // Check if user has created profile from backend response
         await MainActor.run {
-          self.hasCreatedProfile = true
+          self.hasCreatedProfile = userResponse.isProfileCreated
           self.isCheckingProfile = false
         }
       } catch {
-        // Profile doesn't exist or error occurred
+        // Token expired or other error - logout user
         await MainActor.run {
-          self.hasCreatedProfile = false
-          self.isCheckingProfile = false
+          self.logout()
         }
       }
     }

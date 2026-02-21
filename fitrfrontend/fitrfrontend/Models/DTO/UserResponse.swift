@@ -26,4 +26,17 @@ struct UserResponse: Codable, Identifiable {
 
   /// Whether the user is active
   let isActive: Bool
+
+  /// Whether the user has created their profile
+  let isProfileCreated: Bool
+
+  enum CodingKeys: String, CodingKey {
+    case id
+    case firstname
+    case lastname
+    case email
+    case createdAt
+    case isActive = "active"
+    case isProfileCreated = "profileCreated"
+  }
 }
