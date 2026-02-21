@@ -304,22 +304,22 @@ struct QuickActionButton: View {
   }
 }
 
-#Preview {
-  let mockProfile = UserProfileResponse(
-    id: 1,
-    userId: 1,
-    firstname: "Alex",
-    lastname: "Taylor",
-    email: "alex@example.com",
-    gender: .male,
-    height: 180,
-    weight: 82.4,
-    experience: .intermediate,
-    goal: .strength,
-    preferredWeightUnit: .kg,
-    preferredDistanceUnit: .km,
-    createdAt: Date()
-  )
-  let mock = SessionStore.mock(userProfile: mockProfile)
-  HomeView(sessionStore: mock)
-}
+//#Preview {
+//  let mockProfile = UserProfileResponse(
+//    id: 1,
+//    userId: 1,
+//    firstname: "Alex",
+//    lastname: "Taylor",
+//    email: "alex@example.com",
+//    gender: .male,
+//    height: 180,
+//    weight: 82.4,
+//    experience: .intermediate,
+//    goal: .strength,
+//    preferredWeightUnit: .kg,
+//    preferredDistanceUnit: .km,
+//    createdAt: Date()
+//  )
+//  let mock = SessionStore.mock(userProfile: mockProfile)
+//  HomeView(sessionStore: mock)
+//}
