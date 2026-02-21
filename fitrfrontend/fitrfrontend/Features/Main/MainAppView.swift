@@ -19,13 +19,13 @@ struct MainAppView: View {
         
         var id: String { rawValue }
         
-        var systemImageName: String {
+        var systemImage: Image {
             switch self {
-            case .home: return "house.fill"
-            case .plans: return "checklist"
-            case .workouts: return "dumbbell"
-            case .progress: return "chart.line.uptrend.xyaxis"
-            case .profile: return "person.fill"
+            case .home: return AppIcons.home
+            case .plans: return AppIcons.plans
+            case .workouts: return AppIcons.workouts
+            case .progress: return Image(systemName: "chart.line.uptrend.xyaxis")
+            case .profile: return Image(systemName:"person")
             }
         }
     }
@@ -58,7 +58,7 @@ struct MainAppView: View {
                             selectedTab = tab
                         } label: {
                             VStack(spacing: 4) {
-                                Image(systemName: tab.systemImageName)
+                                tab.systemImage
                                     .font(.system(size: 20, weight: .semibold))
                                 Text(tab.rawValue)
                                     .font(.system(size: 10, weight: .semibold))
