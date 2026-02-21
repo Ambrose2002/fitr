@@ -8,155 +8,78 @@
 import SwiftUI
 
 struct MainAppView: View {
-
-  @EnvironmentObject var sessionStore: SessionStore
-  @State private var showDebugMenu = false
-
-  let workouts = [
-    ("Apr 18", "Sheen Street", "1:00pm"),
-    ("Apr 23", "Sheen Street", "5:00pm"),
-    ("Apr 24", "Sheen Street", "6:00pm"),
-  ]
-
-  var body: some View {
-    ScrollView {
-      VStack(spacing: 16) {
-
-        // Header
-        HStack {
-          Text("Push Day")
-            .font(.title2)
-            .bold()
-          Spacer()
-          Button(action: { showDebugMenu = true }) {
-            Image(systemName: "gear")
-              .foregroundColor(.gray)
-          }
-        }
-        .padding(.horizontal)
-
-        // Main Workout Card
-        ZStack(alignment: .bottomLeading) {
-          Image("push_day")  // placeholder workout image
-            .resizable()
-            .aspectRatio(16 / 9, contentMode: .fill)
-            .cornerRadius(16)
-
-          VStack(alignment: .leading, spacing: 8) {
-            Text("Push Day")
-              .font(.title)
-              .bold()
-              .foregroundColor(.white)
-
-            Text("5 exercises • 45 min")
-              .foregroundColor(.white.opacity(0.8))
-
-            HStack {
-              Button(action: { /* Start workout */  }) {
-                Text("Start Workout")
-                  .bold()
-                  .frame(maxWidth: .infinity)
-                  .padding()
-                  .background(Color.blue)
-                  .foregroundColor(.white)
-                  .cornerRadius(8)
-              }
-
-              Button(action: { /* Edit */  }) {
-                Text("Edit")
-                  .bold()
-                  .frame(maxWidth: .infinity)
-                  .padding()
-                  .background(Color.gray.opacity(0.3))
-                  .foregroundColor(.white)
-                  .cornerRadius(8)
-              }
+    @State private var selectedTab: AppTab = .home
+    
+    enum AppTab: String, CaseIterable, Identifiable {
+        case home = "Home"
+        case plans = "Plans"
+        case workouts = "Workouts"
+        case progress = "Progress"
+        case profile = "Profile"
+        
+        var id: String { rawValue }
+        
+        var systemImageName: String {
+            switch self {
+            case .home: return "house.fill"
+            case .plans: return "checklist"
+            case .workouts: return "dumbbell"
+            case .progress: return "chart.line.uptrend.xyaxis"
+            case .profile: return "person.fill"
             }
-          }
-          .padding()
         }
-        .padding(.horizontal)
-
-        // Stats Section
-        HStack(spacing: 16) {
-          VStack {
-            Text("Weekly Volume")
-              .font(.subheadline)
-            // Simplified chart example
-            HStack(spacing: 4) {
-              ForEach(0..<7) { i in
-                Rectangle()
-                  .fill(Color.blue)
-                  .frame(width: 6, height: CGFloat.random(in: 20...60))
-                  .cornerRadius(3)
-              }
-            }
-          }
-          VStack {
-            Text("Current Streak")
-              .font(.subheadline)
-            Text("5 Days")
-              .font(.title2)
-              .bold()
-          }
-        }
-        .padding(.horizontal)
-
-        // Recent Workouts
-        VStack(alignment: .leading, spacing: 8) {
-          Text("Recent Workouts")
-            .font(.headline)
-            .padding(.horizontal)
-
-          ForEach(workouts, id: \.0) { workout in
-            HStack {
-              VStack(alignment: .leading) {
-                Text(workout.0)
-                  .bold()
-                Text(workout.1)
-                  .foregroundColor(.gray)
-              }
-              Spacer()
-              Text(workout.2)
-                .foregroundColor(.gray)
-            }
-            .padding()
-            .background(Color(.secondarySystemBackground))
-            .cornerRadius(12)
-            .padding(.horizontal)
-          }
-        }
-
-      }
-      .padding(.vertical)
     }
-    .sheet(isPresented: $showDebugMenu) {
-      VStack(spacing: 20) {
-        VStack(alignment: .leading, spacing: 8) {
-          Text("DEBUG MENU")
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundColor(.gray)
-            .textCase(.uppercase)
-          Divider()
+    
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            // Main content area
+            Group {
+                switch selectedTab {
+                case .home:
+                    HomeView()
+                case .plans:
+                    PlansView()
+                case .workouts:
+                    WorkoutsView()
+                case .progress:
+                    ProgressMainView()
+                case .profile:
+                    ProfileView()
+                }
+            }
+            
+            // Custom bottom tab bar
+            VStack(spacing: 0) {
+                Divider()
+                
+                HStack(spacing: 0) {
+                    ForEach(AppTab.allCases) { tab in
+                        Button {
+                            selectedTab = tab
+                        } label: {
+                            VStack(spacing: 4) {
+                                Image(systemName: tab.systemImageName)
+                                    .font(.system(size: 20, weight: .semibold))
+                                Text(tab.rawValue)
+                                    .font(.system(size: 10, weight: .semibold))
+                            }
+                            .foregroundColor(selectedTab == tab ? AppColors.accent : Color.gray)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 60)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .background(Color(.systemBackground))
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    Color.clear.frame(height: 0)
+                }
+            }
         }
-
-        Button(role: .destructive) {
-          sessionStore.logout()
-          showDebugMenu = false
-        } label: {
-          HStack {
-            Image(systemName: "rectangle.portrait.and.arrow.right")
-            Text("Logout (Testing)")
-          }
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 12)
-          .foregroundColor(.red)
-        }
-
-        Spacer()
-      }
-      .padding(20)
-      .presentationDetents([.medium])
     }
-  }
 }
+
+#Preview {
+    MainAppView()
+}
+
