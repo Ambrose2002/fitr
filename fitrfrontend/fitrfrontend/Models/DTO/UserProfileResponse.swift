@@ -47,4 +47,38 @@ struct UserProfileResponse: Codable, Identifiable {
     
     /// Timestamp when the profile was created
     let createdAt: Date
+    
+    enum CodingKeys: String, CodingKey {
+        case id, userId, firstname, lastname, email, gender, height, weight
+        case experience, goal, preferredWeightUnit, preferredDistanceUnit, createdAt
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int64.self, forKey: .id)
+        userId = try container.decode(Int64.self, forKey: .userId)
+        firstname = try container.decode(String.self, forKey: .firstname)
+        lastname = try container.decode(String.self, forKey: .lastname)
+        email = try container.decode(String.self, forKey: .email)
+        gender = try container.decode(Gender.self, forKey: .gender)
+        height = try container.decode(Float.self, forKey: .height)
+        weight = try container.decode(Float.self, forKey: .weight)
+        experience = try container.decode(ExperienceLevel.self, forKey: .experience)
+        goal = try container.decode(Goal.self, forKey: .goal)
+        preferredWeightUnit = try container.decode(Unit.self, forKey: .preferredWeightUnit)
+        preferredDistanceUnit = try container.decode(Unit.self, forKey: .preferredDistanceUnit)
+        
+        // Handle date decoding - supports both ISO 8601 string and timestamp
+        let dateFormatter = ISO8601DateFormatter()
+        if let dateString = try container.decodeIfPresent(String.self, forKey: .createdAt),
+           let date = dateFormatter.date(from: dateString) {
+            createdAt = date
+        } else if let timestamp = try container.decodeIfPresent(Double.self, forKey: .createdAt) {
+            createdAt = Date(timeIntervalSince1970: timestamp)
+        } else {
+            throw DecodingError.dataCorruptedError(forKey: .createdAt,
+                                                   in: container,
+                                                   debugDescription: "Cannot decode createdAt")
+        }
+    }
 }
