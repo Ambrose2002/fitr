@@ -91,6 +91,11 @@ public class WorkoutSessionService {
             workoutSessions = workoutSessions.stream().filter(w -> w.getStartTime().isBefore(toDateInstant)).toList();
         }
 
+        // Sort by startTime descending (newest first)
+        workoutSessions = workoutSessions.stream()
+                .sorted((a, b) -> b.getStartTime().compareTo(a.getStartTime()))
+                .toList();
+
         if (limit != null && limit > 0) {
             return workoutSessions.stream().limit(limit).map(ws -> {
                 List<WorkoutExercise> exercises = workoutExerciseRepo.findByWorkoutSessionId(ws.getId());

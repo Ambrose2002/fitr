@@ -69,6 +69,12 @@ public class BodyMetricService {
             Instant toDateInstant = parseDate(toDate);
             bodyMetrics = bodyMetrics.stream().filter(b -> b.getRecordedAt().isBefore(toDateInstant)).toList();
         }
+
+        // Sort by recordedAt descending (newest first)
+        bodyMetrics = bodyMetrics.stream()
+                .sorted((a, b) -> b.getRecordedAt().compareTo(a.getRecordedAt()))
+                .toList();
+
         if (limit != null && limit > 0) {
             return bodyMetrics.stream().limit(limit).map(this::toBodyMetricResponse).toList();
         }
@@ -104,7 +110,8 @@ public class BodyMetricService {
         if (user == null) {
             throw new DataNotFoundException("user not found: " + email);
         }
-        BodyMetric bodyMetric = bodyMetricRepo.findById(id).orElseThrow(() -> new DataNotFoundException("body metric not found: " + id));
+        BodyMetric bodyMetric = bodyMetricRepo.findById(id)
+                .orElseThrow(() -> new DataNotFoundException("body metric not found: " + id));
         if (!bodyMetric.getUser().getEmail().equals(email)) {
             throw new DataNotFoundException("body metric not found: " + id);
         }
@@ -125,7 +132,8 @@ public class BodyMetricService {
         if (user == null) {
             throw new DataNotFoundException("user not found: " + email);
         }
-        BodyMetric bodyMetric = bodyMetricRepo.findById(id).orElseThrow(() -> new DataNotFoundException("body metric not found: " + id));
+        BodyMetric bodyMetric = bodyMetricRepo.findById(id)
+                .orElseThrow(() -> new DataNotFoundException("body metric not found: " + id));
         if (!bodyMetric.getUser().getEmail().equals(email)) {
             throw new DataNotFoundException("body metric not found: " + id);
         }
@@ -153,7 +161,6 @@ public class BodyMetricService {
                 bodyMetric.getMetricType(),
                 bodyMetric.getValue(),
                 bodyMetric.getRecordedAt(),
-                bodyMetric.getUpdatedAt()
-        );
+                bodyMetric.getUpdatedAt());
     }
 }
