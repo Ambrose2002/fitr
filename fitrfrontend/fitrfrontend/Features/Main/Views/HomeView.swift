@@ -128,7 +128,7 @@ struct HomeView: View {
                       Text("Location")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
-                        Text(lastWorkout.locationName ?? "Current Location")
+                      Text(lastWorkout.locationName ?? "Current Location")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(AppColors.textPrimary)
                         .lineLimit(1)
@@ -357,9 +357,32 @@ struct HomeView: View {
                   .cornerRadius(10)
                   .padding(.horizontal, 16)
                 }
+
+                // Workout Streak
+                if data.streak > 0 {
+                  VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                      Image(systemName: "flame.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(.orange)
+                      Text("Streak")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppColors.textPrimary)
+                    }
+                    Text("\(data.streak) week\(data.streak != 1 ? "s" : "")")
+                      .font(.system(size: 12))
+                      .foregroundColor(.secondary)
+                  }
+                  .frame(maxWidth: .infinity, alignment: .leading)
+                  .padding(12)
+                  .background(Color(.systemGray6))
+                  .cornerRadius(10)
+                  .padding(.horizontal, 16)
+                }
               }
             }
             .padding(.vertical, 16)
+            .padding(.bottom, 80)
           }
           .refreshable {
             await viewModel.loadHomeData(forceRefresh: true)
