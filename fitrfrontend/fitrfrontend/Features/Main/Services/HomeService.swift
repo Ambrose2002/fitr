@@ -291,7 +291,7 @@ class HomeService {
     let prStrings = exerciseMaxWeights.sorted { $0.value > $1.value }
       .prefix(3)
       .map { exercise, weight in
-        let displayValue = preferredWeightUnit == .kg ? weight : UnitConverter.kgToLb(Float(weight))
+        let displayValue: Double = preferredWeightUnit == .kg ? weight : Double(UnitConverter.kgToLb(Float(weight)))
         let formattedWeight = String(format: "%.0f", displayValue)
         let unitSuffix = preferredWeightUnit.abbreviation
         return "\(exercise) \(formattedWeight) \(unitSuffix)"
@@ -306,3 +306,4 @@ class HomeService {
     )
   }
 }
+

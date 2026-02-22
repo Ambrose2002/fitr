@@ -104,7 +104,6 @@ final class SessionStore: ObservableObject {
         self.userProfile = profile
         self.saveUserProfileToStorage(profile)
       }
-      }
     } catch {
       // Log error but don't logout - profile fetch failure is not critical
       print("Failed to fetch user profile: \(error)")
