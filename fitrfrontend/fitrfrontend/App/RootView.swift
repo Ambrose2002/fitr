@@ -18,13 +18,21 @@ struct RootView: View {
 
     case .authenticated:
       if sessionStore.isCheckingProfile {
-        return AnyView(ProgressView("Setting up your profile..."))
+        return AnyView(
+          VStack(spacing: 16) {
+            ProgressView()
+            Text("Setting up your profile...")
+              .font(.caption)
+              .foregroundColor(.secondary)
+          }
+          .padding()
+        )
       } else if sessionStore.hasCreatedProfile {
         return AnyView(MainAppView())
       } else {
         return AnyView(CreateProfileView(sessionStore: sessionStore))
       }
-      
+
     case .unauthenticated:
       return AnyView(
         NavigationStack {
