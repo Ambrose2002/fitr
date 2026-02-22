@@ -44,8 +44,8 @@ struct MockData {
     weekProgress: "You've hit 0 workouts this week. 5 to go!",
     nextSession: nil,
     lastWorkout: nil,
-    currentWeight: "82.4",
-    weightChange: "0.0",
+    currentWeight: "82.4 kg",
+    weightChange: "0.0 kg",
     streak: 0,
     streakPercentile: 0,
     weeklyWorkoutCount: 0,
@@ -154,15 +154,15 @@ struct MockData {
       ]
     ),
     lastWorkout: nil,
-    currentWeight: "82.1",
-    weightChange: "-0.3",
+    currentWeight: "82.1 kg",
+    weightChange: "-0.3 kg",
     streak: 1,
     streakPercentile: 50,
     weeklyWorkoutCount: 1,
     weeklyTotalVolume: "4.2 K",
     weeklyCaloriesBurned: "280 cal",
     weeklyAvgDuration: "45 min",
-    weeklyPersonalRecords: ["Bench Press 205 lbs"],
+    weeklyPersonalRecords: ["Bench Press 93 kg"],
     weeklyExerciseVariety: 5
   )
 
@@ -460,15 +460,15 @@ struct MockData {
         ),
       ]
     ),
-    currentWeight: "81.2",
-    weightChange: "-1.2",
+    currentWeight: "82.4 kg",
+    weightChange: "-1.5 kg",
     streak: 5,
     streakPercentile: 92,
     weeklyWorkoutCount: 5,
     weeklyTotalVolume: "28.7 K",
     weeklyCaloriesBurned: "2840 cal",
     weeklyAvgDuration: "58 min",
-    weeklyPersonalRecords: ["Deadlift 335 lbs", "Squat 335 lbs", "Bench Press 205 lbs"],
+    weeklyPersonalRecords: ["Deadlift 152 kg", "Squat 152 kg", "Bench Press 93 kg"],
     weeklyExerciseVariety: 15
   )
 }
