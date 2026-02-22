@@ -36,6 +36,35 @@ struct MockData {
     return store
   }
 
+  // MARK: - Helper Functions
+
+  static func calculateExerciseStats(from workout: WorkoutSessionResponse?)
+    -> [WorkoutExerciseStats]
+  {
+    guard let workout = workout else { return [] }
+
+    return workout.workoutExercises.map { exercise in
+      let setLogs = exercise.setLogs
+      let setCount = setLogs.count
+      let avgReps = setCount > 0 ? Float(setLogs.map { $0.reps }.reduce(0, +)) / Float(setCount) : 0
+      let avgWeight = setCount > 0 ? setLogs.map { $0.weight }.reduce(0, +) / Float(setCount) : 0
+      let maxWeight = setLogs.map { $0.weight }.max() ?? 0
+      let totalVolume = setLogs.reduce(0) { $0 + (Float($1.reps) * $1.weight) }
+      let totalCalories = setLogs.map { $0.calories }.reduce(0, +)
+
+      return WorkoutExerciseStats(
+        id: exercise.id,
+        exerciseName: exercise.exercise.name,
+        setCount: setCount,
+        avgReps: avgReps,
+        avgWeight: avgWeight,
+        maxWeight: maxWeight,
+        totalVolume: totalVolume,
+        totalCalories: totalCalories
+      )
+    }
+  }
+
   // MARK: - Home Screen Data
 
   /// Scenario 1: Zero workouts (new user)
@@ -53,117 +82,121 @@ struct MockData {
     weeklyCaloriesBurned: "0 cal",
     weeklyAvgDuration: "0 min",
     weeklyPersonalRecords: [],
-    weeklyExerciseVariety: 0
+    weeklyExerciseVariety: 0,
+    lastSessionExerciseStats: []
   )
 
   /// Scenario 2: One workout (partial history)
+  private static let oneWorkoutSession = WorkoutSessionResponse(
+    id: 1,
+    userId: 1,
+    startTime: Date().addingTimeInterval(3600),
+    title: "Chest and Triceps",
+    workoutExercises: [
+      WorkoutExerciseResponse(
+        id: 1,
+        workoutSessionId: 1,
+        exercise: ExerciseResponse(
+          id: 1, name: "Bench Press", measurementType: .reps, isSystemDefined: true),
+        setLogs: [
+          SetLogResponse(
+            id: 1, workoutExerciseId: 1, setNumber: 1, completedAt: Date(), weight: 93, reps: 8,
+            durationSeconds: 45, distance: 0, calories: 12),
+          SetLogResponse(
+            id: 2, workoutExerciseId: 1, setNumber: 2, completedAt: Date(), weight: 88, reps: 6,
+            durationSeconds: 48, distance: 0, calories: 13),
+          SetLogResponse(
+            id: 3, workoutExerciseId: 1, setNumber: 3, completedAt: Date(), weight: 93, reps: 4,
+            durationSeconds: 52, distance: 0, calories: 14),
+          SetLogResponse(
+            id: 4, workoutExerciseId: 1, setNumber: 4, completedAt: Date(), weight: 88, reps: 6,
+            durationSeconds: 50, distance: 0, calories: 13),
+        ]
+      ),
+      WorkoutExerciseResponse(
+        id: 2,
+        workoutSessionId: 1,
+        exercise: ExerciseResponse(
+          id: 2, name: "Incline Dumbbell Press", measurementType: .reps, isSystemDefined: true),
+        setLogs: [
+          SetLogResponse(
+            id: 5, workoutExerciseId: 2, setNumber: 1, completedAt: Date(), weight: 32, reps: 10,
+            durationSeconds: 42, distance: 0, calories: 11),
+          SetLogResponse(
+            id: 6, workoutExerciseId: 2, setNumber: 2, completedAt: Date(), weight: 34, reps: 8,
+            durationSeconds: 44, distance: 0, calories: 12),
+          SetLogResponse(
+            id: 7, workoutExerciseId: 2, setNumber: 3, completedAt: Date(), weight: 36, reps: 6,
+            durationSeconds: 46, distance: 0, calories: 12),
+        ]
+      ),
+      WorkoutExerciseResponse(
+        id: 3,
+        workoutSessionId: 1,
+        exercise: ExerciseResponse(
+          id: 3, name: "Cable Fly", measurementType: .reps, isSystemDefined: true),
+        setLogs: [
+          SetLogResponse(
+            id: 8, workoutExerciseId: 3, setNumber: 1, completedAt: Date(), weight: 18, reps: 12,
+            durationSeconds: 38, distance: 0, calories: 10),
+          SetLogResponse(
+            id: 9, workoutExerciseId: 3, setNumber: 2, completedAt: Date(), weight: 20, reps: 10,
+            durationSeconds: 40, distance: 0, calories: 11),
+          SetLogResponse(
+            id: 10, workoutExerciseId: 3, setNumber: 3, completedAt: Date(), weight: 23, reps: 8,
+            durationSeconds: 42, distance: 0, calories: 11),
+        ]
+      ),
+      WorkoutExerciseResponse(
+        id: 4,
+        workoutSessionId: 1,
+        exercise: ExerciseResponse(
+          id: 4, name: "Tricep Pushdown", measurementType: .reps, isSystemDefined: true),
+        setLogs: [
+          SetLogResponse(
+            id: 11, workoutExerciseId: 4, setNumber: 1, completedAt: Date(), weight: 27, reps: 12,
+            durationSeconds: 35, distance: 0, calories: 9),
+          SetLogResponse(
+            id: 12, workoutExerciseId: 4, setNumber: 2, completedAt: Date(), weight: 30, reps: 10,
+            durationSeconds: 37, distance: 0, calories: 10),
+          SetLogResponse(
+            id: 13, workoutExerciseId: 4, setNumber: 3, completedAt: Date(), weight: 32, reps: 8,
+            durationSeconds: 39, distance: 0, calories: 10),
+        ]
+      ),
+      WorkoutExerciseResponse(
+        id: 5,
+        workoutSessionId: 1,
+        exercise: ExerciseResponse(
+          id: 5, name: "Overhead Tricep Extension", measurementType: .reps, isSystemDefined: true),
+        setLogs: [
+          SetLogResponse(
+            id: 14, workoutExerciseId: 5, setNumber: 1, completedAt: Date(), weight: 25, reps: 12,
+            durationSeconds: 36, distance: 0, calories: 9),
+          SetLogResponse(
+            id: 15, workoutExerciseId: 5, setNumber: 2, completedAt: Date(), weight: 27, reps: 10,
+            durationSeconds: 38, distance: 0, calories: 10),
+        ]
+      ),
+    ]
+  )
+
   static let oneWorkoutData = HomeScreenData(
     greeting: "Great work!",
     weekProgress: "You've hit 1 workouts this week. 4 to go!",
-    nextSession: WorkoutSessionResponse(
-      id: 1,
-      userId: 1,
-      startTime: Date().addingTimeInterval(3600),
-      title: "Chest and Triceps",
-      workoutExercises: [
-        WorkoutExerciseResponse(
-          id: 1,
-          workoutSessionId: 1,
-          exercise: ExerciseResponse(
-            id: 1, name: "Bench Press", measurementType: .reps, isSystemDefined: true),
-          setLogs: [
-            SetLogResponse(
-              id: 1, workoutExerciseId: 1, setNumber: 1, completedAt: Date(), weight: 185, reps: 8,
-              durationSeconds: 45, distance: 0, calories: 12),
-            SetLogResponse(
-              id: 2, workoutExerciseId: 1, setNumber: 2, completedAt: Date(), weight: 195, reps: 6,
-              durationSeconds: 48, distance: 0, calories: 13),
-            SetLogResponse(
-              id: 3, workoutExerciseId: 1, setNumber: 3, completedAt: Date(), weight: 205, reps: 4,
-              durationSeconds: 52, distance: 0, calories: 14),
-            SetLogResponse(
-              id: 4, workoutExerciseId: 1, setNumber: 4, completedAt: Date(), weight: 195, reps: 6,
-              durationSeconds: 50, distance: 0, calories: 13),
-          ]
-        ),
-        WorkoutExerciseResponse(
-          id: 2,
-          workoutSessionId: 1,
-          exercise: ExerciseResponse(
-            id: 2, name: "Incline Dumbbell Press", measurementType: .reps, isSystemDefined: true),
-          setLogs: [
-            SetLogResponse(
-              id: 5, workoutExerciseId: 2, setNumber: 1, completedAt: Date(), weight: 70, reps: 10,
-              durationSeconds: 42, distance: 0, calories: 11),
-            SetLogResponse(
-              id: 6, workoutExerciseId: 2, setNumber: 2, completedAt: Date(), weight: 75, reps: 8,
-              durationSeconds: 44, distance: 0, calories: 12),
-            SetLogResponse(
-              id: 7, workoutExerciseId: 2, setNumber: 3, completedAt: Date(), weight: 80, reps: 6,
-              durationSeconds: 46, distance: 0, calories: 12),
-          ]
-        ),
-        WorkoutExerciseResponse(
-          id: 3,
-          workoutSessionId: 1,
-          exercise: ExerciseResponse(
-            id: 3, name: "Cable Fly", measurementType: .reps, isSystemDefined: true),
-          setLogs: [
-            SetLogResponse(
-              id: 8, workoutExerciseId: 3, setNumber: 1, completedAt: Date(), weight: 40, reps: 12,
-              durationSeconds: 38, distance: 0, calories: 10),
-            SetLogResponse(
-              id: 9, workoutExerciseId: 3, setNumber: 2, completedAt: Date(), weight: 45, reps: 10,
-              durationSeconds: 40, distance: 0, calories: 11),
-            SetLogResponse(
-              id: 10, workoutExerciseId: 3, setNumber: 3, completedAt: Date(), weight: 50, reps: 8,
-              durationSeconds: 42, distance: 0, calories: 11),
-          ]
-        ),
-        WorkoutExerciseResponse(
-          id: 4,
-          workoutSessionId: 1,
-          exercise: ExerciseResponse(
-            id: 4, name: "Tricep Pushdown", measurementType: .reps, isSystemDefined: true),
-          setLogs: [
-            SetLogResponse(
-              id: 11, workoutExerciseId: 4, setNumber: 1, completedAt: Date(), weight: 60, reps: 12,
-              durationSeconds: 35, distance: 0, calories: 9),
-            SetLogResponse(
-              id: 12, workoutExerciseId: 4, setNumber: 2, completedAt: Date(), weight: 65, reps: 10,
-              durationSeconds: 37, distance: 0, calories: 10),
-            SetLogResponse(
-              id: 13, workoutExerciseId: 4, setNumber: 3, completedAt: Date(), weight: 70, reps: 8,
-              durationSeconds: 39, distance: 0, calories: 10),
-          ]
-        ),
-        WorkoutExerciseResponse(
-          id: 5,
-          workoutSessionId: 1,
-          exercise: ExerciseResponse(
-            id: 5, name: "Overhead Tricep Extension", measurementType: .reps, isSystemDefined: true),
-          setLogs: [
-            SetLogResponse(
-              id: 14, workoutExerciseId: 5, setNumber: 1, completedAt: Date(), weight: 55, reps: 12,
-              durationSeconds: 36, distance: 0, calories: 9),
-            SetLogResponse(
-              id: 15, workoutExerciseId: 5, setNumber: 2, completedAt: Date(), weight: 60, reps: 10,
-              durationSeconds: 38, distance: 0, calories: 10),
-          ]
-        ),
-      ]
-    ),
-    lastWorkout: nil,
+    nextSession: oneWorkoutSession,
+    lastWorkout: oneWorkoutSession,
     currentWeight: "82.1 kg",
     weightChange: "-0.3 kg",
     streak: 1,
     streakPercentile: 50,
     weeklyWorkoutCount: 1,
-    weeklyTotalVolume: "4.2 K",
+    weeklyTotalVolume: "4.2 K kg",
     weeklyCaloriesBurned: "280 cal",
     weeklyAvgDuration: "45 min",
     weeklyPersonalRecords: ["Bench Press 93 kg"],
-    weeklyExerciseVariety: 5
+    weeklyExerciseVariety: 5,
+    lastSessionExerciseStats: calculateExerciseStats(from: oneWorkoutSession)
   )
 
   /// Scenario 3: Active user with full workout history
@@ -469,6 +502,150 @@ struct MockData {
     weeklyCaloriesBurned: "2840 cal",
     weeklyAvgDuration: "58 min",
     weeklyPersonalRecords: ["Deadlift 152 kg", "Squat 152 kg", "Bench Press 93 kg"],
-    weeklyExerciseVariety: 15
+    weeklyExerciseVariety: 15,
+    lastSessionExerciseStats: calculateExerciseStats(
+      from: WorkoutSessionResponse(
+        id: 9,
+        userId: 1,
+        startTime: Date().addingTimeInterval(-86400),
+        endTime: Date().addingTimeInterval(-86400 + 3780),
+        notes:
+          "Pushed hard on squats today. Form felt solid throughout all sets. Need to focus more on depth next time.",
+        title: "Leg Day",
+        workoutExercises: [
+          WorkoutExerciseResponse(
+            id: 30,
+            workoutSessionId: 9,
+            exercise: ExerciseResponse(
+              id: 20, name: "Squat", measurementType: .reps, isSystemDefined: true),
+            setLogs: [
+              SetLogResponse(
+                id: 70, workoutExerciseId: 30, setNumber: 1,
+                completedAt: Date().addingTimeInterval(-86400), weight: 225, reps: 10,
+                durationSeconds: 50, distance: 0, calories: 16),
+              SetLogResponse(
+                id: 71, workoutExerciseId: 30, setNumber: 2,
+                completedAt: Date().addingTimeInterval(-86400), weight: 275, reps: 8,
+                durationSeconds: 54, distance: 0, calories: 18),
+              SetLogResponse(
+                id: 72, workoutExerciseId: 30, setNumber: 3,
+                completedAt: Date().addingTimeInterval(-86400), weight: 315, reps: 5,
+                durationSeconds: 58, distance: 0, calories: 20),
+              SetLogResponse(
+                id: 73, workoutExerciseId: 30, setNumber: 4,
+                completedAt: Date().addingTimeInterval(-86400), weight: 335, reps: 3,
+                durationSeconds: 62, distance: 0, calories: 22),
+              SetLogResponse(
+                id: 74, workoutExerciseId: 30, setNumber: 5,
+                completedAt: Date().addingTimeInterval(-86400), weight: 275, reps: 8,
+                durationSeconds: 56, distance: 0, calories: 18),
+            ]
+          ),
+          WorkoutExerciseResponse(
+            id: 31,
+            workoutSessionId: 9,
+            exercise: ExerciseResponse(
+              id: 21, name: "Romanian Deadlift", measurementType: .reps, isSystemDefined: true),
+            setLogs: [
+              SetLogResponse(
+                id: 75, workoutExerciseId: 31, setNumber: 1,
+                completedAt: Date().addingTimeInterval(-86400), weight: 185, reps: 10,
+                durationSeconds: 45, distance: 0, calories: 14),
+              SetLogResponse(
+                id: 76, workoutExerciseId: 31, setNumber: 2,
+                completedAt: Date().addingTimeInterval(-86400), weight: 205, reps: 8,
+                durationSeconds: 48, distance: 0, calories: 15),
+              SetLogResponse(
+                id: 77, workoutExerciseId: 31, setNumber: 3,
+                completedAt: Date().addingTimeInterval(-86400), weight: 225, reps: 6,
+                durationSeconds: 50, distance: 0, calories: 16),
+            ]
+          ),
+          WorkoutExerciseResponse(
+            id: 32,
+            workoutSessionId: 9,
+            exercise: ExerciseResponse(
+              id: 22, name: "Leg Press", measurementType: .reps, isSystemDefined: true),
+            setLogs: [
+              SetLogResponse(
+                id: 78, workoutExerciseId: 32, setNumber: 1,
+                completedAt: Date().addingTimeInterval(-86400), weight: 360, reps: 12,
+                durationSeconds: 48, distance: 0, calories: 15),
+              SetLogResponse(
+                id: 79, workoutExerciseId: 32, setNumber: 2,
+                completedAt: Date().addingTimeInterval(-86400), weight: 410, reps: 10,
+                durationSeconds: 50, distance: 0, calories: 17),
+              SetLogResponse(
+                id: 80, workoutExerciseId: 32, setNumber: 3,
+                completedAt: Date().addingTimeInterval(-86400), weight: 450, reps: 8,
+                durationSeconds: 52, distance: 0, calories: 18),
+            ]
+          ),
+          WorkoutExerciseResponse(
+            id: 33,
+            workoutSessionId: 9,
+            exercise: ExerciseResponse(
+              id: 23, name: "Leg Curl", measurementType: .reps, isSystemDefined: true),
+            setLogs: [
+              SetLogResponse(
+                id: 81, workoutExerciseId: 33, setNumber: 1,
+                completedAt: Date().addingTimeInterval(-86400), weight: 90, reps: 12,
+                durationSeconds: 38, distance: 0, calories: 10),
+              SetLogResponse(
+                id: 82, workoutExerciseId: 33, setNumber: 2,
+                completedAt: Date().addingTimeInterval(-86400), weight: 100, reps: 10,
+                durationSeconds: 40, distance: 0, calories: 11),
+              SetLogResponse(
+                id: 83, workoutExerciseId: 33, setNumber: 3,
+                completedAt: Date().addingTimeInterval(-86400), weight: 110, reps: 8,
+                durationSeconds: 42, distance: 0, calories: 11),
+            ]
+          ),
+          WorkoutExerciseResponse(
+            id: 34,
+            workoutSessionId: 9,
+            exercise: ExerciseResponse(
+              id: 24, name: "Leg Extension", measurementType: .reps, isSystemDefined: true),
+            setLogs: [
+              SetLogResponse(
+                id: 84, workoutExerciseId: 34, setNumber: 1,
+                completedAt: Date().addingTimeInterval(-86400), weight: 130, reps: 12,
+                durationSeconds: 38, distance: 0, calories: 10),
+              SetLogResponse(
+                id: 85, workoutExerciseId: 34, setNumber: 2,
+                completedAt: Date().addingTimeInterval(-86400), weight: 145, reps: 10,
+                durationSeconds: 40, distance: 0, calories: 11),
+              SetLogResponse(
+                id: 86, workoutExerciseId: 34, setNumber: 3,
+                completedAt: Date().addingTimeInterval(-86400), weight: 160, reps: 8,
+                durationSeconds: 42, distance: 0, calories: 12),
+            ]
+          ),
+          WorkoutExerciseResponse(
+            id: 35,
+            workoutSessionId: 9,
+            exercise: ExerciseResponse(
+              id: 25, name: "Calf Raise", measurementType: .reps, isSystemDefined: true),
+            setLogs: [
+              SetLogResponse(
+                id: 87, workoutExerciseId: 35, setNumber: 1,
+                completedAt: Date().addingTimeInterval(-86400), weight: 180, reps: 15,
+                durationSeconds: 42, distance: 0, calories: 11),
+              SetLogResponse(
+                id: 88, workoutExerciseId: 35, setNumber: 2,
+                completedAt: Date().addingTimeInterval(-86400), weight: 200, reps: 12,
+                durationSeconds: 44, distance: 0, calories: 12),
+              SetLogResponse(
+                id: 89, workoutExerciseId: 35, setNumber: 3,
+                completedAt: Date().addingTimeInterval(-86400), weight: 220, reps: 10,
+                durationSeconds: 46, distance: 0, calories: 13),
+              SetLogResponse(
+                id: 90, workoutExerciseId: 35, setNumber: 4,
+                completedAt: Date().addingTimeInterval(-86400), weight: 200, reps: 12,
+                durationSeconds: 44, distance: 0, calories: 12),
+            ]
+          ),
+        ]
+      ))
   )
 }
