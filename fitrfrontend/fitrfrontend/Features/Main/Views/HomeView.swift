@@ -39,7 +39,7 @@ struct HomeView: View {
               .padding(.horizontal, 16)
               .redacted(reason: .placeholder)
 
-              // Skeleton Next Session Card
+              // Skeleton Last Session Card
               SkeletonCard()
 
               // Skeleton Quick Actions
@@ -92,15 +92,15 @@ struct HomeView: View {
               .frame(maxWidth: .infinity, alignment: .leading)
               .padding(.horizontal, 16)
 
-              // Next Session Card
-              if let nextSession = data.nextSession {
+              // Last Session Card
+              if let lastWorkout = data.lastWorkout {
                 VStack(alignment: .leading, spacing: 12) {
                   VStack(alignment: .leading, spacing: 4) {
-                    Text("NEXT SESSION")
+                    Text("LAST SESSION")
                       .font(.system(size: 12, weight: .semibold))
                       .foregroundColor(AppColors.accent)
 
-                    Text(data.nextSessionTitle)
+                    Text(data.lastWorkoutTitle)
                       .font(.system(size: 24, weight: .bold))
                       .foregroundColor(AppColors.textPrimary)
                   }
@@ -110,20 +110,75 @@ struct HomeView: View {
                       Text("Exercises")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
-                      Text(data.nextSessionExerciseCount)
+                      Text("\(lastWorkout.workoutExercises.count)")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(AppColors.textPrimary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                      Text("When")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                      Text(data.lastWorkoutRelativeDate)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(AppColors.textPrimary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                      Text("Location")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                        Text(lastWorkout.locationName ?? "Current Location")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(AppColors.textPrimary)
+                        .lineLimit(1)
                     }
 
                     Spacer()
                   }
 
                   Button {
-                    // Start workout action
+                    // Start new workout action
                   } label: {
                     HStack {
-                      Image(systemName: "play.fill")
-                      Text("Start Session")
+                      Image(systemName: "plus.circle.fill")
+                      Text("New Session")
+                    }
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(AppColors.accent)
+                    .cornerRadius(12)
+                  }
+                  .buttonStyle(.plain)
+                }
+                .padding(16)
+                .background(AppColors.accent.opacity(0.15))
+                .cornerRadius(16)
+                .padding(.horizontal, 16)
+              } else {
+                VStack(alignment: .leading, spacing: 12) {
+                  VStack(alignment: .leading, spacing: 4) {
+                    Text("LAST SESSION")
+                      .font(.system(size: 12, weight: .semibold))
+                      .foregroundColor(AppColors.accent)
+
+                    Text("Get Started")
+                      .font(.system(size: 24, weight: .bold))
+                      .foregroundColor(AppColors.textPrimary)
+                  }
+
+                  Text("Start your first workout session")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+
+                  Button {
+                    // Start new workout action
+                  } label: {
+                    HStack {
+                      Image(systemName: "plus.circle.fill")
+                      Text("New Session")
                     }
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
@@ -302,101 +357,12 @@ struct HomeView: View {
                   .cornerRadius(10)
                   .padding(.horizontal, 16)
                 }
-
-                // Last Workout Card
-                if let lastWorkout = data.lastWorkout {
-                  VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                      Text("Last Workout")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(AppColors.textPrimary)
-                      Spacer()
-                      Text(data.lastWorkoutRelativeDate)
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                      HStack(spacing: 16) {
-                        Image(systemName: "flame")
-                          .font(.system(size: 24))
-                          .foregroundColor(AppColors.accent)
-                          .frame(width: 48, height: 48)
-                          .background(AppColors.accent.opacity(0.1))
-                          .cornerRadius(12)
-                        VStack(alignment: .leading, spacing: 4) {
-                          Text(lastWorkout.title ?? "Workout")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(AppColors.textPrimary)
-                          if let notes = lastWorkout.notes {
-                            Text(notes)
-                              .font(.system(size: 12))
-                              .foregroundColor(.secondary)
-                              .lineLimit(2)
-                          }
-                        }
-
-                        Spacer()
-                      }
-
-                      HStack(spacing: 12) {
-                        Text(
-                          "\(lastWorkout.workoutExercises.count) Exercise\(lastWorkout.workoutExercises.count != 1 ? "s" : "")"
-                        )
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-
-                        if let duration = data.lastWorkoutDuration {
-                          Text("•")
-                            .foregroundColor(.secondary)
-                          Text(duration)
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                        }
-
-                        Spacer()
-                      }
-                    }
-                  }
-                  .padding(16)
-                  .background(Color(.systemGray6))
-                  .cornerRadius(12)
-                  .padding(.horizontal, 16)
-                } else {
-                  // Empty state: No last workout
-                  VStack(spacing: 12) {
-                    HStack {
-                      Text("Last Workout")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(AppColors.textPrimary)
-                      Spacer()
-                    }
-
-                    VStack(spacing: 8) {
-                      Image(systemName: "clock.badge.xmark")
-                        .font(.system(size: 32))
-                        .foregroundColor(.secondary)
-
-                      Text("No previous workouts")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(AppColors.textPrimary)
-
-                      Text("Start your first session to see your history")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                  }
-                  .padding(16)
-                  .background(Color(.systemGray6))
-                  .cornerRadius(12)
-                  .padding(.horizontal, 16)
-                }
               }
             }
             .padding(.vertical, 16)
+          }
+          .refreshable {
+            await viewModel.loadHomeData(forceRefresh: true)
           }
         } else {
           // Fallback empty state when no data
@@ -413,11 +379,54 @@ struct HomeView: View {
           .padding()
         }
       }
-      .navigationTitle("HOME")
-      .navigationBarTitleDisplayMode(.inline)
+      .navigationBarHidden(true)
+      .safeAreaInset(edge: .top) {
+        VStack(spacing: 0) {
+          HStack(spacing: 12) {
+            // App Logo
+            Image(systemName: "bolt.fill")
+              .font(.system(size: 20, weight: .bold))
+              .foregroundColor(.white)
+              .frame(width: 40, height: 40)
+              .background(Color.black)
+              .cornerRadius(10)
+
+            Spacer()
+
+            // App Name
+            Text("FITR")
+              .font(.system(size: 18, weight: .bold))
+              .foregroundColor(AppColors.textPrimary)
+
+            Spacer()
+
+            // Notification Bell
+            Button {
+              // Handle notifications
+            } label: {
+              Image(systemName: "chart.line.uptrend.xyaxis")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(AppColors.accent)
+                .overlay(
+                  Circle()
+                    .fill(Color.red)
+                    .frame(width: 8, height: 8)
+                    .offset(x: 6, y: -6),
+                  alignment: .topTrailing
+                )
+            }
+          }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 12)
+          .background(Color(.systemBackground))
+
+          Divider()
+        }
+      }
       .task {
         await viewModel.loadHomeData()
       }
+
     }
   }
 }

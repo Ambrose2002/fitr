@@ -28,9 +28,9 @@ final class HomeViewModel: ObservableObject {
     }
   }
 
-  func loadHomeData() async {
-    // Skip fetch if initialized with data (e.g., preview mode)
-    if skipFetch {
+  func loadHomeData(forceRefresh: Bool = false) async {
+    // Skip fetch if initialized with data (e.g., preview mode), unless forcing refresh
+    if skipFetch && !forceRefresh {
       return
     }
 

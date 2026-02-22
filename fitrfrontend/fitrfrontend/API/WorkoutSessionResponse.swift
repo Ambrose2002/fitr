@@ -11,6 +11,7 @@ struct WorkoutSessionResponse: Codable, Identifiable {
   let id: Int64
   let userId: Int64
   let workoutLocationId: Int64?
+  let locationName: String?
   let startTime: Date
   let endTime: Date?
   let notes: String?
@@ -21,6 +22,7 @@ struct WorkoutSessionResponse: Codable, Identifiable {
     case id
     case userId = "user_id"
     case workoutLocationId = "workout_location_id"
+    case locationName
     case startTime
     case endTime
     case notes
@@ -29,13 +31,15 @@ struct WorkoutSessionResponse: Codable, Identifiable {
   }
 
   init(
-    id: Int64, userId: Int64, workoutLocationId: Int64? = nil, startTime: Date,
+    id: Int64, userId: Int64, workoutLocationId: Int64? = nil, locationName: String? = nil,
+    startTime: Date,
     endTime: Date? = nil, notes: String? = nil, title: String? = nil,
     workoutExercises: [WorkoutExerciseResponse] = []
   ) {
     self.id = id
     self.userId = userId
     self.workoutLocationId = workoutLocationId
+    self.locationName = locationName
     self.startTime = startTime
     self.endTime = endTime
     self.notes = notes
@@ -48,6 +52,7 @@ struct WorkoutSessionResponse: Codable, Identifiable {
     id = try container.decode(Int64.self, forKey: .id)
     userId = try container.decode(Int64.self, forKey: .userId)
     workoutLocationId = try container.decodeIfPresent(Int64.self, forKey: .workoutLocationId)
+    locationName = try container.decodeIfPresent(String.self, forKey: .locationName)
     startTime = try container.decode(Date.self, forKey: .startTime)
     endTime = try container.decodeIfPresent(Date.self, forKey: .endTime)
     notes = try container.decodeIfPresent(String.self, forKey: .notes)
@@ -61,6 +66,7 @@ struct WorkoutSessionResponse: Codable, Identifiable {
     try container.encode(id, forKey: .id)
     try container.encode(userId, forKey: .userId)
     try container.encodeIfPresent(workoutLocationId, forKey: .workoutLocationId)
+    try container.encodeIfPresent(locationName, forKey: .locationName)
     try container.encode(startTime, forKey: .startTime)
     try container.encodeIfPresent(endTime, forKey: .endTime)
     try container.encodeIfPresent(notes, forKey: .notes)
