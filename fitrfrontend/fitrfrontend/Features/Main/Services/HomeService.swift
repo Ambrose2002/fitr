@@ -186,16 +186,18 @@ class HomeService {
 
   private func fetchWorkoutsThisWeekCount() async throws -> Int {
     let calendar = Calendar.current
-    let weekInterval = calendar.dateInterval(of: .weekOfYear, for: Date())
-    let startDate = weekInterval?.start ?? calendar.startOfDay(for: Date())
-    let endDate = weekInterval?.end ?? Date()
+    let today = calendar.startOfDay(for: Date())
+    guard let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: today) else {
+      throw URLError(.unknown)
+    }
+
     let formatter = ISO8601DateFormatter()
 
     let url = try makeURL(
       path: APIEndpoints.workouts,
       queryItems: [
-        URLQueryItem(name: "startDate", value: formatter.string(from: startDate)),
-        URLQueryItem(name: "endDate", value: formatter.string(from: endDate)),
+        URLQueryItem(name: "startDate", value: formatter.string(from: sevenDaysAgo)),
+        URLQueryItem(name: "endDate", value: formatter.string(from: Date())),
       ]
     )
 
@@ -240,11 +242,14 @@ class HomeService {
     varietyCount: Int
   ) {
     let calendar = Calendar.current
-    let weekInterval = calendar.dateInterval(of: .weekOfYear, for: Date())
-    let weekStart = weekInterval?.start ?? calendar.startOfDay(for: Date())
-    let weekEnd = weekInterval?.end ?? Date()
+    let today = calendar.startOfDay(for: Date())
+    guard let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: today) else {
+      return (
+        volumeStr: "0", caloriesStr: "0 cal", durationStr: "0 min", prStrings: [], varietyCount: 0
+      )
+    }
 
-    let weekWorkouts = workouts.filter { $0.startTime >= weekStart && $0.startTime < weekEnd }
+    let weekWorkouts = workouts.filter { $0.startTime >= sevenDaysAgo && $0.startTime <= Date() }
 
     var totalVolume: Double = 0
     var totalCalories: Double = 0
@@ -274,12 +279,23 @@ class HomeService {
 
     let avgDuration = !weekWorkouts.isEmpty ? totalDuration / Double(weekWorkouts.count) : 0
 
-    // Volume string
-    let volumeStr: String
-    if totalVolume >= 1000 {
-      volumeStr = String(format: "%.1f", totalVolume / 1000) + " K"
+    // Volume string with user's preferred unit (volume is weight × reps)
+    let preferredWeightUnit = sessionStore.userProfile?.preferredWeightUnit ?? .kg
+    let displayVolume: Double
+
+    if preferredWeightUnit == .lb {
+      // Convert kg-reps to lb-reps (volume in kg-reps needs conversion)
+      displayVolume = totalVolume * Double(UnitConverter.kgToLb(1.0))
     } else {
-      volumeStr = String(format: "%.0f", totalVolume)
+      displayVolume = totalVolume
+    }
+
+    let unitSuffix = preferredWeightUnit.abbreviation
+    let volumeStr: String
+    if displayVolume >= 1000 {
+      volumeStr = String(format: "%.1f", displayVolume / 1000) + " K \(unitSuffix)"
+    } else {
+      volumeStr = String(format: "%.0f", displayVolume) + " \(unitSuffix)"
     }
 
     let caloriesStr = String(format: "%.0f", totalCalories) + " cal"
@@ -287,11 +303,11 @@ class HomeService {
 
     // Personal records (comparison to previous weeks would require fetching more data)
     // For now, just return the exercises with their max weights
-    let preferredWeightUnit = sessionStore.userProfile?.preferredWeightUnit ?? .kg
     let prStrings = exerciseMaxWeights.sorted { $0.value > $1.value }
       .prefix(3)
       .map { exercise, weight in
-        let displayValue: Double = preferredWeightUnit == .kg ? weight : Double(UnitConverter.kgToLb(Float(weight)))
+        let displayValue: Double =
+          preferredWeightUnit == .kg ? weight : Double(UnitConverter.kgToLb(Float(weight)))
         let formattedWeight = String(format: "%.0f", displayValue)
         let unitSuffix = preferredWeightUnit.abbreviation
         return "\(exercise) \(formattedWeight) \(unitSuffix)"
@@ -306,4 +322,3 @@ class HomeService {
     )
   }
 }
-
