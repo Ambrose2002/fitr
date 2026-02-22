@@ -109,7 +109,7 @@ class HomeService {
     )
 
     let nextSessionDTO = recentWorkoutsResponse.first
-    let lastWorkoutDTO = recentWorkoutsResponse.dropFirst().first
+    let lastWorkoutDTO = recentWorkoutsResponse.first
     let weekProgress = buildWeekProgress(workoutsThisWeekCount)
     let weeklyStats = calculateWeeklyStats(from: recentWorkoutsResponse)
 
