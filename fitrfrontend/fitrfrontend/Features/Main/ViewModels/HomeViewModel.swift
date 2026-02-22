@@ -14,12 +14,13 @@ final class HomeViewModel: ObservableObject {
   @Published var isLoading = true
   @Published var errorMessage: String?
 
-  private let homeService = HomeService()
+  private let homeService: HomeService
   private let sessionStore: SessionStore
   private let skipFetch: Bool
 
   init(sessionStore: SessionStore, initialData: HomeScreenData? = nil) {
     self.sessionStore = sessionStore
+    self.homeService = HomeService(sessionStore: sessionStore)
     self.skipFetch = initialData != nil
 
     if let initialData = initialData {

@@ -262,7 +262,7 @@ struct HomeView: View {
                       .font(.system(size: 10, weight: .semibold))
                       .foregroundColor(.secondary)
                     HStack(spacing: 4) {
-                      Text(data.currentWeight + " kg")
+                      Text(data.currentWeight)
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
                       Image(

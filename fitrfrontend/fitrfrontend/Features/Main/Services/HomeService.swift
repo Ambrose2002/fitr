@@ -27,6 +27,12 @@ class HomeService {
     KeychainSwift().get("userAccessToken")
   }
 
+  private let sessionStore: SessionStore
+
+  init(sessionStore: SessionStore) {
+    self.sessionStore = sessionStore
+  }
+
   private func addAuthHeaders(_ request: inout URLRequest) {
     if let token = authToken {
       request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -118,8 +124,8 @@ class HomeService {
       weekProgress: weekProgress,
       nextSession: nextSessionDTO,
       lastWorkout: lastWorkoutDTO,
-      currentWeight: String(format: "%.1f", metricsDTO.weight),
-      weightChange: String(format: "%.1f", metricsDTO.change),
+      currentWeight: formatWeight(metricsDTO.weight),
+      weightChange: formatWeight(metricsDTO.change),
       streak: streakDTO.currentStreak,
       streakPercentile: streakDTO.streakPercentile,
       weeklyWorkoutCount: workoutsThisWeekCount,
@@ -129,6 +135,13 @@ class HomeService {
       weeklyPersonalRecords: weeklyStats.prStrings,
       weeklyExerciseVariety: weeklyStats.varietyCount
     )
+  }
+
+  // MARK: - Formatting
+
+  private func formatWeight(_ kg: Double) -> String {
+    let preferredUnit = sessionStore.userProfile?.preferredWeightUnit ?? .kg
+    return UnitFormatter.formatWeight(Float(kg), preferredUnit: preferredUnit)
   }
 
   private func fetchCurrentMetrics() async throws -> CurrentMetricsDTO {
@@ -274,11 +287,14 @@ class HomeService {
 
     // Personal records (comparison to previous weeks would require fetching more data)
     // For now, just return the exercises with their max weights
+    let preferredWeightUnit = sessionStore.userProfile?.preferredWeightUnit ?? .kg
     let prStrings = exerciseMaxWeights.sorted { $0.value > $1.value }
       .prefix(3)
       .map { exercise, weight in
-        let formattedWeight = String(format: "%.0f", weight)
-        return "\(exercise) \(formattedWeight) lbs"
+        let displayValue = preferredWeightUnit == .kg ? weight : UnitConverter.kgToLb(Float(weight))
+        let formattedWeight = String(format: "%.0f", displayValue)
+        let unitSuffix = preferredWeightUnit.abbreviation
+        return "\(exercise) \(formattedWeight) \(unitSuffix)"
       }
 
     return (
