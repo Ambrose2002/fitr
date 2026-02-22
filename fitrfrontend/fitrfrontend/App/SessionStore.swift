@@ -18,6 +18,8 @@ final class SessionStore: ObservableObject {
 
   private let keychain = KeychainSwift()
   private let profileService = ProfileService()
+  private let userDefaults = UserDefaults.standard
+  private let profileStorageKey = "cachedUserProfile"
 
   @Published private(set) var authState: AuthState = .loading
   @Published var hasCreatedProfile: Bool = false
@@ -36,6 +38,8 @@ final class SessionStore: ObservableObject {
 
   init(skipRestore: Bool = false) {
     if !skipRestore {
+      // Try to restore cached profile first for immediate access
+      restoreUserProfileFromStorage()
       restoreSession()
     }
   }
@@ -63,6 +67,7 @@ final class SessionStore: ObservableObject {
     hasCreatedProfile = false
     isCheckingProfile = false
     userProfile = nil
+    clearUserProfileStorage()
     authState = .unauthenticated
   }
 
@@ -97,6 +102,8 @@ final class SessionStore: ObservableObject {
       let profile = try await profileService.getProfile()
       await MainActor.run {
         self.userProfile = profile
+        self.saveUserProfileToStorage(profile)
+      }
       }
     } catch {
       // Log error but don't logout - profile fetch failure is not critical
@@ -108,6 +115,41 @@ final class SessionStore: ObservableObject {
   /// - Parameter profile: The updated user profile from the API response
   func updateUserProfile(_ profile: UserProfileResponse) {
     self.userProfile = profile
+    saveUserProfileToStorage(profile)
+  }
+
+  // MARK: - User Profile Persistence
+
+  /// Saves the user profile to local storage (UserDefaults) for offline access.
+  /// - Parameter profile: The user profile to save
+  private func saveUserProfileToStorage(_ profile: UserProfileResponse) {
+    do {
+      let encoded = try JSONEncoder().encode(profile)
+      userDefaults.set(encoded, forKey: profileStorageKey)
+    } catch {
+      print("Failed to encode user profile for storage: \(error)")
+    }
+  }
+
+  /// Restores the cached user profile from local storage (UserDefaults).
+  /// This allows the app to display user unit preferences immediately on launch
+  /// before fetching fresh data from the backend.
+  func restoreUserProfileFromStorage() {
+    guard let data = userDefaults.data(forKey: profileStorageKey) else {
+      return
+    }
+
+    do {
+      let decodedProfile = try JSONDecoder().decode(UserProfileResponse.self, from: data)
+      self.userProfile = decodedProfile
+    } catch {
+      print("Failed to decode cached user profile: \(error)")
+    }
+  }
+
+  /// Clears the cached user profile from local storage.
+  private func clearUserProfileStorage() {
+    userDefaults.removeObject(forKey: profileStorageKey)
   }
 }
 
