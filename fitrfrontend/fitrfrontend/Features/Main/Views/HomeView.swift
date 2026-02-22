@@ -12,15 +12,53 @@ struct HomeView: View {
   @EnvironmentObject var sessionStore: SessionStore
   @StateObject private var viewModel: HomeViewModel
 
-  init(sessionStore: SessionStore) {
-    _viewModel = StateObject(wrappedValue: HomeViewModel(sessionStore: sessionStore))
+  init(sessionStore: SessionStore, initialData: HomeScreenData? = nil) {
+    _viewModel = StateObject(
+      wrappedValue: HomeViewModel(sessionStore: sessionStore, initialData: initialData))
   }
 
   var body: some View {
     NavigationStack {
       ZStack {
         if viewModel.isLoading {
-          ProgressView()
+          ScrollView {
+            VStack(spacing: 24) {
+              // Skeleton greeting
+              VStack(alignment: .leading, spacing: 4) {
+                RoundedRectangle(cornerRadius: 8)
+                  .fill(Color(.systemGray5))
+                  .frame(height: 32)
+                  .frame(maxWidth: 200, alignment: .leading)
+
+                RoundedRectangle(cornerRadius: 4)
+                  .fill(Color(.systemGray5))
+                  .frame(height: 14)
+                  .frame(maxWidth: .infinity)
+              }
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(.horizontal, 16)
+              .redacted(reason: .placeholder)
+
+              // Skeleton Next Session Card
+              SkeletonCard()
+
+              // Skeleton Quick Actions
+              HStack(spacing: 12) {
+                ForEach(0..<3, id: \.self) { _ in
+                  RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemGray6))
+                    .frame(height: 80)
+                }
+              }
+              .padding(.horizontal, 16)
+              .redacted(reason: .placeholder)
+
+              // Skeleton Last Workout Card
+              SkeletonCard()
+            }
+            .padding(.vertical, 16)
+          }
+          .shimmer()
         } else if let errorMessage = viewModel.errorMessage {
           VStack(spacing: 16) {
             Image(systemName: "exclamationmark.circle")
@@ -62,13 +100,9 @@ struct HomeView: View {
                       .font(.system(size: 12, weight: .semibold))
                       .foregroundColor(AppColors.accent)
 
-                    Text(nextSession.title ?? "Workout")
+                    Text(data.nextSessionTitle)
                       .font(.system(size: 24, weight: .bold))
                       .foregroundColor(AppColors.textPrimary)
-
-                    Text("Day 12")
-                      .font(.system(size: 14))
-                      .foregroundColor(.secondary)
                   }
 
                   HStack(spacing: 24) {
@@ -76,29 +110,12 @@ struct HomeView: View {
                       Text("Exercises")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
-                      Text("7 Moves")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(AppColors.textPrimary)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                      Text("Estimated")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                      Text("55 mins")
+                      Text(data.nextSessionExerciseCount)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(AppColors.textPrimary)
                     }
 
                     Spacer()
-
-                    Text("Intensity: 8/10")
-                      .font(.system(size: 11, weight: .semibold))
-                      .foregroundColor(AppColors.accent)
-                      .padding(.horizontal, 12)
-                      .padding(.vertical, 6)
-                      .background(AppColors.accent.opacity(0.2))
-                      .cornerRadius(8)
                   }
 
                   Button {
@@ -158,9 +175,17 @@ struct HomeView: View {
               // Insights Section
               VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                  Text("INSIGHTS")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(AppColors.textPrimary)
+                  HStack(spacing: 4) {
+                    Text("INSIGHTS")
+                      .font(.system(size: 12, weight: .semibold))
+                      .foregroundColor(AppColors.textPrimary)
+                    Text("·")
+                      .font(.system(size: 12, weight: .semibold))
+                      .foregroundColor(.secondary)
+                    Text("THIS WEEK")
+                      .font(.system(size: 12, weight: .semibold))
+                      .foregroundColor(.secondary)
+                  }
                   Spacer()
                   NavigationLink("View All", destination: EmptyView())
                     .font(.system(size: 12, weight: .semibold))
@@ -168,47 +193,115 @@ struct HomeView: View {
                 }
                 .padding(.horizontal, 16)
 
-                // Current Weight Card
-                HStack(spacing: 16) {
+                // Current Weight (Compact Inline)
+                HStack(spacing: 12) {
                   Image(systemName: "scalemass")
-                    .font(.system(size: 24))
+                    .font(.system(size: 18))
                     .foregroundColor(AppColors.accent)
-                    .frame(width: 48, height: 48)
+                    .frame(width: 40, height: 40)
                     .background(AppColors.accent.opacity(0.1))
-                    .cornerRadius(12)
+                    .cornerRadius(10)
 
                   VStack(alignment: .leading, spacing: 2) {
-                    Text("CURRENT WEIGHT")
+                    Text("Weight")
                       .font(.system(size: 10, weight: .semibold))
                       .foregroundColor(.secondary)
-
-                    HStack(spacing: 8) {
-                      Text(data.currentWeight)
-                        .font(.system(size: 24, weight: .bold))
+                    HStack(spacing: 4) {
+                      Text(data.currentWeight + " kg")
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
-
-                      VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 2) {
-                          Image(systemName: "arrow.down")
-                            .font(.system(size: 10, weight: .semibold))
-                          Text(data.weightChange + " KG")
-                            .font(.system(size: 12, weight: .semibold))
-                        }
-                        .foregroundColor(.green)
-
-                        Text("LAST 7 DAYS")
-                          .font(.system(size: 10))
-                          .foregroundColor(.secondary)
-                      }
+                      Image(
+                        systemName: data.weightChange.contains("-")
+                          ? "arrow.down.right" : "arrow.up.right"
+                      )
+                      .font(.system(size: 10, weight: .semibold))
+                      .foregroundColor(data.weightChange.contains("-") ? .green : .red)
                     }
                   }
-
                   Spacer()
                 }
-                .padding(16)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
+                .padding(12)
+                .background(AppColors.accent.opacity(0.05))
+                .cornerRadius(10)
                 .padding(.horizontal, 16)
+
+                // Weekly Stats Row (4 Tiles)
+                if data.weeklyWorkoutCount > 0 {
+                  HStack(spacing: 10) {
+                    StatTile(
+                      icon: "dumbbell.fill",
+                      value: String(data.weeklyWorkoutCount),
+                      label: "Workouts",
+                      color: AppColors.accent
+                    )
+                    StatTile(
+                      icon: "flame.fill",
+                      value: data.weeklyTotalVolume,
+                      label: "Volume",
+                      color: Color(red: 1.0, green: 0.6, blue: 0.2)
+                    )
+                    StatTile(
+                      icon: "heart.fill",
+                      value: data.weeklyCaloriesBurned,
+                      label: "Calories",
+                      color: .red
+                    )
+                    StatTile(
+                      icon: "stopwatch.fill",
+                      value: data.weeklyAvgDuration,
+                      label: "Avg Time",
+                      color: Color(red: 0.5, green: 0.8, blue: 1.0)
+                    )
+                  }
+                  .padding(.horizontal, 16)
+                }
+
+                // Personal Records
+                if !data.weeklyPersonalRecords.isEmpty {
+                  VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                      Image(systemName: "star.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(.yellow)
+                      Text("PRs")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppColors.textPrimary)
+                    }
+                    Text(data.personalRecordsDisplay)
+                      .font(.system(size: 12))
+                      .foregroundColor(.secondary)
+                      .lineLimit(2)
+                  }
+                  .frame(maxWidth: .infinity, alignment: .leading)
+                  .padding(12)
+                  .background(Color(.systemGray6))
+                  .cornerRadius(10)
+                  .padding(.horizontal, 16)
+                }
+
+                // Exercise Variety
+                if data.weeklyExerciseVariety > 0 {
+                  VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                      Image(systemName: "target")
+                        .font(.system(size: 12))
+                        .foregroundColor(AppColors.accent)
+                      Text("Variety")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppColors.textPrimary)
+                    }
+                    Text(
+                      "\(data.weeklyExerciseVariety) unique exercise\(data.weeklyExerciseVariety != 1 ? "s" : "")"
+                    )
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                  }
+                  .frame(maxWidth: .infinity, alignment: .leading)
+                  .padding(12)
+                  .background(Color(.systemGray6))
+                  .cornerRadius(10)
+                  .padding(.horizontal, 16)
+                }
 
                 // Last Workout Card
                 if let lastWorkout = data.lastWorkout {
@@ -218,29 +311,83 @@ struct HomeView: View {
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
                       Spacer()
-                      Text("Yesterday")
+                      Text(data.lastWorkoutRelativeDate)
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                     }
 
-                    HStack(spacing: 16) {
-                      Image(systemName: "flame")
-                        .font(.system(size: 24))
-                        .foregroundColor(AppColors.accent)
-                        .frame(width: 48, height: 48)
-                        .background(AppColors.accent.opacity(0.1))
-                        .cornerRadius(12)
-                      VStack(alignment: .leading, spacing: 4) {
-                        Text(lastWorkout.title ?? "Workout Title")
-                          .font(.system(size: 16, weight: .semibold))
-                          .foregroundColor(AppColors.textPrimary)
-                        Text(lastWorkout.notes ?? "Workout Notes")
-                          .font(.system(size: 12))
-                          .foregroundColor(.secondary)
+                    VStack(alignment: .leading, spacing: 8) {
+                      HStack(spacing: 16) {
+                        Image(systemName: "flame")
+                          .font(.system(size: 24))
+                          .foregroundColor(AppColors.accent)
+                          .frame(width: 48, height: 48)
+                          .background(AppColors.accent.opacity(0.1))
+                          .cornerRadius(12)
+                        VStack(alignment: .leading, spacing: 4) {
+                          Text(lastWorkout.title ?? "Workout")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(AppColors.textPrimary)
+                          if let notes = lastWorkout.notes {
+                            Text(notes)
+                              .font(.system(size: 12))
+                              .foregroundColor(.secondary)
+                              .lineLimit(2)
+                          }
+                        }
+
+                        Spacer()
                       }
 
+                      HStack(spacing: 12) {
+                        Text(
+                          "\(lastWorkout.workoutExercises.count) Exercise\(lastWorkout.workoutExercises.count != 1 ? "s" : "")"
+                        )
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+
+                        if let duration = data.lastWorkoutDuration {
+                          Text("•")
+                            .foregroundColor(.secondary)
+                          Text(duration)
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+                      }
+                    }
+                  }
+                  .padding(16)
+                  .background(Color(.systemGray6))
+                  .cornerRadius(12)
+                  .padding(.horizontal, 16)
+                } else {
+                  // Empty state: No last workout
+                  VStack(spacing: 12) {
+                    HStack {
+                      Text("Last Workout")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(AppColors.textPrimary)
                       Spacer()
                     }
+
+                    VStack(spacing: 8) {
+                      Image(systemName: "clock.badge.xmark")
+                        .font(.system(size: 32))
+                        .foregroundColor(.secondary)
+
+                      Text("No previous workouts")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(AppColors.textPrimary)
+
+                      Text("Start your first session to see your history")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
                   }
                   .padding(16)
                   .background(Color(.systemGray6))
@@ -275,6 +422,34 @@ struct HomeView: View {
   }
 }
 
+// MARK: - StatTile Component
+struct StatTile: View {
+  let icon: String
+  let value: String
+  let label: String
+  let color: Color
+
+  var body: some View {
+    VStack(spacing: 8) {
+      Image(systemName: icon)
+        .font(.system(size: 20))
+        .foregroundColor(color)
+
+      Text(value)
+        .font(.system(size: 14, weight: .bold))
+        .foregroundColor(AppColors.textPrimary)
+
+      Text(label)
+        .font(.system(size: 10))
+        .foregroundColor(.secondary)
+    }
+    .frame(maxWidth: .infinity)
+    .frame(height: 75)
+    .background(Color(.systemGray6))
+    .cornerRadius(10)
+  }
+}
+
 // MARK: - Supporting Views
 struct QuickActionButton: View {
   let icon: String
@@ -304,22 +479,9 @@ struct QuickActionButton: View {
   }
 }
 
-//#Preview {
-//  let mockProfile = UserProfileResponse(
-//    id: 1,
-//    userId: 1,
-//    firstname: "Alex",
-//    lastname: "Taylor",
-//    email: "alex@example.com",
-//    gender: .male,
-//    height: 180,
-//    weight: 82.4,
-//    experience: .intermediate,
-//    goal: .strength,
-//    preferredWeightUnit: .kg,
-//    preferredDistanceUnit: .km,
-//    createdAt: Date()
-//  )
-//  let mock = SessionStore.mock(userProfile: mockProfile)
-//  HomeView(sessionStore: mock)
+// MARK: - Preview
+
+//#Preview("Full Data (Active User)") {
+//  let mockStore = MockData.mockSessionStore()
+//  HomeView(sessionStore: mockStore, initialData: MockData.fullData)
 //}

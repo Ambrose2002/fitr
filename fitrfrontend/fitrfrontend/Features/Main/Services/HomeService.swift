@@ -96,7 +96,7 @@ class HomeService {
   }
 
   func fetchHomeScreenData() async throws -> HomeScreenData {
-    async let recentWorkouts = fetchRecentWorkouts(limit: 2)
+    async let recentWorkouts = fetchRecentWorkouts(limit: 30)
     async let currentMetrics = fetchCurrentMetrics()
     async let streak = fetchStreak()
     async let workoutsThisWeek = fetchWorkoutsThisWeekCount()
@@ -111,6 +111,7 @@ class HomeService {
     let nextSessionDTO = recentWorkoutsResponse.first
     let lastWorkoutDTO = recentWorkoutsResponse.dropFirst().first
     let weekProgress = buildWeekProgress(workoutsThisWeekCount)
+    let weeklyStats = calculateWeeklyStats(from: recentWorkoutsResponse)
 
     return HomeScreenData(
       greeting: "",
@@ -120,7 +121,13 @@ class HomeService {
       currentWeight: String(format: "%.1f", metricsDTO.weight),
       weightChange: String(format: "%.1f", metricsDTO.change),
       streak: streakDTO.currentStreak,
-      streakPercentile: streakDTO.streakPercentile
+      streakPercentile: streakDTO.streakPercentile,
+      weeklyWorkoutCount: workoutsThisWeekCount,
+      weeklyTotalVolume: weeklyStats.volumeStr,
+      weeklyCaloriesBurned: weeklyStats.caloriesStr,
+      weeklyAvgDuration: weeklyStats.durationStr,
+      weeklyPersonalRecords: weeklyStats.prStrings,
+      weeklyExerciseVariety: weeklyStats.varietyCount
     )
   }
 
@@ -213,5 +220,73 @@ class HomeService {
 
     let remaining = max(weeklyTarget - workoutCount, 0)
     return "You've hit \(workoutCount) workouts this week. \(remaining) to go!"
+  }
+
+  private func calculateWeeklyStats(from workouts: [WorkoutSessionResponse]) -> (
+    volumeStr: String, caloriesStr: String, durationStr: String, prStrings: [String],
+    varietyCount: Int
+  ) {
+    let calendar = Calendar.current
+    let weekInterval = calendar.dateInterval(of: .weekOfYear, for: Date())
+    let weekStart = weekInterval?.start ?? calendar.startOfDay(for: Date())
+    let weekEnd = weekInterval?.end ?? Date()
+
+    let weekWorkouts = workouts.filter { $0.startTime >= weekStart && $0.startTime < weekEnd }
+
+    var totalVolume: Double = 0
+    var totalCalories: Double = 0
+    var totalDuration: Double = 0
+    var exerciseMaxWeights: [String: Double] = [:]
+    var exerciseNames = Set<String>()
+
+    for workout in weekWorkouts {
+      // Calculate workout duration
+      if let endTime = workout.endTime {
+        let duration = endTime.timeIntervalSince(workout.startTime) / 60
+        totalDuration += duration
+      }
+
+      for exercise in workout.workoutExercises {
+        exerciseNames.insert(exercise.exercise.name)
+
+        for setLog in exercise.setLogs {
+          totalVolume += Double(setLog.weight) * Double(setLog.reps)
+          totalCalories += Double(setLog.calories)
+
+          let maxWeight = exerciseMaxWeights[exercise.exercise.name] ?? 0
+          exerciseMaxWeights[exercise.exercise.name] = max(maxWeight, Double(setLog.weight))
+        }
+      }
+    }
+
+    let avgDuration = !weekWorkouts.isEmpty ? totalDuration / Double(weekWorkouts.count) : 0
+
+    // Volume string
+    let volumeStr: String
+    if totalVolume >= 1000 {
+      volumeStr = String(format: "%.1f", totalVolume / 1000) + " K"
+    } else {
+      volumeStr = String(format: "%.0f", totalVolume)
+    }
+
+    let caloriesStr = String(format: "%.0f", totalCalories) + " cal"
+    let durationStr = String(format: "%.0f", avgDuration) + " min"
+
+    // Personal records (comparison to previous weeks would require fetching more data)
+    // For now, just return the exercises with their max weights
+    let prStrings = exerciseMaxWeights.sorted { $0.value > $1.value }
+      .prefix(3)
+      .map { exercise, weight in
+        let formattedWeight = String(format: "%.0f", weight)
+        return "\(exercise) \(formattedWeight) lbs"
+      }
+
+    return (
+      volumeStr: volumeStr,
+      caloriesStr: caloriesStr,
+      durationStr: durationStr,
+      prStrings: prStrings,
+      varietyCount: exerciseNames.count
+    )
   }
 }

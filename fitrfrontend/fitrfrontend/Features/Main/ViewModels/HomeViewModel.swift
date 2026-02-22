@@ -16,12 +16,24 @@ final class HomeViewModel: ObservableObject {
 
   private let homeService = HomeService()
   private let sessionStore: SessionStore
+  private let skipFetch: Bool
 
-  init(sessionStore: SessionStore) {
+  init(sessionStore: SessionStore, initialData: HomeScreenData? = nil) {
     self.sessionStore = sessionStore
+    self.skipFetch = initialData != nil
+
+    if let initialData = initialData {
+      self.homeData = initialData
+      self.isLoading = false
+    }
   }
 
   func loadHomeData() async {
+    // Skip fetch if initialized with data (e.g., preview mode)
+    if skipFetch {
+      return
+    }
+
     isLoading = true
     errorMessage = nil
 
@@ -43,7 +55,13 @@ final class HomeViewModel: ObservableObject {
         currentWeight: data.currentWeight,
         weightChange: data.weightChange,
         streak: data.streak,
-        streakPercentile: data.streakPercentile
+        streakPercentile: data.streakPercentile,
+        weeklyWorkoutCount: data.weeklyWorkoutCount,
+        weeklyTotalVolume: data.weeklyTotalVolume,
+        weeklyCaloriesBurned: data.weeklyCaloriesBurned,
+        weeklyAvgDuration: data.weeklyAvgDuration,
+        weeklyPersonalRecords: data.weeklyPersonalRecords,
+        weeklyExerciseVariety: data.weeklyExerciseVariety
       )
     } catch {
       self.errorMessage = error.localizedDescription
