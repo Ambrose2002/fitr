@@ -62,7 +62,8 @@ final class HomeViewModel: ObservableObject {
         weeklyCaloriesBurned: data.weeklyCaloriesBurned,
         weeklyAvgDuration: data.weeklyAvgDuration,
         weeklyPersonalRecords: data.weeklyPersonalRecords,
-        weeklyExerciseVariety: data.weeklyExerciseVariety
+        weeklyExerciseVariety: data.weeklyExerciseVariety,
+        lastSessionExerciseStats: data.lastSessionExerciseStats
       )
     } catch {
       self.errorMessage = error.localizedDescription

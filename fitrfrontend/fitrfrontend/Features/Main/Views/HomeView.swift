@@ -379,6 +379,27 @@ struct HomeView: View {
                   .cornerRadius(10)
                   .padding(.horizontal, 16)
                 }
+
+                // Detailed Last Session Card
+                if !data.lastSessionExerciseStats.isEmpty {
+                  VStack(alignment: .leading, spacing: 12) {
+                    Text("LAST SESSION BREAKDOWN")
+                      .font(.system(size: 12, weight: .semibold))
+                      .foregroundColor(AppColors.textPrimary)
+                      .padding(.horizontal, 16)
+
+                    VStack(spacing: 12) {
+                      ForEach(data.lastSessionExerciseStats) { exerciseStat in
+                        LastSessionExerciseRow(exerciseStat: exerciseStat)
+                      }
+                    }
+                    .padding(.horizontal, 16)
+                  }
+                  .padding(.vertical, 12)
+                  .background(Color(.systemGray6))
+                  .cornerRadius(12)
+                  .padding(.horizontal, 16)
+                }
               }
             }
             .padding(.vertical, 16)
@@ -511,9 +532,71 @@ struct QuickActionButton: View {
   }
 }
 
-// MARK: - Preview
+// MARK: - Last Session Exercise Row
+struct LastSessionExerciseRow: View {
+  let exerciseStat: WorkoutExerciseStats
+  @EnvironmentObject var sessionStore: SessionStore
 
-//#Preview("Full Data (Active User)") {
-//  let mockStore = MockData.mockSessionStore()
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      // Exercise name and set count
+      HStack {
+        Text(exerciseStat.exerciseName)
+          .font(.system(size: 14, weight: .semibold))
+          .foregroundColor(AppColors.textPrimary)
+
+        Spacer()
+
+        Text("\(exerciseStat.setCount) set\(exerciseStat.setCount != 1 ? "s" : "")")
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundColor(.secondary)
+      }
+
+      // Stats grid
+      HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 2) {
+          Text("Avg Reps")
+            .font(.system(size: 10))
+            .foregroundColor(.secondary)
+          Text(String(format: "%.1f", exerciseStat.avgReps))
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundColor(AppColors.textPrimary)
+        }
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text("Avg Weight")
+            .font(.system(size: 10))
+            .foregroundColor(.secondary)
+          let preferredUnit = sessionStore.userProfile?.preferredWeightUnit ?? .kg
+          Text(
+            WorkoutExerciseStats.formatWeight(exerciseStat.avgWeight, preferredUnit: preferredUnit)
+              + " " + preferredUnit.abbreviation
+          )
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundColor(AppColors.textPrimary)
+        }
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text("Max Weight")
+            .font(.system(size: 10))
+            .foregroundColor(.secondary)
+          let preferredUnit = sessionStore.userProfile?.preferredWeightUnit ?? .kg
+          Text(
+            WorkoutExerciseStats.formatWeight(exerciseStat.maxWeight, preferredUnit: preferredUnit)
+              + " " + preferredUnit.abbreviation
+          )
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundColor(AppColors.textPrimary)
+        }
+
+        Spacer()
+      }
+    }
+    .padding(10)
+    .background(Color(.systemGray5))
+    .cornerRadius(8)
+  }
+}
+
 //  HomeView(sessionStore: mockStore, initialData: MockData.fullData)
 //}

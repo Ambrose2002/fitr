@@ -118,6 +118,7 @@ class HomeService {
     let lastWorkoutDTO = recentWorkoutsResponse.first
     let weekProgress = buildWeekProgress(workoutsThisWeekCount)
     let weeklyStats = calculateWeeklyStats(from: recentWorkoutsResponse)
+    let lastSessionStats = calculateLastSessionStats(from: lastWorkoutDTO)
 
     return HomeScreenData(
       greeting: "",
@@ -133,7 +134,8 @@ class HomeService {
       weeklyCaloriesBurned: weeklyStats.caloriesStr,
       weeklyAvgDuration: weeklyStats.durationStr,
       weeklyPersonalRecords: weeklyStats.prStrings,
-      weeklyExerciseVariety: weeklyStats.varietyCount
+      weeklyExerciseVariety: weeklyStats.varietyCount,
+      lastSessionExerciseStats: lastSessionStats
     )
   }
 
@@ -320,5 +322,34 @@ class HomeService {
       prStrings: prStrings,
       varietyCount: exerciseNames.count
     )
+  }
+
+  // MARK: - Last Session Stats Calculation
+
+  private func calculateLastSessionStats(from workout: WorkoutSessionResponse?)
+    -> [WorkoutExerciseStats]
+  {
+    guard let workout = workout else { return [] }
+
+    return workout.workoutExercises.map { exercise in
+      let setLogs = exercise.setLogs
+      let setCount = setLogs.count
+      let avgReps = setCount > 0 ? Float(setLogs.map { $0.reps }.reduce(0, +)) / Float(setCount) : 0
+      let avgWeight = setCount > 0 ? setLogs.map { $0.weight }.reduce(0, +) / Float(setCount) : 0
+      let maxWeight = setLogs.map { $0.weight }.max() ?? 0
+      let totalVolume = setLogs.reduce(0) { $0 + (Float($1.reps) * $1.weight) }
+      let totalCalories = setLogs.map { $0.calories }.reduce(0, +)
+
+      return WorkoutExerciseStats(
+        id: exercise.id,
+        exerciseName: exercise.exercise.name,
+        setCount: setCount,
+        avgReps: avgReps,
+        avgWeight: avgWeight,
+        maxWeight: maxWeight,
+        totalVolume: totalVolume,
+        totalCalories: totalCalories
+      )
+    }
   }
 }
