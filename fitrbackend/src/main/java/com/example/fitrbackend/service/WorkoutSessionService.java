@@ -64,6 +64,12 @@ public class WorkoutSessionService {
         if (req.getEndTime() != null && !req.getEndTime().isEmpty()) {
             workoutSession.setEndTime(parseDate(req.getEndTime()));
         }
+
+        String title = (req.getTitle() != null && !req.getTitle().isEmpty())
+                ? req.getTitle()
+                : generateWorkoutTitle(workoutSession.getStartTime());
+        workoutSession.setTitle(title);
+
         WorkoutSession savedSession = workoutSessionRepo.save(workoutSession);
         List<WorkoutExercise> workoutExercises = workoutExerciseRepo.findByWorkoutSessionId(savedSession.getId());
         List<WorkoutExerciseResponse> workoutExerciseResponses = workoutExercises.stream()
@@ -89,7 +95,8 @@ public class WorkoutSessionService {
             return workoutSessions.stream().limit(limit).map(ws -> {
                 List<WorkoutExercise> exercises = workoutExerciseRepo.findByWorkoutSessionId(ws.getId());
                 List<WorkoutExerciseResponse> exerciseResponses = exercises.stream()
-                        .map(we -> toWorkoutExerciseResponse(we, setLogRepo.findByWorkoutExerciseId(we.getId()))).toList();
+                        .map(we -> toWorkoutExerciseResponse(we, setLogRepo.findByWorkoutExerciseId(we.getId())))
+                        .toList();
                 return toWorkoutSessionResponse(ws, exerciseResponses);
             }).toList();
         }
@@ -106,13 +113,15 @@ public class WorkoutSessionService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutSession workoutSession = workoutSessionRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "WorkoutSession"));
+        WorkoutSession workoutSession = workoutSessionRepo.findById(id)
+                .orElseThrow(() -> new DataNotFoundException(id, "WorkoutSession"));
         if (!workoutSession.getUser().getEmail().equals(email)) {
             throw new DataNotFoundException(id, "WorkoutSession");
         }
         List<WorkoutExercise> workoutExercises = workoutExerciseRepo.findByWorkoutSessionId(
                 workoutSession.getId());
-        List<WorkoutExerciseResponse> workoutExerciseResponses = workoutExercises.stream().map(we -> toWorkoutExerciseResponse(we, setLogRepo.findByWorkoutExerciseId(we.getId()))).toList();
+        List<WorkoutExerciseResponse> workoutExerciseResponses = workoutExercises.stream()
+                .map(we -> toWorkoutExerciseResponse(we, setLogRepo.findByWorkoutExerciseId(we.getId()))).toList();
         return toWorkoutSessionResponse(workoutSession, workoutExerciseResponses);
     }
 
@@ -121,7 +130,8 @@ public class WorkoutSessionService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutSession workoutSession = workoutSessionRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "WorkoutSession"));
+        WorkoutSession workoutSession = workoutSessionRepo.findById(id)
+                .orElseThrow(() -> new DataNotFoundException(id, "WorkoutSession"));
         if (!workoutSession.getUser().getEmail().equals(email)) {
             throw new DataNotFoundException(id, "WorkoutSession");
         }
@@ -139,16 +149,19 @@ public class WorkoutSessionService {
         return toWorkoutSessionResponse(savedSession, workoutExerciseResponses);
     }
 
-    public WorkoutExerciseResponse createWorkoutExercise(String email, Long workoutId, CreateWorkoutExerciseReqeust req) {
+    public WorkoutExerciseResponse createWorkoutExercise(String email, Long workoutId,
+            CreateWorkoutExerciseReqeust req) {
         User user = userRepo.findByEmail(email);
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutSession workoutSession = workoutSessionRepo.findById(workoutId).orElseThrow(() -> new DataNotFoundException(workoutId, "WorkoutSession"));
+        WorkoutSession workoutSession = workoutSessionRepo.findById(workoutId)
+                .orElseThrow(() -> new DataNotFoundException(workoutId, "WorkoutSession"));
         if (!workoutSession.getUser().getEmail().equals(email)) {
             throw new DataNotFoundException(workoutId, "WorkoutSession");
         }
-        Exercise exercise = exerciseRepo.findById(req.getExerciseId()).orElseThrow(() -> new DataNotFoundException(req.getExerciseId(), "Exercise"));
+        Exercise exercise = exerciseRepo.findById(req.getExerciseId())
+                .orElseThrow(() -> new DataNotFoundException(req.getExerciseId(), "Exercise"));
 
         WorkoutExercise workoutExercise = new WorkoutExercise(workoutSession, exercise);
         WorkoutExercise savedWorkoutExercise = workoutExerciseRepo.save(workoutExercise);
@@ -161,7 +174,8 @@ public class WorkoutSessionService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutSession workoutSession = workoutSessionRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "WorkoutSession"));
+        WorkoutSession workoutSession = workoutSessionRepo.findById(id)
+                .orElseThrow(() -> new DataNotFoundException(id, "WorkoutSession"));
         if (!workoutSession.getUser().getEmail().equals(email)) {
             throw new DataNotFoundException(id, "WorkoutSession");
         }
@@ -173,12 +187,14 @@ public class WorkoutSessionService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutSession workoutSession = workoutSessionRepo.findById(workoutId).orElseThrow(() -> new DataNotFoundException(workoutId, "WorkoutSession"));
+        WorkoutSession workoutSession = workoutSessionRepo.findById(workoutId)
+                .orElseThrow(() -> new DataNotFoundException(workoutId, "WorkoutSession"));
         if (!workoutSession.getUser().getEmail().equals(email)) {
             throw new DataNotFoundException(workoutId, "WorkoutSession");
         }
         List<WorkoutExercise> workoutExercises = workoutExerciseRepo.findByWorkoutSessionId(workoutId);
-        return workoutExercises.stream().map(we -> toWorkoutExerciseResponse(we, setLogRepo.findByWorkoutExerciseId(we.getId()))).toList();
+        return workoutExercises.stream()
+                .map(we -> toWorkoutExerciseResponse(we, setLogRepo.findByWorkoutExerciseId(we.getId()))).toList();
     }
 
     public void deleteWorkoutExercise(String email, Long workoutId, Long exerciseId) {
@@ -186,11 +202,13 @@ public class WorkoutSessionService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutSession workoutSession = workoutSessionRepo.findById(workoutId).orElseThrow(() -> new DataNotFoundException(workoutId, "WorkoutSession"));
+        WorkoutSession workoutSession = workoutSessionRepo.findById(workoutId)
+                .orElseThrow(() -> new DataNotFoundException(workoutId, "WorkoutSession"));
         if (!workoutSession.getUser().getEmail().equals(email)) {
             throw new DataNotFoundException(workoutId, "WorkoutSession");
         }
-        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(exerciseId).orElseThrow(() -> new DataNotFoundException(exerciseId, "WorkoutExercise"));
+        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(exerciseId)
+                .orElseThrow(() -> new DataNotFoundException(exerciseId, "WorkoutExercise"));
         if (workoutExercise.getWorkoutSession().getId() != workoutId) {
             throw new DataNotFoundException(exerciseId, "Exercise");
         }
@@ -202,7 +220,8 @@ public class WorkoutSessionService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(workoutExerciseId).orElseThrow(() -> new DataNotFoundException(workoutExerciseId, "WorkoutExercise"));
+        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(workoutExerciseId)
+                .orElseThrow(() -> new DataNotFoundException(workoutExerciseId, "WorkoutExercise"));
 
         if (!workoutExercise.getWorkoutSession().getUser().getEmail().equals(email)) {
             throw new DataNotFoundException(workoutExerciseId, "WorkoutExercise");
@@ -331,7 +350,8 @@ public class WorkoutSessionService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(workoutExerciseId).orElseThrow(() -> new DataNotFoundException(workoutExerciseId, "WorkoutExercise"));
+        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(workoutExerciseId)
+                .orElseThrow(() -> new DataNotFoundException(workoutExerciseId, "WorkoutExercise"));
 
         if (!workoutExercise.getWorkoutSession().getUser().getEmail().equals(email)) {
             throw new DataNotFoundException(workoutExerciseId, "WorkoutExercise");
@@ -419,7 +439,8 @@ public class WorkoutSessionService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(workoutExerciseId).orElseThrow(() -> new DataNotFoundException(workoutExerciseId, "WorkoutExercise"));
+        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(workoutExerciseId)
+                .orElseThrow(() -> new DataNotFoundException(workoutExerciseId, "WorkoutExercise"));
         if (!workoutExercise.getWorkoutSession().getUser().getEmail().equals(email)) {
             throw new DataNotFoundException(workoutExerciseId, "WorkoutExercise");
         }
@@ -435,7 +456,8 @@ public class WorkoutSessionService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(workoutExerciseId).orElseThrow(() -> new DataNotFoundException(workoutExerciseId, "WorkoutExercise"));
+        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(workoutExerciseId)
+                .orElseThrow(() -> new DataNotFoundException(workoutExerciseId, "WorkoutExercise"));
         if (!workoutExercise.getWorkoutSession().getUser().getEmail().equals(email)) {
             throw new DataNotFoundException(workoutExerciseId, "WorkoutExercise");
         }
@@ -471,8 +493,7 @@ public class WorkoutSessionService {
                 exercise.getName(),
                 exercise.getMeasurementType(),
                 exercise.isSystemDefined(),
-                exercise.getCreatedAt()
-        );
+                exercise.getCreatedAt());
     }
 
     private SetLogResponse toSetLogResponse(SetLog setLog) {
@@ -485,19 +506,26 @@ public class WorkoutSessionService {
                 setLog.getReps(),
                 setLog.getDurationSeconds(),
                 setLog.getDistance(),
-                setLog.getCalories()
-        );
+                setLog.getCalories());
     }
 
-    private WorkoutSessionResponse toWorkoutSessionResponse(WorkoutSession workoutSession, List<WorkoutExerciseResponse> workoutExerciseResponses) {
+    private WorkoutSessionResponse toWorkoutSessionResponse(WorkoutSession workoutSession,
+            List<WorkoutExerciseResponse> workoutExerciseResponses) {
         return new WorkoutSessionResponse(
                 workoutSession.getId(),
                 workoutSession.getUser().getId(),
                 workoutSession.getWorkoutLocation().getId(),
+                workoutSession.getWorkoutLocation().getName(),
                 workoutSession.getStartTime(),
                 workoutSession.getEndTime(),
                 workoutSession.getNotes(),
-                workoutExerciseResponses
-        );
+                workoutSession.getTitle(),
+                workoutExerciseResponses);
+    }
+
+    private String generateWorkoutTitle(Instant startTime) {
+        LocalDate date = LocalDate.from(startTime.atZone(java.time.ZoneId.systemDefault()));
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("E MMM dd yyyy");
+        return date.format(formatter) + " Workout";
     }
 }

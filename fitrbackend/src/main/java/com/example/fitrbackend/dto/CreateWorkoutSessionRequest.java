@@ -7,4 +7,5 @@ public class CreateWorkoutSessionRequest {
     private Long locationId;
     private String notes;
     private String endTime;
+    private String title;
 }

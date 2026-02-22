@@ -57,15 +57,22 @@ public class WorkoutSession {
     @Setter
     private String notes;
 
-    public WorkoutSession() {}
+    /**
+     * The title of the workout session.
+     */
+    @Setter
+    private String title;
+
+    public WorkoutSession() {
+    }
 
     /**
      * Creates a new workout session.
      *
-     * @param user the user that performed the workout session
-     * @param startTime the start time of the workout session
-     * @param endTime the end time of the workout session
-     * @param notes any notes made about the workout session
+     * @param user            the user that performed the workout session
+     * @param startTime       the start time of the workout session
+     * @param endTime         the end time of the workout session
+     * @param notes           any notes made about the workout session
      * @param workoutLocation the location of the workout session
      */
     public WorkoutSession(User user, Instant startTime, Instant endTime, String notes, Location workoutLocation) {
@@ -74,5 +81,6 @@ public class WorkoutSession {
         this.endTime = endTime;
         this.notes = notes;
         this.workoutLocation = workoutLocation;
+        this.title = "";
     }
 }
