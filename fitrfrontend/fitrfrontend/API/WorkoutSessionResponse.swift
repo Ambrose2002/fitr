@@ -28,6 +28,21 @@ struct WorkoutSessionResponse: Codable, Identifiable {
     case workoutExercises
   }
 
+  init(
+    id: Int64, userId: Int64, workoutLocationId: Int64? = nil, startTime: Date,
+    endTime: Date? = nil, notes: String? = nil, title: String? = nil,
+    workoutExercises: [WorkoutExerciseResponse] = []
+  ) {
+    self.id = id
+    self.userId = userId
+    self.workoutLocationId = workoutLocationId
+    self.startTime = startTime
+    self.endTime = endTime
+    self.notes = notes
+    self.title = title
+    self.workoutExercises = workoutExercises
+  }
+
   init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     id = try container.decode(Int64.self, forKey: .id)

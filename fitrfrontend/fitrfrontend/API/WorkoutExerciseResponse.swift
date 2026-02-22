@@ -20,6 +20,15 @@ struct WorkoutExerciseResponse: Codable, Identifiable {
     case setLogs
   }
 
+  init(
+    id: Int64, workoutSessionId: Int64, exercise: ExerciseResponse, setLogs: [SetLogResponse] = []
+  ) {
+    self.id = id
+    self.workoutSessionId = workoutSessionId
+    self.exercise = exercise
+    self.setLogs = setLogs
+  }
+
   init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     id = try container.decode(Int64.self, forKey: .id)

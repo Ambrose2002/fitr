@@ -22,6 +22,17 @@ struct ExerciseResponse: Codable, Identifiable {
     case createdAt
   }
 
+  init(
+    id: Int64, name: String, measurementType: MeasurementType = .reps, isSystemDefined: Bool? = nil,
+    createdAt: Date? = nil
+  ) {
+    self.id = id
+    self.name = name
+    self.measurementType = measurementType
+    self.isSystemDefined = isSystemDefined
+    self.createdAt = createdAt
+  }
+
   init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     id = try container.decode(Int64.self, forKey: .id)

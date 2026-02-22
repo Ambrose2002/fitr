@@ -30,6 +30,28 @@ struct SetLogResponse: Codable, Identifiable {
     case calories
   }
 
+  init(
+    id: Int64,
+    workoutExerciseId: Int64,
+    setNumber: Int,
+    completedAt: Date,
+    weight: Float,
+    reps: Int,
+    durationSeconds: Int64?,
+    distance: Float,
+    calories: Float
+  ) {
+    self.id = id
+    self.workoutExerciseId = workoutExerciseId
+    self.setNumber = setNumber
+    self.completedAt = completedAt
+    self.weight = weight
+    self.reps = reps
+    self.durationSeconds = durationSeconds
+    self.distance = distance
+    self.calories = calories
+  }
+
   init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     id = try container.decode(Int64.self, forKey: .id)
