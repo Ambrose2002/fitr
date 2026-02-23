@@ -598,5 +598,8 @@ struct LastSessionExerciseRow: View {
   }
 }
 
-//  HomeView(sessionStore: mockStore, initialData: MockData.fullData)
+//#Preview {
+//    let mockStore = SessionStore.mock()
+//    HomeView(sessionStore: mockStore, initialData: MockData.fullData)
+//        .environmentObject(mockStore)
 //}

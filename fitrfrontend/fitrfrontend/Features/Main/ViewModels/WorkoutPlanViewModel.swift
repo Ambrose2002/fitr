@@ -5,7 +5,7 @@
 //  Created by Ambrose Blay on 2/23/26.
 //
 
-import Combine
+internal import Combine
 import Foundation
 
 @MainActor
