@@ -1,5 +1,10 @@
 package com.example.fitrbackend.service;
 
+import java.util.List;
+import java.util.Objects;
+
+import org.springframework.stereotype.Service;
+
 import com.example.fitrbackend.dto.CreateWorkoutPlanDayRequest;
 import com.example.fitrbackend.dto.CreateWorkoutPlanRequest;
 import com.example.fitrbackend.dto.PlanDayResponse;
@@ -12,9 +17,6 @@ import com.example.fitrbackend.model.WorkoutPlan;
 import com.example.fitrbackend.repository.PlanDayRepository;
 import com.example.fitrbackend.repository.UserRepository;
 import com.example.fitrbackend.repository.WorkoutPlanRepository;
-import java.util.List;
-import java.util.Objects;
-import org.springframework.stereotype.Service;
 
 @Service
 public class WorkoutPlanService {
@@ -23,12 +25,12 @@ public class WorkoutPlanService {
     private final UserRepository userRepo;
     private final PlanDayRepository planDayRepo;
 
-    public WorkoutPlanService(WorkoutPlanRepository workoutPlanRepo, UserRepository userRepo, PlanDayRepository planDayRepo) {
+    public WorkoutPlanService(WorkoutPlanRepository workoutPlanRepo, UserRepository userRepo,
+            PlanDayRepository planDayRepo) {
         this.workoutPlanRepo = workoutPlanRepo;
         this.userRepo = userRepo;
         this.planDayRepo = planDayRepo;
     }
-
 
     public List<WorkoutPlanResponse> getWorkoutPlans(String email) {
         return workoutPlanRepo.findUserWorkoutPlans(email).stream().map(this::toWorkoutPlanResponse).toList();
@@ -45,7 +47,8 @@ public class WorkoutPlanService {
     }
 
     public WorkoutPlanResponse getWorkoutPlan(String email, long id) {
-        WorkoutPlan workoutPlan = workoutPlanRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "workout plan"));
+        WorkoutPlan workoutPlan = workoutPlanRepo.findById(id)
+                .orElseThrow(() -> new DataNotFoundException(id, "workout plan"));
         if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
             throw new DataNotFoundException(id, "workout plan");
         }
@@ -53,16 +56,21 @@ public class WorkoutPlanService {
     }
 
     public WorkoutPlanResponse updateWorkoutPlan(String email, long id, CreateWorkoutPlanRequest req) {
-        WorkoutPlan workoutPlan = workoutPlanRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "workout plan"));
+        WorkoutPlan workoutPlan = workoutPlanRepo.findById(id)
+                .orElseThrow(() -> new DataNotFoundException(id, "workout plan"));
         if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
             throw new DataNotFoundException(id, "workout plan");
         }
         workoutPlan.setName(req.getName());
+        if (req.getIsActive() != null) {
+            workoutPlan.setActive(req.getIsActive());
+        }
         return toWorkoutPlanResponse(workoutPlanRepo.save(workoutPlan));
     }
 
     public void deleteWorkoutPlan(String email, long id) {
-        WorkoutPlan workoutPlan = workoutPlanRepo.findById(id).orElseThrow(() -> new DataNotFoundException(id, "workout plan"));
+        WorkoutPlan workoutPlan = workoutPlanRepo.findById(id)
+                .orElseThrow(() -> new DataNotFoundException(id, "workout plan"));
         if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
             throw new DataNotFoundException(id, "workout plan");
         }
@@ -74,7 +82,8 @@ public class WorkoutPlanService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutPlan workoutPlan = workoutPlanRepo.findById(planId).orElseThrow(() -> new DataNotFoundException(planId, "workout plan"));
+        WorkoutPlan workoutPlan = workoutPlanRepo.findById(planId)
+                .orElseThrow(() -> new DataNotFoundException(planId, "workout plan"));
         if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
             throw new DataNotFoundException(planId, "workout plan");
         }
@@ -86,7 +95,8 @@ public class WorkoutPlanService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutPlan workoutPlan = workoutPlanRepo.findById(planId).orElseThrow(() -> new DataNotFoundException(planId, "workout plan"));
+        WorkoutPlan workoutPlan = workoutPlanRepo.findById(planId)
+                .orElseThrow(() -> new DataNotFoundException(planId, "workout plan"));
         if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
             throw new DataNotFoundException(planId, "workout plan");
         }
@@ -102,7 +112,8 @@ public class WorkoutPlanService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutPlan workoutPlan = workoutPlanRepo.findById(planId).orElseThrow(() -> new DataNotFoundException(planId, "workout plan"));
+        WorkoutPlan workoutPlan = workoutPlanRepo.findById(planId)
+                .orElseThrow(() -> new DataNotFoundException(planId, "workout plan"));
         if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
             throw new DataNotFoundException(planId, "workout plan");
         }
@@ -117,12 +128,14 @@ public class WorkoutPlanService {
         return toPlanDayResponse(planDayRepo.save(planDay));
     }
 
-    public PlanDayResponse updateDayInWorkoutPlan(String email, long planId, long dayId, CreateWorkoutPlanDayRequest req) {
+    public PlanDayResponse updateDayInWorkoutPlan(String email, long planId, long dayId,
+            CreateWorkoutPlanDayRequest req) {
         User user = userRepo.findByEmail(email);
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutPlan workoutPlan = workoutPlanRepo.findById(planId).orElseThrow(() -> new DataNotFoundException(planId, "workout plan"));
+        WorkoutPlan workoutPlan = workoutPlanRepo.findById(planId)
+                .orElseThrow(() -> new DataNotFoundException(planId, "workout plan"));
         if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
             throw new DataNotFoundException(planId, "workout plan");
         }
@@ -130,7 +143,7 @@ public class WorkoutPlanService {
         if (!Objects.equals(planDay.getWorkoutPlan().getId(), planId)) {
             throw new DataNotFoundException(dayId, "plan day");
         }
-        if (req.getDayNumber() >=1 && req.getDayNumber() <= 7) {
+        if (req.getDayNumber() >= 1 && req.getDayNumber() <= 7) {
             planDay.setDayNumber(req.getDayNumber());
         }
         if (req.getName() != null && !req.getName().isEmpty()) {
@@ -144,7 +157,8 @@ public class WorkoutPlanService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        WorkoutPlan workoutPlan = workoutPlanRepo.findById(planId).orElseThrow(() -> new DataNotFoundException(planId, "workout plan"));
+        WorkoutPlan workoutPlan = workoutPlanRepo.findById(planId)
+                .orElseThrow(() -> new DataNotFoundException(planId, "workout plan"));
         if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
             throw new DataNotFoundException(planId, "workout plan");
         }

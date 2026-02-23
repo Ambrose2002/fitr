@@ -769,9 +769,15 @@ Content-Type: application/json
 
 ```json
 {
-  "name": "Updated Upper Body Split"
+  "name": "Updated Upper Body Split",
+  "isActive": true
 }
 ```
+
+**Request Body Notes**:
+
+- `name` - Required. The updated plan name
+- `isActive` - Optional. Set to true to make this the active plan, false to deactivate it. If not provided, the current value is preserved.
 
 **Response** (200 OK):
 
