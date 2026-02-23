@@ -148,7 +148,9 @@ final class WorkoutPlanViewModel: ObservableObject {
   func updatePlan(id: Int64, name: String) async {
     errorMessage = nil
 
-    let request = CreateWorkoutPlanRequest(name: name)
+    // Get current isActive status from existing plan
+    let currentIsActive = plans.first(where: { $0.id == id })?.isActive ?? false
+    let request = UpdateWorkoutPlanRequest(name: name, isActive: currentIsActive)
 
     do {
       let updatedPlan = try await workoutPlanService.updatePlan(id: id, request: request)
@@ -232,9 +234,13 @@ final class WorkoutPlanViewModel: ObservableObject {
     let request = CreateWorkoutPlanDayRequest(dayNumber: dayNumber, name: name)
 
     do {
-      let updatedDay = try await workoutPlanService.updatePlanDay(dayId: dayId, request: request)
-      if let index = planDays.firstIndex(where: { $0.id == dayId }) {
-        self.planDays[index] = updatedDay
+      // Find the plan ID from the plan days list
+      if let planId = planDays.first(where: { $0.id == dayId })?.workoutPlanId {
+        let updatedDay = try await workoutPlanService.updatePlanDay(
+          planId: planId, dayId: dayId, request: request)
+        if let index = planDays.firstIndex(where: { $0.id == dayId }) {
+          self.planDays[index] = updatedDay
+        }
       }
     } catch {
       self.errorMessage = error.localizedDescription

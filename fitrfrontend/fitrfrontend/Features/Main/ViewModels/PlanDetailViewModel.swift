@@ -118,10 +118,7 @@ final class PlanDetailViewModel: ObservableObject {
     guard let plan = planDetail else { return }
 
     do {
-      // The service expects CreateWorkoutPlanRequest which only has name
-      // We need to use the backend endpoint that handles isActive
-      // For now, we'll use the updatePlan with name
-      let updateRequest = CreateWorkoutPlanRequest(name: plan.name)
+      let updateRequest = UpdateWorkoutPlanRequest(name: plan.name, isActive: newValue)
       let updatedPlan = try await workoutPlanService.updatePlan(id: plan.id, request: updateRequest)
       self.planDetail = updatedPlan
       self.isActiveToggle = updatedPlan.isActive
@@ -164,15 +161,18 @@ final class PlanDetailViewModel: ObservableObject {
     guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
 
     do {
-      let updateRequest = CreateWorkoutPlanDayRequest(
-        dayNumber: 0,  // Will be ignored in update
-        name: name
-      )
-      let updatedDay = try await workoutPlanService.updatePlanDay(dayId: id, request: updateRequest)
+      // Get the current day to retrieve its dayNumber
+      if let dayIndex = enrichedDays.firstIndex(where: { $0.id == id }) {
+        let dayNumber = enrichedDays[dayIndex].dayNumber
+        let updateRequest = CreateWorkoutPlanDayRequest(
+          dayNumber: dayNumber,
+          name: name
+        )
+        let updatedDay = try await workoutPlanService.updatePlanDay(
+          planId: planId, dayId: id, request: updateRequest)
 
-      if let index = enrichedDays.firstIndex(where: { $0.id == id }) {
-        let oldDay = enrichedDays[index]
-        enrichedDays[index] = EnrichedPlanDay(
+        let oldDay = enrichedDays[dayIndex]
+        enrichedDays[dayIndex] = EnrichedPlanDay(
           id: oldDay.id,
           dayNumber: oldDay.dayNumber,
           name: updatedDay.name,

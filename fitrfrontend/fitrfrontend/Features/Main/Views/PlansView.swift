@@ -57,7 +57,6 @@ struct PlansView: View {
               }
               .frame(maxWidth: .infinity, alignment: .leading)
               .padding(.horizontal, 16)
-              .padding(.top, 16)
 
               // Plans List
               if viewModel.plans.isEmpty {

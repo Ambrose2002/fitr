@@ -148,7 +148,7 @@ struct WorkoutPlanService {
   }
 
   /// Updates an existing workout plan
-  func updatePlan(id: Int64, request: CreateWorkoutPlanRequest) async throws -> WorkoutPlanResponse
+  func updatePlan(id: Int64, request: UpdateWorkoutPlanRequest) async throws -> WorkoutPlanResponse
   {
     guard let url = URL(string: Constants.baseUrl + APIEndpoints.plan(id: Int(id))) else {
       throw URLError(.badURL)
@@ -279,10 +279,10 @@ struct WorkoutPlanService {
   }
 
   /// Updates a plan day
-  func updatePlanDay(dayId: Int64, request: CreateWorkoutPlanDayRequest) async throws
+  func updatePlanDay(planId: Int64, dayId: Int64, request: CreateWorkoutPlanDayRequest) async throws
     -> PlanDayResponse
   {
-    guard let url = URL(string: Constants.baseUrl + "/api/plan-days/\(dayId)") else {
+    guard let url = URL(string: Constants.baseUrl + "/api/plans/\(planId)/days/\(dayId)") else {
       throw URLError(.badURL)
     }
 
