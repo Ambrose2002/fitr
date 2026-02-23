@@ -257,12 +257,9 @@ struct PlanDetailView: View {
       )
     }
     .task {
-      print("DEBUG: PlanDetailView .task block started with planId=\(planId)")
       viewModel.updatePlanId(planId)
       viewModel.updateSessionStore(sessionStore)
-      print("DEBUG: About to call loadPlanDetail()")
       await viewModel.loadPlanDetail()
-      print("DEBUG: loadPlanDetail() completed")
     }
   }
 }

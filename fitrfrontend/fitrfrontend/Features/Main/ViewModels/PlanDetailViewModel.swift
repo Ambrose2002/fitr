@@ -56,13 +56,11 @@ final class PlanDetailViewModel: ObservableObject {
 
   func updatePlanId(_ id: Int64) {
     self.planId = id
-    print("DEBUG: updatePlanId called with id=\(id)")
   }
 
   func updateSessionStore(_ store: SessionStore) {
     self.sessionStore = store
     self.workoutPlanService = WorkoutPlanService()
-    print("DEBUG: updateSessionStore called")
   }
 
   // MARK: - Data Loading
@@ -71,32 +69,24 @@ final class PlanDetailViewModel: ObservableObject {
     isLoading = true
     errorMessage = nil
 
-    print("DEBUG: loadPlanDetail() called with planId=\(planId)")
-
     defer {
       isLoading = false
     }
 
     do {
       // Fetch plan
-      print("DEBUG: Calling getPlan with id=\(planId)")
       let plan = try await workoutPlanService.getPlan(id: planId)
-      print("DEBUG: Plan fetched successfully: \(plan.name)")
       self.planDetail = plan
       self.isActiveToggle = plan.isActive
 
       // Fetch plan days
-      print("DEBUG: Calling getPlanDays with planId=\(planId)")
       let days = try await workoutPlanService.getPlanDays(planId: planId)
-      print("DEBUG: Received \(days.count) plan days")
 
       // Fetch exercises for each day
       var enrichedDaysList: [EnrichedPlanDay] = []
       for day in days {
         do {
-          print("DEBUG: Fetching exercises for day \(day.name) (id: \(day.id))")
           let exercises = try await workoutPlanService.getExercises(dayId: day.id)
-          print("DEBUG: Received \(exercises.count) exercises for day \(day.name)")
           let enrichedDay = EnrichedPlanDay(
             id: day.id,
             dayNumber: day.dayNumber,
@@ -105,7 +95,6 @@ final class PlanDetailViewModel: ObservableObject {
           )
           enrichedDaysList.append(enrichedDay)
         } catch {
-          print("DEBUG: Failed to fetch exercises for day \(day.name): \(error)")
           // Add day with empty exercises
           let enrichedDay = EnrichedPlanDay(
             id: day.id,
@@ -118,12 +107,7 @@ final class PlanDetailViewModel: ObservableObject {
       }
 
       enrichedDays = enrichedDaysList.sorted { $0.dayNumber < $1.dayNumber }
-      print("DEBUG: Successfully loaded \(enrichedDays.count) enriched plan days")
-      print("DEBUG: planDayCount property now returns: \(planDayCount)")
-      print("DEBUG: totalExercisesCount property now returns: \(totalExercisesCount)")
-      print("DEBUG: averageExercisesPerDay property now returns: \(averageExercisesPerDay)")
     } catch {
-      print("DEBUG: Failed to load plan detail: \(error)")
       errorMessage = "Failed to load plan details. Please try again."
     }
   }
@@ -142,7 +126,6 @@ final class PlanDetailViewModel: ObservableObject {
       self.planDetail = updatedPlan
       self.isActiveToggle = updatedPlan.isActive
     } catch {
-      print("DEBUG: Failed to toggle active status: \(error)")
       errorMessage = "Failed to update plan status."
       // Revert toggle
       isActiveToggle = plan.isActive
@@ -173,7 +156,6 @@ final class PlanDetailViewModel: ObservableObject {
       newDayName = ""
       showAddDaySheet = false
     } catch {
-      print("DEBUG: Failed to add plan day: \(error)")
       errorMessage = "Failed to add workout day."
     }
   }
@@ -198,7 +180,6 @@ final class PlanDetailViewModel: ObservableObject {
         )
       }
     } catch {
-      print("DEBUG: Failed to update plan day: \(error)")
       errorMessage = "Failed to update workout day."
     }
   }
@@ -208,7 +189,6 @@ final class PlanDetailViewModel: ObservableObject {
       try await workoutPlanService.deletePlanDay(dayId: id)
       enrichedDays.removeAll { $0.id == id }
     } catch {
-      print("DEBUG: Failed to delete plan day: \(error)")
       errorMessage = "Failed to delete workout day."
     }
   }
@@ -217,7 +197,6 @@ final class PlanDetailViewModel: ObservableObject {
     do {
       try await workoutPlanService.deletePlan(id: planId)
     } catch {
-      print("DEBUG: Failed to delete plan: \(error)")
       errorMessage = "Failed to delete plan."
     }
   }
