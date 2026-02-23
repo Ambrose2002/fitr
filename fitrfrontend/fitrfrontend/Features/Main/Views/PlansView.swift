@@ -12,7 +12,7 @@ struct PlansView: View {
   @StateObject private var viewModel: WorkoutPlanViewModel
 
   @State private var showCreatePlan = false
-  @State private var planToDelete: WorkoutPlanResponse?
+  @State private var planToDelete: PlanSummary?
   @State private var showDeleteConfirmation = false
   @State private var newPlanName = ""
 
@@ -121,13 +121,13 @@ struct PlansView: View {
     .safeAreaInset(edge: .top) {
       VStack(spacing: 0) {
         HStack(spacing: 12) {
-          Image(systemName: "bolt.fill")
+          Image(systemName: "bolt")
             .font(.system(size: 20, weight: .bold))
             .foregroundColor(.white)
             .frame(width: 40, height: 40)
             .background(Color.black)
             .cornerRadius(10)
-
+          Spacer()
           Text("WORKOUT PLANS")
             .font(.system(size: 18, weight: .bold))
             .foregroundColor(AppColors.textPrimary)
@@ -182,31 +182,33 @@ struct PlansView: View {
 // MARK: - Plan Card Component
 
 struct PlanCard: View {
-  let plan: WorkoutPlanResponse
+  let plan: PlanSummary
   let onDelete: () -> Void
   let onSelect: () -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      // Header
+      // Header with name and active status
       HStack {
-        VStack(alignment: .leading, spacing: 2) {
-          Text(plan.name)
-            .font(.system(size: 18, weight: .bold))
-            .foregroundColor(AppColors.textPrimary)
-
+        VStack(alignment: .leading, spacing: 4) {
           HStack(spacing: 8) {
+            Text(plan.name)
+              .font(.system(size: 18, weight: .bold))
+              .foregroundColor(AppColors.textPrimary)
             if plan.isActive {
               Label("ACTIVE", systemImage: "")
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: 9, weight: .semibold))
                 .foregroundColor(AppColors.accent)
-              Text("•")
-                .foregroundColor(.gray)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(AppColors.accent.opacity(0.15))
+                .cornerRadius(4)
             }
-            Text(plan.createdAt.formatted(date: .abbreviated, time: .omitted))
-              .font(.system(size: 12))
-              .foregroundColor(.secondary)
           }
+
+          Text(plan.createdDescription)
+            .font(.system(size: 11))
+            .foregroundColor(.secondary)
         }
 
         Spacer()
@@ -235,22 +237,34 @@ struct PlanCard: View {
       Divider()
         .padding(.vertical, 4)
 
-      // Status Row
-      HStack(spacing: 24) {
+      // Stats Grid - Frequency, Exercises, Avg per Day
+      HStack(spacing: 12) {
+        // Frequency
         VStack(alignment: .leading, spacing: 4) {
-          Label("CREATED", systemImage: "calendar")
+          Label("FREQ", systemImage: "calendar")
             .font(.system(size: 10, weight: .semibold))
             .foregroundColor(.secondary)
-          Text(plan.createdAt.formatted(date: .abbreviated, time: .omitted))
+          Text(plan.frequencyDescription)
             .font(.system(size: 14, weight: .semibold))
             .foregroundColor(AppColors.textPrimary)
         }
 
+        // Total Exercises
         VStack(alignment: .leading, spacing: 4) {
-          Label("STATUS", systemImage: "bolt.fill")
+          Label("TOTAL", systemImage: "dumbbell.fill")
             .font(.system(size: 10, weight: .semibold))
             .foregroundColor(.secondary)
-          Text(plan.isActive ? "Active" : "Inactive")
+          Text(plan.exerciseCountDescription)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundColor(AppColors.textPrimary)
+        }
+
+        // Average per day
+        VStack(alignment: .leading, spacing: 4) {
+          Label("AVG", systemImage: "chart.bar.fill")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundColor(.secondary)
+          Text(String(format: "%.1f/day", plan.averageExercisesPerDay))
             .font(.system(size: 14, weight: .semibold))
             .foregroundColor(AppColors.textPrimary)
         }
@@ -339,6 +353,8 @@ struct CreatePlanSheet: View {
   }
 }
 
-#Preview {
-  PlansView(sessionStore: SessionStore())
-}
+//#Preview {
+//    let mockStore = SessionStore.mock()
+//    PlansView(sessionStore: mockStore)
+//        .environmentObject(mockStore)
+//}
