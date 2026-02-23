@@ -8,9 +8,51 @@
 internal import Combine
 import Foundation
 
+// MARK: - Plan Summary Model
+
+struct PlanSummary: Identifiable {
+  let id: Int64
+  let name: String
+  let createdAt: Date
+  let isActive: Bool
+  let daysCount: Int
+  let exercisesCount: Int
+  let averageExercisesPerDay: Double
+
+  var frequencyDescription: String {
+    "\(daysCount) \(daysCount == 1 ? "day" : "days")/week"
+  }
+
+  var exerciseCountDescription: String {
+    "\(exercisesCount) \(exercisesCount == 1 ? "exercise" : "exercises")"
+  }
+
+  var createdDescription: String {
+    let calendar = Calendar.current
+    let today = Date()
+    let components = calendar.dateComponents([.day], from: createdAt, to: today)
+
+    if let days = components.day {
+      if days == 0 {
+        return "Created today"
+      } else if days == 1 {
+        return "Created yesterday"
+      } else if days < 7 {
+        return "Created \(days) days ago"
+      } else if days < 30 {
+        let weeks = days / 7
+        return "Created \(weeks) \(weeks == 1 ? "week" : "weeks") ago"
+      } else {
+        return "Created \(createdAt.formatted(date: .abbreviated, time: .omitted))"
+      }
+    }
+    return "Created \(createdAt.formatted(date: .abbreviated, time: .omitted))"
+  }
+}
+
 @MainActor
 final class WorkoutPlanViewModel: ObservableObject {
-  @Published var plans: [WorkoutPlanResponse] = []
+  @Published var plans: [PlanSummary] = []
   @Published var selectedPlan: WorkoutPlanResponse?
   @Published var planDays: [PlanDayResponse] = []
   @Published var isLoading = false
@@ -35,7 +77,46 @@ final class WorkoutPlanViewModel: ObservableObject {
     }
 
     do {
-      self.plans = try await workoutPlanService.getAllPlans()
+      let basePlans = try await workoutPlanService.getAllPlans()
+      var enrichedPlans: [PlanSummary] = []
+
+      for plan in basePlans {
+        do {
+          let days = try await workoutPlanService.getPlanDays(planId: plan.id)
+          var totalExercises = 0
+
+          for day in days {
+            let exercises = try await workoutPlanService.getExercises(dayId: day.id)
+            totalExercises += exercises.count
+          }
+
+          let avgExercises = days.isEmpty ? 0.0 : Double(totalExercises) / Double(days.count)
+
+          let summary = PlanSummary(
+            id: plan.id,
+            name: plan.name,
+            createdAt: plan.createdAt,
+            isActive: plan.isActive,
+            daysCount: days.count,
+            exercisesCount: totalExercises,
+            averageExercisesPerDay: avgExercises
+          )
+          enrichedPlans.append(summary)
+        } catch {
+          let summary = PlanSummary(
+            id: plan.id,
+            name: plan.name,
+            createdAt: plan.createdAt,
+            isActive: plan.isActive,
+            daysCount: 0,
+            exercisesCount: 0,
+            averageExercisesPerDay: 0
+          )
+          enrichedPlans.append(summary)
+        }
+      }
+
+      self.plans = enrichedPlans
     } catch {
       self.errorMessage = error.localizedDescription
     }
@@ -48,7 +129,16 @@ final class WorkoutPlanViewModel: ObservableObject {
 
     do {
       let newPlan = try await workoutPlanService.createPlan(request: request)
-      self.plans.append(newPlan)
+      let summary = PlanSummary(
+        id: newPlan.id,
+        name: newPlan.name,
+        createdAt: newPlan.createdAt,
+        isActive: newPlan.isActive,
+        daysCount: 0,
+        exercisesCount: 0,
+        averageExercisesPerDay: 0
+      )
+      self.plans.insert(summary, at: 0)
       self.selectedPlan = newPlan
     } catch {
       self.errorMessage = error.localizedDescription
@@ -63,7 +153,16 @@ final class WorkoutPlanViewModel: ObservableObject {
     do {
       let updatedPlan = try await workoutPlanService.updatePlan(id: id, request: request)
       if let index = plans.firstIndex(where: { $0.id == id }) {
-        self.plans[index] = updatedPlan
+        let summary = PlanSummary(
+          id: updatedPlan.id,
+          name: updatedPlan.name,
+          createdAt: updatedPlan.createdAt,
+          isActive: updatedPlan.isActive,
+          daysCount: plans[index].daysCount,
+          exercisesCount: plans[index].exercisesCount,
+          averageExercisesPerDay: plans[index].averageExercisesPerDay
+        )
+        self.plans[index] = summary
       }
       if selectedPlan?.id == id {
         self.selectedPlan = updatedPlan
@@ -88,7 +187,13 @@ final class WorkoutPlanViewModel: ObservableObject {
   }
 
   func selectPlan(id: Int64) {
-    self.selectedPlan = plans.first(where: { $0.id == id })
+    Task {
+      do {
+        self.selectedPlan = try await workoutPlanService.getPlan(id: id)
+      } catch {
+        self.errorMessage = error.localizedDescription
+      }
+    }
   }
 
   // MARK: - Plan Days
