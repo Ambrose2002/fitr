@@ -203,19 +203,23 @@ struct PlanDetailView: View {
     .navigationBarHidden(true)
     .safeAreaInset(edge: .top) {
       VStack(spacing: 0) {
-        HStack {
+        HStack(spacing: 12) {
           Button {
             dismiss()
           } label: {
-            Image(systemName: "chevron.left")
-              .font(.system(size: 16, weight: .semibold))
-              .foregroundColor(AppColors.textPrimary)
+            HStack(spacing: 6) {
+              Image(systemName: "chevron.left")
+                .font(.system(size: 16, weight: .semibold))
+              Text("Back")
+                .font(.system(size: 16, weight: .semibold))
+            }
+            .foregroundColor(AppColors.accent)
           }
 
           Spacer()
 
-          Text("PLAN DETAIL")
-            .font(.system(size: 16, weight: .bold))
+          Text("Plan Details")
+            .font(.system(size: 18, weight: .bold))
             .foregroundColor(AppColors.textPrimary)
 
           Spacer()
@@ -252,12 +256,13 @@ struct PlanDetailView: View {
         }
       )
     }
-    .onAppear {
+    .task {
+      print("DEBUG: PlanDetailView .task block started with planId=\(planId)")
       viewModel.updatePlanId(planId)
       viewModel.updateSessionStore(sessionStore)
-    }
-    .task {
+      print("DEBUG: About to call loadPlanDetail()")
       await viewModel.loadPlanDetail()
+      print("DEBUG: loadPlanDetail() completed")
     }
   }
 }

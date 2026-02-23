@@ -56,11 +56,13 @@ final class PlanDetailViewModel: ObservableObject {
 
   func updatePlanId(_ id: Int64) {
     self.planId = id
+    print("DEBUG: updatePlanId called with id=\(id)")
   }
 
   func updateSessionStore(_ store: SessionStore) {
     self.sessionStore = store
     self.workoutPlanService = WorkoutPlanService()
+    print("DEBUG: updateSessionStore called")
   }
 
   // MARK: - Data Loading
@@ -69,24 +71,32 @@ final class PlanDetailViewModel: ObservableObject {
     isLoading = true
     errorMessage = nil
 
+    print("DEBUG: loadPlanDetail() called with planId=\(planId)")
+
     defer {
       isLoading = false
     }
 
     do {
       // Fetch plan
+      print("DEBUG: Calling getPlan with id=\(planId)")
       let plan = try await workoutPlanService.getPlan(id: planId)
+      print("DEBUG: Plan fetched successfully: \(plan.name)")
       self.planDetail = plan
       self.isActiveToggle = plan.isActive
 
       // Fetch plan days
+      print("DEBUG: Calling getPlanDays with planId=\(planId)")
       let days = try await workoutPlanService.getPlanDays(planId: planId)
+      print("DEBUG: Received \(days.count) plan days")
 
       // Fetch exercises for each day
       var enrichedDaysList: [EnrichedPlanDay] = []
       for day in days {
         do {
+          print("DEBUG: Fetching exercises for day \(day.name) (id: \(day.id))")
           let exercises = try await workoutPlanService.getExercises(dayId: day.id)
+          print("DEBUG: Received \(exercises.count) exercises for day \(day.name)")
           let enrichedDay = EnrichedPlanDay(
             id: day.id,
             dayNumber: day.dayNumber,
@@ -108,6 +118,10 @@ final class PlanDetailViewModel: ObservableObject {
       }
 
       enrichedDays = enrichedDaysList.sorted { $0.dayNumber < $1.dayNumber }
+      print("DEBUG: Successfully loaded \(enrichedDays.count) enriched plan days")
+      print("DEBUG: planDayCount property now returns: \(planDayCount)")
+      print("DEBUG: totalExercisesCount property now returns: \(totalExercisesCount)")
+      print("DEBUG: averageExercisesPerDay property now returns: \(averageExercisesPerDay)")
     } catch {
       print("DEBUG: Failed to load plan detail: \(error)")
       errorMessage = "Failed to load plan details. Please try again."
@@ -223,4 +237,3 @@ final class PlanDetailViewModel: ObservableObject {
     return Double(totalExercisesCount) / Double(enrichedDays.count)
   }
 }
-

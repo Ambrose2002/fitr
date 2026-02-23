@@ -57,6 +57,7 @@ struct PlansView: View {
               }
               .frame(maxWidth: .infinity, alignment: .leading)
               .padding(.horizontal, 16)
+              .padding(.top, 16)
 
               // Plans List
               if viewModel.plans.isEmpty {
@@ -119,33 +120,33 @@ struct PlansView: View {
         }
         .ignoresSafeArea()
       }
-    }
-    .navigationBarHidden(true)
-    .safeAreaInset(edge: .top) {
-      VStack(spacing: 0) {
-        HStack(spacing: 12) {
-          Image(systemName: "bolt")
-            .font(.system(size: 20, weight: .bold))
-            .foregroundColor(.white)
-            .frame(width: 40, height: 40)
-            .background(Color.black)
-            .cornerRadius(10)
-          Spacer()
-          Text("WORKOUT PLANS")
-            .font(.system(size: 18, weight: .bold))
-            .foregroundColor(AppColors.textPrimary)
+      .navigationBarHidden(true)
+      .safeAreaInset(edge: .top) {
+        VStack(spacing: 0) {
+          HStack(spacing: 12) {
+            Image(systemName: "bolt")
+              .font(.system(size: 20, weight: .bold))
+              .foregroundColor(.white)
+              .frame(width: 40, height: 40)
+              .background(Color.black)
+              .cornerRadius(10)
+            Spacer()
+            Text("WORKOUT PLANS")
+              .font(.system(size: 18, weight: .bold))
+              .foregroundColor(AppColors.textPrimary)
 
-          Spacer()
+            Spacer()
 
-          Image(systemName: "bolt.fill")
-            .font(.system(size: 18, weight: .semibold))
-            .foregroundColor(AppColors.accent)
+            Image(systemName: "bolt.fill")
+              .font(.system(size: 18, weight: .semibold))
+              .foregroundColor(AppColors.accent)
+          }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 12)
+          .background(Color(.systemBackground))
+
+          Divider()
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color(.systemBackground))
-
-        Divider()
       }
     }
     .sheet(isPresented: $showCreatePlan) {
