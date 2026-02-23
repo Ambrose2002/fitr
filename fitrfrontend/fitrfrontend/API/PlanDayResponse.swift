@@ -16,7 +16,7 @@ struct PlanDayResponse: Codable, Identifiable {
   enum CodingKeys: String, CodingKey {
     case id
     case workoutPlanId = "workout_plan_id"
-    case dayNumber = "day_number"
+    case dayNumber
     case name
   }
 }

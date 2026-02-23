@@ -196,7 +196,7 @@ struct PlanCard: View {
               .font(.system(size: 18, weight: .bold))
               .foregroundColor(AppColors.textPrimary)
             if plan.isActive {
-              Label("ACTIVE", systemImage: "")
+              Label("ACTIVE", systemImage: "checkmark.circle.fill")
                 .font(.system(size: 9, weight: .semibold))
                 .foregroundColor(AppColors.accent)
                 .padding(.horizontal, 6)

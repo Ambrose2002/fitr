@@ -103,6 +103,7 @@ final class WorkoutPlanViewModel: ObservableObject {
           )
           enrichedPlans.append(summary)
         } catch {
+          print("DEBUG: Failed to fetch details for plan '\(plan.name)' (ID: \(plan.id)): \(error)")
           let summary = PlanSummary(
             id: plan.id,
             name: plan.name,

@@ -21,10 +21,10 @@ struct PlanExerciseResponse: Codable, Identifiable {
     case id
     case planDayId = "plan_day_id"
     case exerciseId = "exercise_id"
-    case targetSets = "target_sets"
-    case targetReps = "target_reps"
-    case targetDurationSeconds = "target_duration_seconds"
-    case targetDistance = "target_distance"
-    case targetCalories = "target_calories"
+    case targetSets
+    case targetReps
+    case targetDurationSeconds
+    case targetDistance
+    case targetCalories
   }
 }
