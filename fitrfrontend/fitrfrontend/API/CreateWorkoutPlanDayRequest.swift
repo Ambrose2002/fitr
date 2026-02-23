@@ -8,6 +8,11 @@
 import Foundation
 
 struct CreateWorkoutPlanDayRequest: Codable {
-    let dayNumber: Int
-    let name: String
+  let dayNumber: Int
+  let name: String
+
+  enum CodingKeys: String, CodingKey {
+    case dayNumber = "day_number"
+    case name
+  }
 }

@@ -25,21 +25,21 @@ struct WorkoutPlanService {
     decoder.dateDecodingStrategy = .custom { decoder -> Date in
       let container = try decoder.singleValueContainer()
       let dateString = try container.decode(String.self)
-      
+
       // Try ISO8601 with fractional seconds first
       let formatter1 = ISO8601DateFormatter()
       formatter1.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
       if let date = formatter1.date(from: dateString) {
         return date
       }
-      
+
       // Fallback to standard ISO8601
       let formatter2 = ISO8601DateFormatter()
       formatter2.formatOptions = [.withInternetDateTime]
       if let date = formatter2.date(from: dateString) {
         return date
       }
-      
+
       throw DecodingError.dataCorruptedError(
         in: container,
         debugDescription: "Cannot decode date string \(dateString)"
@@ -47,7 +47,7 @@ struct WorkoutPlanService {
     }
     return decoder
   }
-  
+
   // MARK: - Workout Plans CRUD
 
   /// Fetches all workout plans for the current user
@@ -148,7 +148,8 @@ struct WorkoutPlanService {
   }
 
   /// Updates an existing workout plan
-  func updatePlan(id: Int64, request: CreateWorkoutPlanRequest) async throws -> WorkoutPlanResponse {
+  func updatePlan(id: Int64, request: CreateWorkoutPlanRequest) async throws -> WorkoutPlanResponse
+  {
     guard let url = URL(string: Constants.baseUrl + APIEndpoints.plan(id: Int(id))) else {
       throw URLError(.badURL)
     }
@@ -205,12 +206,13 @@ struct WorkoutPlanService {
       throw URLError(.unknown)
     }
   }
-  
+
   // MARK: - Plan Days Management
 
   /// Fetches all days in a workout plan
   func getPlanDays(planId: Int64) async throws -> [PlanDayResponse] {
-    guard let url = URL(string: Constants.baseUrl + APIEndpoints.planDays(planId: Int(planId))) else {
+    guard let url = URL(string: Constants.baseUrl + APIEndpoints.planDays(planId: Int(planId)))
+    else {
       throw URLError(.badURL)
     }
 
@@ -241,8 +243,11 @@ struct WorkoutPlanService {
   }
 
   /// Adds a new day to a workout plan
-  func addPlanDay(planId: Int64, request: CreateWorkoutPlanDayRequest) async throws -> PlanDayResponse {
-    guard let url = URL(string: Constants.baseUrl + APIEndpoints.planDays(planId: Int(planId))) else {
+  func addPlanDay(planId: Int64, request: CreateWorkoutPlanDayRequest) async throws
+    -> PlanDayResponse
+  {
+    guard let url = URL(string: Constants.baseUrl + APIEndpoints.planDays(planId: Int(planId)))
+    else {
       throw URLError(.badURL)
     }
 
@@ -274,7 +279,9 @@ struct WorkoutPlanService {
   }
 
   /// Updates a plan day
-  func updatePlanDay(dayId: Int64, request: CreateWorkoutPlanDayRequest) async throws -> PlanDayResponse {
+  func updatePlanDay(dayId: Int64, request: CreateWorkoutPlanDayRequest) async throws
+    -> PlanDayResponse
+  {
     guard let url = URL(string: Constants.baseUrl + "/api/plan-days/\(dayId)") else {
       throw URLError(.badURL)
     }
@@ -331,7 +338,7 @@ struct WorkoutPlanService {
       throw URLError(.unknown)
     }
   }
-  
+
   // MARK: - Plan Day Exercises Management
 
   /// Fetches all exercises for a plan day
@@ -408,7 +415,9 @@ struct WorkoutPlanService {
     exerciseId: Int64,
     request: CreatePlanDayExerciseRequest
   ) async throws -> PlanExerciseResponse {
-    guard let url = URL(string: Constants.baseUrl + "/api/plan-days/\(dayId)/exercises/\(exerciseId)") else {
+    guard
+      let url = URL(string: Constants.baseUrl + "/api/plan-days/\(dayId)/exercises/\(exerciseId)")
+    else {
       throw URLError(.badURL)
     }
 
@@ -441,7 +450,9 @@ struct WorkoutPlanService {
 
   /// Deletes an exercise from a plan day
   func deleteDayExercise(dayId: Int64, exerciseId: Int64) async throws {
-    guard let url = URL(string: Constants.baseUrl + "/api/plan-days/\(dayId)/exercises/\(exerciseId)") else {
+    guard
+      let url = URL(string: Constants.baseUrl + "/api/plan-days/\(dayId)/exercises/\(exerciseId)")
+    else {
       throw URLError(.badURL)
     }
 
