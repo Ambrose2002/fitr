@@ -21,101 +21,104 @@ struct PlansView: View {
   }
 
   var body: some View {
-    ZStack {
-      if viewModel.isLoading {
-        ProgressView()
-      } else if let errorMessage = viewModel.errorMessage {
-        VStack(spacing: 16) {
-          Image(systemName: "exclamationmark.circle")
-            .font(.system(size: 48))
-            .foregroundColor(.red)
-          Text("Error loading plans")
-            .font(.headline)
-          Text(errorMessage)
-            .font(.caption)
-            .foregroundColor(.secondary)
-          Button("Retry") {
-            Task {
-              await viewModel.loadPlans()
+    NavigationStack {
+      ZStack {
+        if viewModel.isLoading {
+          ProgressView()
+        } else if let errorMessage = viewModel.errorMessage {
+          VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.circle")
+              .font(.system(size: 48))
+              .foregroundColor(.red)
+            Text("Error loading plans")
+              .font(.headline)
+            Text(errorMessage)
+              .font(.caption)
+              .foregroundColor(.secondary)
+            Button("Retry") {
+              Task {
+                await viewModel.loadPlans()
+              }
             }
+            .buttonStyle(.bordered)
           }
-          .buttonStyle(.bordered)
-        }
-        .padding(24)
-      } else {
-        ScrollView {
-          VStack(spacing: 24) {
-            // Header
-            VStack(alignment: .leading, spacing: 4) {
-              Text("Your Programs")
-                .font(.system(size: 28, weight: .bold))
-                .foregroundColor(.black)
-              Text("Manage your training blocks and active schedules.")
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 16)
-
-            // Plans List
-            if viewModel.plans.isEmpty {
-              VStack(spacing: 16) {
-                Image(systemName: "doc.text")
-                  .font(.system(size: 48))
-                  .foregroundColor(.gray)
-                Text("No workout plans yet")
-                  .font(.headline)
-                Text("Create your first plan to get started")
-                  .font(.caption)
+          .padding(24)
+        } else {
+          ScrollView {
+            VStack(spacing: 24) {
+              // Header
+              VStack(alignment: .leading, spacing: 4) {
+                Text("Your Programs")
+                  .font(.system(size: 28, weight: .bold))
+                  .foregroundColor(.black)
+                Text("Manage your training blocks and active schedules.")
+                  .font(.system(size: 14))
                   .foregroundColor(.secondary)
               }
-              .frame(maxWidth: .infinity)
-              .padding(40)
-            } else {
-              VStack(spacing: 12) {
-                ForEach(viewModel.plans) { plan in
-                  PlanCard(
-                    plan: plan,
-                    onDelete: {
-                      planToDelete = plan
-                      showDeleteConfirmation = true
-                    },
-                    onSelect: {
-                      viewModel.selectPlan(id: plan.id)
-                    }
-                  )
-                }
-              }
+              .frame(maxWidth: .infinity, alignment: .leading)
               .padding(.horizontal, 16)
+
+              // Plans List
+              if viewModel.plans.isEmpty {
+                VStack(spacing: 16) {
+                  Image(systemName: "doc.text")
+                    .font(.system(size: 48))
+                    .foregroundColor(.gray)
+                  Text("No workout plans yet")
+                    .font(.headline)
+                  Text("Create your first plan to get started")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(40)
+              } else {
+                VStack(spacing: 12) {
+                  ForEach(viewModel.plans) { plan in
+                    NavigationLink(
+                      destination: PlanDetailView(planId: plan.id)
+                    ) {
+                      PlanCard(
+                        plan: plan,
+                        onDelete: {
+                          planToDelete = plan
+                          showDeleteConfirmation = true
+                        }
+                      )
+                    }
+                  }
+                }
+                .padding(.horizontal, 16)
+              }
+
+              Spacer().frame(height: 20)
             }
-
-            Spacer().frame(height: 20)
+            .padding(.vertical, 16)
           }
-          .padding(.vertical, 16)
         }
-      }
 
-      // Floating Action Button
-      VStack {
-        Spacer()
-        HStack {
+        // Floating Action Button
+        VStack {
           Spacer()
-          Button {
-            showCreatePlan = true
-          } label: {
-            Image(systemName: "plus")
-              .font(.system(size: 20, weight: .semibold))
-              .foregroundColor(.white)
-              .frame(width: 56, height: 56)
-              .background(AppColors.accent)
-              .cornerRadius(28)
-              .shadow(color: AppColors.accent.opacity(0.3), radius: 8, x: 0, y: 4)
+          HStack {
+            Spacer()
+            Button {
+              showCreatePlan = true
+            } label: {
+              Image(systemName: "plus")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: 56, height: 56)
+                .background(AppColors.accent)
+                .cornerRadius(28)
+                .shadow(color: AppColors.accent.opacity(0.3), radius: 8, x: 0, y: 4)
+            }
+            .padding(.trailing, 24)
+            .padding(.bottom, 24)
           }
-          .padding(.trailing, 24)
-          .padding(.bottom, 24)
         }
+        .ignoresSafeArea()
       }
-      .ignoresSafeArea()
     }
     .navigationBarHidden(true)
     .safeAreaInset(edge: .top) {
@@ -184,7 +187,6 @@ struct PlansView: View {
 struct PlanCard: View {
   let plan: PlanSummary
   let onDelete: () -> Void
-  let onSelect: () -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -214,14 +216,6 @@ struct PlanCard: View {
         Spacer()
 
         Menu {
-          Button {
-            onSelect()
-          } label: {
-            Label("View Details", systemImage: "arrow.right")
-          }
-
-          Divider()
-
           Button(role: .destructive) {
             onDelete()
           } label: {
