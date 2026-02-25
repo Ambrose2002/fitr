@@ -204,6 +204,7 @@ final class PlanDetailViewModel: ObservableObject {
       newDayName = ""
       showAddDaySheet = false
     } catch {
+        print("Error occured:", error)
       errorMessage = "Failed to add workout day."
     }
   }

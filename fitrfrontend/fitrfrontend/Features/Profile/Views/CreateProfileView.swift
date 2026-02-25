@@ -210,9 +210,9 @@ struct CreateProfileView: View {
                 TextField("75", value: $viewModel.weight, format: .number)
                   .font(.system(size: 16, weight: .semibold))
                   .foregroundColor(AppColors.textPrimary)
-                  .keyboardType(.numberPad)
+                  .keyboardType(.decimalPad)
 
-                Text("KG")
+                Text(viewModel.selectedWeightUnit.abbreviation)
                   .font(.system(size: 12, weight: .semibold))
                   .foregroundColor(.gray)
                   .padding(.trailing, 10)

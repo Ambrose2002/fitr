@@ -158,4 +158,10 @@ struct UnitConverter {
       return 0
     }
   }
+
+  static func round(_ value: Float, decimalPlaces: Int) -> Float {
+    let multiplier = pow(10.0, Double(decimalPlaces))
+    let rounded = (Double(value) * multiplier).rounded() / multiplier
+    return Float(rounded)
+  }
 }

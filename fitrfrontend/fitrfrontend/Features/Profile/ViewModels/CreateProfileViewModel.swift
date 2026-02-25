@@ -17,8 +17,8 @@ class CreateProfileViewModel: ObservableObject {
   @Published var selectedDistanceUnit: DistanceUnit = .km
   @Published var errorMessage: String?
 
-  @Published var height = 180
-  @Published var weight = 75
+  @Published var height: Float = 180
+  @Published var weight: Float = 75
 
   let sessionStore: SessionStore
   let profileService: ProfileService = ProfileService()
@@ -73,10 +73,16 @@ class CreateProfileViewModel: ObservableObject {
     do {
       defer { self.isLoading = false }
 
+      let heightInCm = UnitConverter.round(height, decimalPlaces: 1)
+      let weightInKg = UnitConverter.round(
+        UnitConverter.convertWeight(weight, from: preferredWeightUnit, to: .kg),
+        decimalPlaces: 1
+      )
+
       let profileRequest = CreateUserProfileRequest(
         gender: gender,
-        height: Float(height),
-        weight: Float(weight),
+        height: heightInCm,
+        weight: weightInKg,
         experienceLevel: experienceLevel,
         goal: goal,
         preferredWeightUnit: preferredWeightUnit,

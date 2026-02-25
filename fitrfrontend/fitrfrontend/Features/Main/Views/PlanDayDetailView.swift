@@ -9,6 +9,7 @@ import SwiftUI
 
 struct PlanDayDetailView: View {
   @Environment(\.dismiss) private var dismiss
+  @EnvironmentObject private var sessionStore: SessionStore
 
   @StateObject private var viewModel: PlanDayDetailViewModel
   let planName: String
@@ -278,11 +279,98 @@ struct PlanDayDetailView: View {
 }
 
 struct PlanDayExerciseCard: View {
+  @EnvironmentObject private var sessionStore: SessionStore
+
   let exercise: EnrichedPlanExercise
   let onRemove: () -> Void
 
   private var setCount: Int {
     max(exercise.targetSets, 1)
+  }
+
+  private var preferredWeightUnit: Unit {
+    sessionStore.userProfile?.preferredWeightUnit ?? .kg
+  }
+
+  private var preferredDistanceUnit: Unit {
+    sessionStore.userProfile?.preferredDistanceUnit ?? .km
+  }
+
+  private var columns: [ExerciseColumn] {
+    switch exercise.measurementType {
+    case .reps:
+      return [
+        ExerciseColumn(header: "REPS") { "\($0.targetReps > 0 ? "\($0.targetReps)" : "--")" }
+      ]
+
+    case .time:
+      return [
+        ExerciseColumn(header: "TIME (sec)") {
+          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        }
+      ]
+
+    case .repsAndTime:
+      return [
+        ExerciseColumn(header: "REPS") { "\($0.targetReps > 0 ? "\($0.targetReps)" : "--")" },
+        ExerciseColumn(header: "TIME (sec)") {
+          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        },
+      ]
+
+    case .timeAndWeight:
+      return [
+        ExerciseColumn(header: "TIME (sec)") {
+          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        },
+        ExerciseColumn(header: "WEIGHT (\(preferredWeightUnit.abbreviation))") {
+          $0.targetWeight > 0 ? formattedWeight($0.targetWeight) : "--"
+        },
+      ]
+
+    case .repsAndWeight:
+      return [
+        ExerciseColumn(header: "REPS") { "\($0.targetReps > 0 ? "\($0.targetReps)" : "--")" },
+        ExerciseColumn(header: "WEIGHT (\(preferredWeightUnit.abbreviation))") {
+          $0.targetWeight > 0 ? formattedWeight($0.targetWeight) : "--"
+        },
+      ]
+
+    case .distanceAndTime:
+      return [
+        ExerciseColumn(header: "DISTANCE (\(preferredDistanceUnit.abbreviation))") {
+          $0.targetDistance > 0 ? formattedDistance($0.targetDistance) : "--"
+        },
+        ExerciseColumn(header: "TIME (sec)") {
+          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        },
+      ]
+
+    case .caloriesAndTime:
+      return [
+        ExerciseColumn(header: "CALORIES") {
+          "\($0.targetCalories > 0 ? "\(Int($0.targetCalories))" : "--")"
+        },
+        ExerciseColumn(header: "TIME (sec)") {
+          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        },
+      ]
+
+    case .none:
+      return [
+        ExerciseColumn(header: "TARGET") { _ in "--" }
+      ]
+    }
+  }
+
+  private func formattedWeight(_ kg: Float) -> String {
+    let displayValue = preferredWeightUnit == .kg ? kg : UnitConverter.kgToLb(kg)
+    return UnitFormatter.formatValue(displayValue, decimalPlaces: 1)
+  }
+
+  private func formattedDistance(_ km: Float) -> String {
+    let displayValue = preferredDistanceUnit == .km ? km : UnitConverter.kmToMi(km)
+    return UnitFormatter.formatValue(displayValue, decimalPlaces: 1)
   }
 
   var body: some View {
@@ -327,7 +415,7 @@ struct PlanDayExerciseCard: View {
             .foregroundColor(.secondary)
             .frame(width: 50, alignment: .leading)
 
-          ForEach(Array(exercise.columns.enumerated()), id: \.offset) { _, column in
+          ForEach(Array(columns.enumerated()), id: \.offset) { _, column in
             Text(column.header)
               .font(.system(size: 12, weight: .bold))
               .foregroundColor(.secondary)
@@ -345,7 +433,7 @@ struct PlanDayExerciseCard: View {
                 .foregroundColor(AppColors.textPrimary)
                 .frame(width: 50, alignment: .leading)
 
-              ForEach(Array(exercise.columns.enumerated()), id: \.offset) { index, column in
+              ForEach(Array(columns.enumerated()), id: \.offset) { index, column in
                 Text(column.getValue(exercise))
                   .font(.system(size: 22, weight: .bold))
                   .foregroundColor(index == 0 ? AppColors.textPrimary : AppColors.accent)
@@ -508,6 +596,7 @@ struct AddPlanDayExerciseSheet: View {
 
 struct AddPlanDayExerciseTargetsSheet: View {
   @Environment(\.dismiss) private var dismiss
+  @EnvironmentObject private var sessionStore: SessionStore
 
   let exercise: ExerciseResponse
   let onAdd: (PlanExerciseTargets) async -> Void
@@ -518,6 +607,14 @@ struct AddPlanDayExerciseTargetsSheet: View {
   @State private var targetDistance = ""
   @State private var targetCalories = ""
   @State private var targetWeight = ""
+
+  private var preferredWeightUnit: Unit {
+    sessionStore.userProfile?.preferredWeightUnit ?? .kg
+  }
+
+  private var preferredDistanceUnit: Unit {
+    sessionStore.userProfile?.preferredDistanceUnit ?? .km
+  }
 
   private var isFormValid: Bool {
     let sets = intValue(targetSets)
@@ -571,13 +668,15 @@ struct AddPlanDayExerciseTargetsSheet: View {
         }
         ToolbarItem(placement: .confirmationAction) {
           Button("Add") {
+            let weightValue = backendWeight(from: floatValue(targetWeight))
+            let distanceValue = backendDistance(from: floatValue(targetDistance))
             let targets = PlanExerciseTargets(
               sets: intValue(targetSets),
               reps: intValue(targetReps),
               durationSeconds: intValue(targetDuration),
-              distance: floatValue(targetDistance),
+              distance: distanceValue,
               calories: floatValue(targetCalories),
-              weight: floatValue(targetWeight)
+              weight: weightValue
             )
             Task {
               await onAdd(targets)
@@ -605,16 +704,19 @@ struct AddPlanDayExerciseTargetsSheet: View {
       case .repsAndWeight:
         inputField(title: "Target Reps", text: $targetReps, placeholder: "10")
         inputField(
-          title: "Target Weight (kg)", text: $targetWeight, placeholder: "50", keyboard: .decimalPad
+          title: "Target Weight (\(preferredWeightUnit.abbreviation))", text: $targetWeight,
+          placeholder: "50", keyboard: .decimalPad
         )
       case .timeAndWeight:
         inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
         inputField(
-          title: "Target Weight (kg)", text: $targetWeight, placeholder: "50", keyboard: .decimalPad
+          title: "Target Weight (\(preferredWeightUnit.abbreviation))", text: $targetWeight,
+          placeholder: "50", keyboard: .decimalPad
         )
       case .distanceAndTime:
         inputField(
-          title: "Target Distance (m)", text: $targetDistance, placeholder: "100",
+          title: "Target Distance (\(preferredDistanceUnit.abbreviation))", text: $targetDistance,
+          placeholder: "1.0",
           keyboard: .decimalPad)
         inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
       case .caloriesAndTime:
@@ -658,6 +760,16 @@ struct AddPlanDayExerciseTargetsSheet: View {
   private func floatValue(_ text: String) -> Float {
     Float(text.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
   }
+
+  private func backendWeight(from value: Float) -> Float {
+    let kgValue = preferredWeightUnit == .kg ? value : UnitConverter.lbToKg(value)
+    return UnitConverter.round(kgValue, decimalPlaces: 1)
+  }
+
+  private func backendDistance(from value: Float) -> Float {
+    let kmValue = preferredDistanceUnit == .km ? value : UnitConverter.miToKm(value)
+    return UnitConverter.round(kmValue, decimalPlaces: 1)
+  }
 }
 
 extension MeasurementType {
@@ -689,73 +801,6 @@ private struct ExerciseColumn {
 }
 
 extension EnrichedPlanExercise {
-  fileprivate var columns: [ExerciseColumn] {
-    switch measurementType {
-    case .reps:
-      return [
-        ExerciseColumn(header: "REPS") { "\($0.targetReps > 0 ? "\($0.targetReps)" : "--")" }
-      ]
-
-    case .time:
-      return [
-        ExerciseColumn(header: "TIME (sec)") {
-          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
-        }
-      ]
-
-    case .repsAndTime:
-      return [
-        ExerciseColumn(header: "REPS") { "\($0.targetReps > 0 ? "\($0.targetReps)" : "--")" },
-        ExerciseColumn(header: "TIME (sec)") {
-          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
-        },
-      ]
-
-    case .timeAndWeight:
-      return [
-        ExerciseColumn(header: "TIME (sec)") {
-          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
-        },
-        ExerciseColumn(header: "WEIGHT (kg)") {
-          "\($0.targetWeight > 0 ? String(format: "%.1f", $0.targetWeight) : "--")"
-        },
-      ]
-
-    case .repsAndWeight:
-      return [
-        ExerciseColumn(header: "REPS") { "\($0.targetReps > 0 ? "\($0.targetReps)" : "--")" },
-        ExerciseColumn(header: "WEIGHT (kg)") {
-          "\($0.targetWeight > 0 ? String(format: "%.1f", $0.targetWeight) : "--")"
-        },
-      ]
-
-    case .distanceAndTime:
-      return [
-        ExerciseColumn(header: "DISTANCE (m)") {
-          "\($0.targetDistance > 0 ? "\(Int($0.targetDistance))" : "--")"
-        },
-        ExerciseColumn(header: "TIME (sec)") {
-          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
-        },
-      ]
-
-    case .caloriesAndTime:
-      return [
-        ExerciseColumn(header: "CALORIES") {
-          "\($0.targetCalories > 0 ? "\(Int($0.targetCalories))" : "--")"
-        },
-        ExerciseColumn(header: "TIME (sec)") {
-          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
-        },
-      ]
-
-    case .none:
-      return [
-        ExerciseColumn(header: "TARGET") { _ in "--" }
-      ]
-    }
-  }
-
   fileprivate var measurementBadge: String {
     switch measurementType {
     case .reps, .repsAndWeight:
