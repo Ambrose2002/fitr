@@ -10,11 +10,24 @@ import Foundation
 
 // MARK: - Enriched Plan Day Model
 
-struct EnrichedPlanDay: Identifiable {
+struct EnrichedPlanExercise: Identifiable, Hashable {
+  let id: Int64
+  let planDayId: Int64
+  let exerciseId: Int64
+  let name: String
+  let measurementType: MeasurementType?
+  let targetSets: Int
+  let targetReps: Int
+  let targetDurationSeconds: Int
+  let targetDistance: Float
+  let targetCalories: Float
+}
+
+struct EnrichedPlanDay: Identifiable, Hashable {
   let id: Int64
   let dayNumber: Int
   let name: String
-  let exercises: [PlanExerciseResponse]
+  let exercises: [EnrichedPlanExercise]
 
   var durationMinutes: Int {
     let totalSeconds = exercises.reduce(0) { $0 + $1.targetDurationSeconds }
@@ -26,7 +39,7 @@ struct EnrichedPlanDay: Identifiable {
   }
 
   var exerciseNames: String {
-    exercises.map { "Exercise \($0.id)" }.joined(separator: ", ")
+    exercises.map(\.name).joined(separator: ", ")
   }
 }
 
@@ -82,16 +95,39 @@ final class PlanDetailViewModel: ObservableObject {
       // Fetch plan days
       let days = try await workoutPlanService.getPlanDays(planId: planId)
 
+      let exerciseLookup: [Int64: ExerciseResponse]
+      do {
+        let availableExercises = try await workoutPlanService.getAllExercises(systemOnly: false)
+        exerciseLookup = Dictionary(uniqueKeysWithValues: availableExercises.map { ($0.id, $0) })
+      } catch {
+        exerciseLookup = [:]
+      }
+
       // Fetch exercises for each day
       var enrichedDaysList: [EnrichedPlanDay] = []
       for day in days {
         do {
           let exercises = try await workoutPlanService.getExercises(dayId: day.id)
+          let enrichedExercises = exercises.map { exercise in
+            let exerciseMeta = exerciseLookup[exercise.exerciseId]
+            return EnrichedPlanExercise(
+              id: exercise.id,
+              planDayId: exercise.planDayId,
+              exerciseId: exercise.exerciseId,
+              name: exerciseMeta?.name ?? "Exercise \(exercise.exerciseId)",
+              measurementType: exerciseMeta?.measurementType,
+              targetSets: exercise.targetSets,
+              targetReps: exercise.targetReps,
+              targetDurationSeconds: exercise.targetDurationSeconds,
+              targetDistance: exercise.targetDistance,
+              targetCalories: exercise.targetCalories
+            )
+          }
           let enrichedDay = EnrichedPlanDay(
             id: day.id,
             dayNumber: day.dayNumber,
             name: day.name,
-            exercises: exercises
+            exercises: enrichedExercises
           )
           enrichedDaysList.append(enrichedDay)
         } catch {
