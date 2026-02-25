@@ -264,7 +264,12 @@ struct PlanDetailView: View {
       )
     }
     .navigationDestination(item: $selectedDay) { day in
-      PlanDayDetailView(day: day, planName: viewModel.planDetail?.name ?? "Workout Plan")
+      PlanDayDetailView(
+        planId: planId,
+        dayId: day.id,
+        dayName: day.name,
+        planName: viewModel.planDetail?.name ?? "Workout Plan"
+      )
     }
     .task {
       viewModel.updatePlanId(planId)

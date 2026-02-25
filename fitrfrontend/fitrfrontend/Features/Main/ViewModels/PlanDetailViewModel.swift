@@ -122,7 +122,7 @@ final class PlanDetailViewModel: ObservableObject {
               targetDurationSeconds: exercise.targetDurationSeconds,
               targetDistance: exercise.targetDistance,
               targetCalories: exercise.targetCalories,
-              targetWeight: exercise.targetWeight
+              targetWeight: exercise.targetWeight ?? 0
             )
           }
           let enrichedDay = EnrichedPlanDay(
@@ -224,7 +224,7 @@ final class PlanDetailViewModel: ObservableObject {
 
   func deletePlanDay(id: Int64) async {
     do {
-      try await workoutPlanService.deletePlanDay(dayId: id)
+      try await workoutPlanService.deletePlanDay(planId: planId, dayId: id)
       enrichedDays.removeAll { $0.id == id }
     } catch {
       errorMessage = "Failed to delete workout day."

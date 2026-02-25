@@ -356,8 +356,8 @@ struct WorkoutPlanService {
   }
 
   /// Deletes a plan day
-  func deletePlanDay(dayId: Int64) async throws {
-    guard let url = URL(string: Constants.baseUrl + "/api/plan-days/\(dayId)") else {
+  func deletePlanDay(planId: Int64, dayId: Int64) async throws {
+    guard let url = URL(string: Constants.baseUrl + "/api/plans/\(planId)/days/\(dayId)") else {
       throw URLError(.badURL)
     }
 

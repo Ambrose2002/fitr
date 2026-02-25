@@ -251,8 +251,10 @@ final class WorkoutPlanViewModel: ObservableObject {
     errorMessage = nil
 
     do {
-      try await workoutPlanService.deletePlanDay(dayId: dayId)
-      self.planDays.removeAll { $0.id == dayId }
+      if let planId = planDays.first(where: { $0.id == dayId })?.workoutPlanId {
+        try await workoutPlanService.deletePlanDay(planId: planId, dayId: dayId)
+        self.planDays.removeAll { $0.id == dayId }
+      }
     } catch {
       self.errorMessage = error.localizedDescription
     }

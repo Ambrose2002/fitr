@@ -10,16 +10,28 @@ import SwiftUI
 struct PlanDayDetailView: View {
   @Environment(\.dismiss) private var dismiss
 
-  let day: EnrichedPlanDay
+  @StateObject private var viewModel: PlanDayDetailViewModel
   let planName: String
 
+  init(planId: Int64, dayId: Int64, dayName: String, planName: String) {
+    _viewModel = StateObject(
+      wrappedValue: PlanDayDetailViewModel(
+        planId: planId,
+        dayId: dayId,
+        dayName: dayName
+      ))
+    self.planName = planName
+  }
+
   private var estimatedMinutesText: String {
-    if day.durationMinutes > 0 {
-      return "\(day.durationMinutes) min"
+    if viewModel.durationMinutes > 0 {
+      return "\(viewModel.durationMinutes) min"
     }
 
     let fallbackMinutes = max(
-      day.exerciseCount * 6, day.exercises.reduce(0) { $0 + max($1.targetSets, 1) * 2 })
+      viewModel.exerciseCount * 6,
+      viewModel.exercises.reduce(0) { $0 + max($1.targetSets, 1) * 2 }
+    )
     return "\(fallbackMinutes) min"
   }
 
@@ -31,7 +43,7 @@ struct PlanDayDetailView: View {
       ScrollView {
         VStack(alignment: .leading, spacing: 16) {
           VStack(alignment: .leading, spacing: 8) {
-            Text(day.name)
+            Text(viewModel.dayName)
               .font(.system(size: 38, weight: .black))
               .foregroundColor(AppColors.textPrimary)
 
@@ -71,7 +83,7 @@ struct PlanDayDetailView: View {
               }
               .foregroundColor(.secondary)
 
-              Text("\(day.exerciseCount)")
+              Text("\(viewModel.exerciseCount)")
                 .font(.system(size: 33, weight: .black))
                 .foregroundColor(AppColors.textPrimary)
             }
@@ -93,12 +105,21 @@ struct PlanDayDetailView: View {
 
             Spacer()
 
-            Button("REORDER") {}
-              .font(.system(size: 11, weight: .bold))
-              .foregroundColor(AppColors.accent)
+            Button("ADD EXERCISE") {
+              viewModel.showAddExerciseSheet = true
+            }
+            .font(.system(size: 11, weight: .bold))
+            .foregroundColor(AppColors.accent)
           }
 
-          if day.exercises.isEmpty {
+          if viewModel.isLoading {
+            HStack {
+              Spacer()
+              ProgressView()
+              Spacer()
+            }
+            .padding(.vertical, 24)
+          } else if viewModel.exercises.isEmpty {
             VStack(spacing: 12) {
               Image(systemName: "dumbbell")
                 .font(.system(size: 30))
@@ -113,8 +134,10 @@ struct PlanDayDetailView: View {
             .cornerRadius(12)
           } else {
             VStack(spacing: 12) {
-              ForEach(day.exercises) { exercise in
-                PlanDayExerciseCard(exercise: exercise)
+              ForEach(viewModel.exercises) { exercise in
+                PlanDayExerciseCard(exercise: exercise) {
+                  viewModel.requestRemove(exercise)
+                }
               }
             }
           }
@@ -146,10 +169,21 @@ struct PlanDayDetailView: View {
 
           Spacer()
 
-          Button("Edit") {}
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(AppColors.accent)
-            .frame(width: 44, alignment: .trailing)
+          Menu {
+            Button("Add Exercise") {
+              viewModel.showAddExerciseSheet = true
+            }
+            Button(role: .destructive) {
+              viewModel.showDeleteDayConfirmation = true
+            } label: {
+              Label("Delete Day", systemImage: "trash")
+            }
+          } label: {
+            Text("Edit")
+              .font(.system(size: 16, weight: .semibold))
+              .foregroundColor(AppColors.accent)
+              .frame(width: 44, alignment: .trailing)
+          }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -189,13 +223,63 @@ struct PlanDayDetailView: View {
       .buttonStyle(.plain)
       .padding(.horizontal, 16)
       .padding(.vertical, 10)
+      .padding(.bottom, 60)
       .background(Color(.systemBackground))
+    }
+    .task {
+      await viewModel.load()
+    }
+    .onChange(of: viewModel.shouldDismiss) { shouldDismiss in
+      if shouldDismiss {
+        dismiss()
+      }
+    }
+    .alert(
+      "Error",
+      isPresented: Binding(
+        get: { viewModel.errorMessage != nil },
+        set: { _ in viewModel.errorMessage = nil }
+      )
+    ) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text(viewModel.errorMessage ?? "")
+    }
+    .confirmationDialog(
+      "Remove exercise?",
+      isPresented: $viewModel.showRemoveConfirmation
+    ) {
+      Button("Remove", role: .destructive) {
+        Task {
+          await viewModel.confirmRemove()
+        }
+      }
+      Button("Cancel", role: .cancel) {}
+    }
+    .confirmationDialog(
+      "Delete workout day?",
+      isPresented: $viewModel.showDeleteDayConfirmation
+    ) {
+      Button("Delete", role: .destructive) {
+        Task {
+          await viewModel.deleteDay()
+        }
+      }
+      Button("Cancel", role: .cancel) {}
+    }
+    .sheet(isPresented: $viewModel.showAddExerciseSheet) {
+      AddPlanDayExerciseSheet(
+        exercises: viewModel.availableExercises
+      ) { exercise, targets in
+        await viewModel.addExercise(exercise: exercise, targets: targets)
+      }
     }
   }
 }
 
 struct PlanDayExerciseCard: View {
   let exercise: EnrichedPlanExercise
+  let onRemove: () -> Void
 
   private var setCount: Int {
     max(exercise.targetSets, 1)
@@ -221,7 +305,12 @@ struct PlanDayExerciseCard: View {
 
         Spacer()
 
-        Button {
+        Menu {
+          Button(role: .destructive) {
+            onRemove()
+          } label: {
+            Label("Remove from day", systemImage: "trash")
+          }
         } label: {
           Image(systemName: "ellipsis")
             .font(.system(size: 14, weight: .semibold))
@@ -286,6 +375,263 @@ struct PlanDayExerciseCard: View {
         .stroke(Color(.systemGray4), lineWidth: 1)
     )
     .cornerRadius(12)
+  }
+}
+
+struct AddPlanDayExerciseSheet: View {
+  @Environment(\.dismiss) private var dismiss
+
+  let exercises: [ExerciseResponse]
+  let onAdd: (ExerciseResponse, PlanExerciseTargets) async -> Void
+
+  @State private var searchText = ""
+  @State private var selectedExercise: ExerciseResponse?
+  @State private var targetSets = ""
+  @State private var targetReps = ""
+  @State private var targetDuration = ""
+  @State private var targetDistance = ""
+  @State private var targetCalories = ""
+  @State private var targetWeight = ""
+
+  private var filteredExercises: [ExerciseResponse] {
+    let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.isEmpty {
+      return exercises.sorted { $0.name < $1.name }
+    }
+    return exercises.filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
+      .sorted { $0.name < $1.name }
+  }
+
+  private var isFormValid: Bool {
+    guard let exercise = selectedExercise else { return false }
+    let sets = intValue(targetSets)
+    if sets <= 0 { return false }
+
+    switch exercise.measurementType {
+    case .reps:
+      return intValue(targetReps) > 0
+    case .time:
+      return intValue(targetDuration) > 0
+    case .repsAndTime:
+      return intValue(targetReps) > 0 && intValue(targetDuration) > 0
+    case .repsAndWeight:
+      return intValue(targetReps) > 0 && floatValue(targetWeight) > 0
+    case .timeAndWeight:
+      return intValue(targetDuration) > 0 && floatValue(targetWeight) > 0
+    case .distanceAndTime:
+      return floatValue(targetDistance) > 0 && intValue(targetDuration) > 0
+    case .caloriesAndTime:
+      return floatValue(targetCalories) > 0 && intValue(targetDuration) > 0
+    }
+  }
+
+  var body: some View {
+    NavigationStack {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 16) {
+          Text("Choose Exercise")
+            .font(.system(size: 22, weight: .bold))
+            .foregroundColor(AppColors.textPrimary)
+
+          searchField
+
+          VStack(spacing: 8) {
+            ForEach(filteredExercises) { exercise in
+              exerciseRow(exercise)
+            }
+          }
+
+          if let exercise = selectedExercise {
+            targetForm(for: exercise)
+          }
+        }
+        .padding(16)
+      }
+      .navigationTitle("Add Exercise")
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("Cancel") {
+            dismiss()
+          }
+        }
+        ToolbarItem(placement: .confirmationAction) {
+          Button("Add") {
+            guard let exercise = selectedExercise else { return }
+            let targets = PlanExerciseTargets(
+              sets: intValue(targetSets),
+              reps: intValue(targetReps),
+              durationSeconds: intValue(targetDuration),
+              distance: floatValue(targetDistance),
+              calories: floatValue(targetCalories),
+              weight: floatValue(targetWeight)
+            )
+            Task {
+              await onAdd(exercise, targets)
+              dismiss()
+            }
+          }
+          .disabled(!isFormValid)
+        }
+      }
+    }
+    .presentationDetents([.medium, .large])
+  }
+
+  private var searchField: some View {
+    HStack(spacing: 8) {
+      Image(systemName: "magnifyingglass")
+        .foregroundColor(.secondary)
+      TextField("Search exercises", text: $searchText)
+        .textInputAutocapitalization(.never)
+        .disableAutocorrection(true)
+    }
+    .padding(12)
+    .background(Color(.systemGray6))
+    .cornerRadius(12)
+  }
+
+  private func exerciseRow(_ exercise: ExerciseResponse) -> some View {
+    let isSelected = selectedExercise?.id == exercise.id
+
+    return Button {
+      selectedExercise = exercise
+      resetTargets(for: exercise)
+    } label: {
+      HStack {
+        VStack(alignment: .leading, spacing: 6) {
+          Text(exercise.name)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundColor(AppColors.textPrimary)
+
+          Text(exercise.measurementType.label)
+            .font(.system(size: 11, weight: .bold))
+            .foregroundColor(AppColors.accent)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(AppColors.accent.opacity(0.12))
+            .cornerRadius(999)
+        }
+
+        Spacer()
+
+        if isSelected {
+          Image(systemName: "checkmark.circle.fill")
+            .foregroundColor(AppColors.accent)
+        }
+      }
+      .padding(12)
+      .background(isSelected ? AppColors.accent.opacity(0.08) : Color(.systemBackground))
+      .overlay(
+        RoundedRectangle(cornerRadius: 12)
+          .stroke(Color(.systemGray4), lineWidth: 1)
+      )
+      .cornerRadius(12)
+    }
+    .buttonStyle(.plain)
+  }
+
+  private func targetForm(for exercise: ExerciseResponse) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text("Targets")
+        .font(.system(size: 18, weight: .bold))
+        .foregroundColor(AppColors.textPrimary)
+
+      inputField(title: "Sets", text: $targetSets, placeholder: "3")
+
+      switch exercise.measurementType {
+      case .reps:
+        inputField(title: "Target Reps", text: $targetReps, placeholder: "10")
+      case .time:
+        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+      case .repsAndTime:
+        inputField(title: "Target Reps", text: $targetReps, placeholder: "10")
+        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+      case .repsAndWeight:
+        inputField(title: "Target Reps", text: $targetReps, placeholder: "10")
+        inputField(
+          title: "Target Weight (kg)", text: $targetWeight, placeholder: "50", keyboard: .decimalPad
+        )
+      case .timeAndWeight:
+        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+        inputField(
+          title: "Target Weight (kg)", text: $targetWeight, placeholder: "50", keyboard: .decimalPad
+        )
+      case .distanceAndTime:
+        inputField(
+          title: "Target Distance (m)", text: $targetDistance, placeholder: "100",
+          keyboard: .decimalPad)
+        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+      case .caloriesAndTime:
+        inputField(
+          title: "Target Calories", text: $targetCalories, placeholder: "200", keyboard: .decimalPad
+        )
+        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+      }
+    }
+    .padding(12)
+    .background(Color(.systemGray6))
+    .cornerRadius(12)
+  }
+
+  private func inputField(
+    title: String,
+    text: Binding<String>,
+    placeholder: String,
+    keyboard: UIKeyboardType = .numberPad
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 6) {
+      Text(title.uppercased())
+        .font(.system(size: 11, weight: .bold))
+        .foregroundColor(.secondary)
+      TextField(placeholder, text: text)
+        .keyboardType(keyboard)
+        .padding(12)
+        .background(Color(.systemBackground))
+        .cornerRadius(10)
+        .overlay(
+          RoundedRectangle(cornerRadius: 10)
+            .stroke(Color(.systemGray4), lineWidth: 1)
+        )
+    }
+  }
+
+  private func resetTargets(for exercise: ExerciseResponse) {
+    targetSets = ""
+    targetReps = ""
+    targetDuration = ""
+    targetDistance = ""
+    targetCalories = ""
+    targetWeight = ""
+  }
+
+  private func intValue(_ text: String) -> Int {
+    Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+  }
+
+  private func floatValue(_ text: String) -> Float {
+    Float(text.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+  }
+}
+
+extension MeasurementType {
+  fileprivate var label: String {
+    switch self {
+    case .reps:
+      return "Strength"
+    case .repsAndTime:
+      return "Paced"
+    case .time:
+      return "Timed"
+    case .timeAndWeight:
+      return "Timed + Weight"
+    case .repsAndWeight:
+      return "Strength + Weight"
+    case .distanceAndTime:
+      return "Distance"
+    case .caloriesAndTime:
+      return "Calories"
+    }
   }
 }
 
@@ -379,19 +725,5 @@ extension EnrichedPlanExercise {
     case .none:
       return "Routine"
     }
-  }
-}
-
-extension Int {
-  fileprivate var durationDisplay: String {
-    if self < 60 {
-      return "\(self)s"
-    }
-    let minutes = self / 60
-    let seconds = self % 60
-    if seconds == 0 {
-      return "\(minutes)m"
-    }
-    return "\(minutes)m \(seconds)s"
   }
 }
