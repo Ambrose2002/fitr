@@ -8,6 +8,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import lombok.Getter;
 import lombok.Setter;
+
 /**
  * Represents an exercise in a workout plan.
  */
@@ -75,20 +76,33 @@ public class PlanExercise {
     @Setter
     private float targetCalories;
 
-    public PlanExercise() {}
+    /**
+     * The target weight in kilograms for the plan exercise.
+     */
+    @Getter
+    @Setter
+    private float targetWeight;
+
+    public PlanExercise() {
+    }
 
     /**
      * Constructs a new plan exercise.
      *
-     * @param planDay The plan day that the plan exercise belongs to.
-     * @param exercise The exercise that the plan exercise refers to.
-     * @param targetSets The target number of sets for the plan exercise.
-     * @param targetReps The target number of reps for the plan exercise.
-     * @param targetDurationSeconds The target duration in seconds for the plan exercise.
-     * @param targetDistance The target distance in meters for the plan exercise.
-     * @param targetCalories The target calories for the plan exercise.
+     * @param planDay               The plan day that the plan exercise belongs to.
+     * @param exercise              The exercise that the plan exercise refers to.
+     * @param targetSets            The target number of sets for the plan exercise.
+     * @param targetReps            The target number of reps for the plan exercise.
+     * @param targetDurationSeconds The target duration in seconds for the plan
+     *                              exercise.
+     * @param targetDistance        The target distance in meters for the plan
+     *                              exercise.
+     * @param targetCalories        The target calories for the plan exercise.
+     * @param targetWeight          The target weight in kilograms for the plan
+     *                              exercise.
      */
-    public PlanExercise(PlanDay planDay, Exercise exercise, int targetSets, int targetReps, int targetDurationSeconds, float targetDistance, float targetCalories) {
+    public PlanExercise(PlanDay planDay, Exercise exercise, int targetSets, int targetReps, int targetDurationSeconds,
+            float targetDistance, float targetCalories, float targetWeight) {
         this.planDay = planDay;
         this.exercise = exercise;
         this.targetSets = targetSets;
@@ -96,5 +110,6 @@ public class PlanExercise {
         this.targetDurationSeconds = targetDurationSeconds;
         this.targetDistance = targetDistance;
         this.targetCalories = targetCalories;
+        this.targetWeight = targetWeight;
     }
 }

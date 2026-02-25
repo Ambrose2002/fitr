@@ -20,8 +20,11 @@ public class PlanExerciseResponse {
     private final float targetDistance;
     @Getter
     private final float targetCalories;
+    @Getter
+    private final float targetWeight;
 
-    public PlanExerciseResponse(long id, long plan_day_id, long exercise_id, int targetSets, int targetReps, int targetDurationSeconds, float targetDistance, float targetCalories) {
+    public PlanExerciseResponse(long id, long plan_day_id, long exercise_id, int targetSets, int targetReps,
+            int targetDurationSeconds, float targetDistance, float targetCalories, float targetWeight) {
         this.id = id;
         this.plan_day_id = plan_day_id;
         this.exercise_id = exercise_id;
@@ -30,5 +33,6 @@ public class PlanExerciseResponse {
         this.targetDurationSeconds = targetDurationSeconds;
         this.targetDistance = targetDistance;
         this.targetCalories = targetCalories;
+        this.targetWeight = targetWeight;
     }
 }

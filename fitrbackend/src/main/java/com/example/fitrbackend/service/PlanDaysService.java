@@ -25,7 +25,8 @@ public class PlanDaysService {
     private final UserRepository userRepo;
     private final PlanDayRepository planDayRepo;
 
-    public PlanDaysService(PlanExerciseRepository planExerciseRepo, UserRepository userRepo, PlanDayRepository planDayRepo, ExerciseRepository exerciseRepo) {
+    public PlanDaysService(PlanExerciseRepository planExerciseRepo, UserRepository userRepo,
+            PlanDayRepository planDayRepo, ExerciseRepository exerciseRepo) {
         this.exerciseRepo = exerciseRepo;
         this.planDayRepo = planDayRepo;
         this.planExerciseRepo = planExerciseRepo;
@@ -37,8 +38,9 @@ public class PlanDaysService {
         return planExercises.stream().map(this::toPlanExerciseResponse).toList();
     }
 
-    public PlanExerciseResponse getPlanDayExercise (String email, long dayId, long exerciseId) {
-        PlanExercise planExercise = planExerciseRepo.findById(exerciseId).orElseThrow(() -> new DataNotFoundException(exerciseId, "plan exercise"));
+    public PlanExerciseResponse getPlanDayExercise(String email, long dayId, long exerciseId) {
+        PlanExercise planExercise = planExerciseRepo.findById(exerciseId)
+                .orElseThrow(() -> new DataNotFoundException(exerciseId, "plan exercise"));
         if (!Objects.equals(planExercise.getPlanDay().getId(), dayId)) {
             throw new DataNotFoundException(exerciseId, "plan exercise");
         }
@@ -57,7 +59,8 @@ public class PlanDaysService {
         if (!Objects.equals(planDay.getWorkoutPlan().getUser().getEmail(), email)) {
             throw new DataNotFoundException(dayId, "plan day");
         }
-        Exercise exercise = exerciseRepo.findById(req.getExerciseId()).orElseThrow(() -> new DataNotFoundException(req.getExerciseId(), "exercise"));
+        Exercise exercise = exerciseRepo.findById(req.getExerciseId())
+                .orElseThrow(() -> new DataNotFoundException(req.getExerciseId(), "exercise"));
         if (!exercise.isSystemDefined() && !Objects.equals(exercise.getUser().getEmail(), email)) {
             throw new DataCreationFailedException("user does not own exercise");
         }
@@ -68,13 +71,15 @@ public class PlanDaysService {
                 req.getTargetReps(),
                 req.getTargetDurationSeconds(),
                 req.getTargetDistance(),
-                req.getTargetCalories()
-        );
+                req.getTargetCalories(),
+                req.getTargetWeight());
         return toPlanExerciseResponse(planExerciseRepo.save(planExercise));
     }
 
-    public PlanExerciseResponse updatePlanDayExercise(String email, long dayId, long exerciseId, CreatePlanDayExerciseRequest req) {
-        PlanExercise planExercise = planExerciseRepo.findById(exerciseId).orElseThrow(() -> new DataNotFoundException(exerciseId, "plan exercise"));
+    public PlanExerciseResponse updatePlanDayExercise(String email, long dayId, long exerciseId,
+            CreatePlanDayExerciseRequest req) {
+        PlanExercise planExercise = planExerciseRepo.findById(exerciseId)
+                .orElseThrow(() -> new DataNotFoundException(exerciseId, "plan exercise"));
         if (!Objects.equals(planExercise.getPlanDay().getId(), dayId)) {
             throw new DataNotFoundException(exerciseId, "plan exercise");
         }
@@ -96,11 +101,15 @@ public class PlanDaysService {
         if (req.getTargetCalories() >= 0) {
             planExercise.setTargetCalories(req.getTargetCalories());
         }
+        if (req.getTargetWeight() >= 0) {
+            planExercise.setTargetWeight(req.getTargetWeight());
+        }
         return toPlanExerciseResponse(planExerciseRepo.save(planExercise));
     }
 
     public void deletePlanDayExercise(String email, long dayId, long exerciseId) {
-        PlanExercise planExercise = planExerciseRepo.findById(exerciseId).orElseThrow(() -> new DataNotFoundException(exerciseId, "plan exercise"));
+        PlanExercise planExercise = planExerciseRepo.findById(exerciseId)
+                .orElseThrow(() -> new DataNotFoundException(exerciseId, "plan exercise"));
         if (!Objects.equals(planExercise.getPlanDay().getId(), dayId)) {
             throw new DataNotFoundException(exerciseId, "plan exercise");
         }
@@ -112,14 +121,14 @@ public class PlanDaysService {
 
     private PlanExerciseResponse toPlanExerciseResponse(PlanExercise planExercise) {
         return new PlanExerciseResponse(
-            planExercise.getId(),
-            planExercise.getPlanDay().getId(),
-            planExercise.getExercise().getId(),
-            planExercise.getTargetSets(),
-            planExercise.getTargetReps(),
-            planExercise.getTargetDurationSeconds(),
-            planExercise.getTargetDistance(),
-            planExercise.getTargetCalories()
-        );
+                planExercise.getId(),
+                planExercise.getPlanDay().getId(),
+                planExercise.getExercise().getId(),
+                planExercise.getTargetSets(),
+                planExercise.getTargetReps(),
+                planExercise.getTargetDurationSeconds(),
+                planExercise.getTargetDistance(),
+                planExercise.getTargetCalories(),
+                planExercise.getTargetWeight());
     }
 }
