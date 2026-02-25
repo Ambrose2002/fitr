@@ -35,6 +35,19 @@ struct EnrichedPlanDay: Identifiable, Hashable {
     return totalSeconds > 0 ? totalSeconds / 60 : 0
   }
 
+  var estimatedMinutes: Int {
+    let minutes = durationMinutes
+    if minutes > 0 {
+      return minutes
+    }
+
+    let fallbackMinutes = max(
+      exerciseCount * 6,
+      exercises.reduce(0) { $0 + max($1.targetSets, 1) * 2 }
+    )
+    return fallbackMinutes
+  }
+
   var exerciseCount: Int {
     exercises.count
   }

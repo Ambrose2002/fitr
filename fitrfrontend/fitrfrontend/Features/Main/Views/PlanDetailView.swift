@@ -311,7 +311,7 @@ struct TrainingDayCard: View {
                 HStack(spacing: 4) {
                   Image(systemName: "clock")
                     .font(.system(size: 12))
-                  Text("\(day.durationMinutes) min")
+                  Text("\(day.estimatedMinutes) min")
                     .font(.system(size: 12))
                 }
 
