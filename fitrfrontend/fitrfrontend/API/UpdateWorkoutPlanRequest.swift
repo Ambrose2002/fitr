@@ -13,6 +13,6 @@ struct UpdateWorkoutPlanRequest: Codable {
 
   enum CodingKeys: String, CodingKey {
     case name
-    case isActive = "active"
+    case isActive = "isActive"
   }
 }

@@ -15,14 +15,4 @@ struct CreatePlanDayExerciseRequest: Codable {
   let targetDistance: Float
   let targetCalories: Float
   let targetWeight: Float
-
-  enum CodingKeys: String, CodingKey {
-    case exerciseId = "exercise_id"
-    case targetSets = "target_sets"
-    case targetReps = "target_reps"
-    case targetDurationSeconds = "target_duration_seconds"
-    case targetDistance = "target_distance"
-    case targetCalories = "target_calories"
-    case targetWeight = "target_weight"
-  }
 }

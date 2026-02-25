@@ -16,7 +16,7 @@ struct PlanExerciseResponse: Codable, Identifiable {
   let targetDurationSeconds: Int
   let targetDistance: Float
   let targetCalories: Float
-  let targetWeight: Float
+  let targetWeight: Float?
 
   enum CodingKeys: String, CodingKey {
     case id
