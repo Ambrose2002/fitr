@@ -18,7 +18,8 @@ struct PlanDayDetailView: View {
       return "\(day.durationMinutes) min"
     }
 
-    let fallbackMinutes = max(day.exerciseCount * 6, day.exercises.reduce(0) { $0 + max($1.targetSets, 1) * 2 })
+    let fallbackMinutes = max(
+      day.exerciseCount * 6, day.exercises.reduce(0) { $0 + max($1.targetSets, 1) * 2 })
     return "\(fallbackMinutes) min"
   }
 
@@ -158,7 +159,8 @@ struct PlanDayDetailView: View {
       }
     }
     .safeAreaInset(edge: .bottom) {
-      Button {} label: {
+      Button {
+      } label: {
         HStack {
           Text("Start This Workout")
             .font(.system(size: 30, weight: .black))
@@ -219,7 +221,8 @@ struct PlanDayExerciseCard: View {
 
         Spacer()
 
-        Button {} label: {
+        Button {
+        } label: {
           Image(systemName: "ellipsis")
             .font(.system(size: 14, weight: .semibold))
             .foregroundColor(.secondary)
@@ -228,34 +231,38 @@ struct PlanDayExerciseCard: View {
       }
 
       VStack(spacing: 0) {
-        HStack {
+        // Dynamic table header
+        HStack(spacing: 8) {
           Text("SET")
-            .frame(maxWidth: .infinity, alignment: .leading)
-          Text("TARGET")
-            .frame(maxWidth: .infinity, alignment: .center)
-          Text("DETAIL")
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .font(.system(size: 12, weight: .bold))
+            .foregroundColor(.secondary)
+            .frame(width: 50, alignment: .leading)
+
+          ForEach(Array(exercise.columns.enumerated()), id: \.offset) { _, column in
+            Text(column.header)
+              .font(.system(size: 12, weight: .bold))
+              .foregroundColor(.secondary)
+              .frame(maxWidth: .infinity, alignment: .center)
+          }
         }
-        .font(.system(size: 12, weight: .bold))
-        .foregroundColor(.secondary)
         .padding(.horizontal, 12)
         .padding(.bottom, 8)
 
         VStack(spacing: 0) {
           ForEach(1...setCount, id: \.self) { setIndex in
-            HStack {
+            HStack(spacing: 8) {
               Text("\(setIndex)")
-                .frame(maxWidth: .infinity, alignment: .leading)
-              Text(exercise.targetValueText)
-                .fontWeight(.bold)
-                .frame(maxWidth: .infinity, alignment: .center)
-              Text(exercise.detailValueText)
-                .fontWeight(.bold)
-                .foregroundColor(AppColors.accent)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                .font(.system(size: 22, weight: .medium))
+                .foregroundColor(AppColors.textPrimary)
+                .frame(width: 50, alignment: .leading)
+
+              ForEach(Array(exercise.columns.enumerated()), id: \.offset) { index, column in
+                Text(column.getValue(exercise))
+                  .font(.system(size: 22, weight: .bold))
+                  .foregroundColor(index == 0 ? AppColors.textPrimary : AppColors.accent)
+                  .frame(maxWidth: .infinity, alignment: .center)
+              }
             }
-            .font(.system(size: 22, weight: .medium))
-            .foregroundColor(AppColors.textPrimary)
             .frame(height: 50)
             .padding(.horizontal, 12)
 
@@ -282,8 +289,82 @@ struct PlanDayExerciseCard: View {
   }
 }
 
-private extension EnrichedPlanExercise {
-  var measurementBadge: String {
+// MARK: - Column Configuration
+
+private struct ExerciseColumn {
+  let header: String
+  let getValue: (EnrichedPlanExercise) -> String
+}
+
+extension EnrichedPlanExercise {
+  fileprivate var columns: [ExerciseColumn] {
+    switch measurementType {
+    case .reps:
+      return [
+        ExerciseColumn(header: "REPS") { "\($0.targetReps > 0 ? "\($0.targetReps)" : "--")" }
+      ]
+
+    case .time:
+      return [
+        ExerciseColumn(header: "TIME (sec)") {
+          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        }
+      ]
+
+    case .repsAndTime:
+      return [
+        ExerciseColumn(header: "REPS") { "\($0.targetReps > 0 ? "\($0.targetReps)" : "--")" },
+        ExerciseColumn(header: "TIME (sec)") {
+          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        },
+      ]
+
+    case .timeAndWeight:
+      return [
+        ExerciseColumn(header: "TIME (sec)") {
+          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        },
+        ExerciseColumn(header: "WEIGHT (kg)") {
+          "\($0.targetWeight > 0 ? String(format: "%.1f", $0.targetWeight) : "--")"
+        },
+      ]
+
+    case .repsAndWeight:
+      return [
+        ExerciseColumn(header: "REPS") { "\($0.targetReps > 0 ? "\($0.targetReps)" : "--")" },
+        ExerciseColumn(header: "WEIGHT (kg)") {
+          "\($0.targetWeight > 0 ? String(format: "%.1f", $0.targetWeight) : "--")"
+        },
+      ]
+
+    case .distanceAndTime:
+      return [
+        ExerciseColumn(header: "DISTANCE (m)") {
+          "\($0.targetDistance > 0 ? "\(Int($0.targetDistance))" : "--")"
+        },
+        ExerciseColumn(header: "TIME (sec)") {
+          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        },
+      ]
+
+    case .caloriesAndTime:
+      return [
+        ExerciseColumn(header: "CALORIES") {
+          "\($0.targetCalories > 0 ? "\(Int($0.targetCalories))" : "--")"
+        },
+        ExerciseColumn(header: "TIME (sec)") {
+          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        },
+      ]
+
+    case .none:
+      return [
+        ExerciseColumn(header: "TARGET") { _ in "--" }
+      ]
+    }
+  }
+
+  fileprivate var measurementBadge: String {
     switch measurementType {
     case .reps, .repsAndWeight:
       return "Strength"
@@ -299,39 +380,10 @@ private extension EnrichedPlanExercise {
       return "Routine"
     }
   }
-
-  var targetValueText: String {
-    if targetReps > 0 {
-      return "\(targetReps)"
-    }
-    if targetDurationSeconds > 0 {
-      return targetDurationSeconds.durationDisplay
-    }
-    if targetDistance > 0 {
-      return "\(Int(targetDistance)) m"
-    }
-    if targetCalories > 0 {
-      return "\(Int(targetCalories)) cal"
-    }
-    return "--"
-  }
-
-  var detailValueText: String {
-    if targetReps > 0 && targetDurationSeconds > 0 {
-      return targetDurationSeconds.durationDisplay
-    }
-    if targetDistance > 0 && targetDurationSeconds > 0 {
-      return targetDurationSeconds.durationDisplay
-    }
-    if targetCalories > 0 && targetDurationSeconds > 0 {
-      return targetDurationSeconds.durationDisplay
-    }
-    return "--"
-  }
 }
 
-private extension Int {
-  var durationDisplay: String {
+extension Int {
+  fileprivate var durationDisplay: String {
     if self < 60 {
       return "\(self)s"
     }

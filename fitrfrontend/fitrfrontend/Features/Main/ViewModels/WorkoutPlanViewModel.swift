@@ -267,7 +267,8 @@ final class WorkoutPlanViewModel: ObservableObject {
     targetReps: Int,
     targetDurationSeconds: Int,
     targetDistance: Float,
-    targetCalories: Float
+    targetCalories: Float,
+    targetWeight: Float
   ) async {
     errorMessage = nil
 
@@ -277,7 +278,8 @@ final class WorkoutPlanViewModel: ObservableObject {
       targetReps: targetReps,
       targetDurationSeconds: targetDurationSeconds,
       targetDistance: targetDistance,
-      targetCalories: targetCalories
+      targetCalories: targetCalories,
+      targetWeight: targetWeight
     )
 
     do {
@@ -294,7 +296,8 @@ final class WorkoutPlanViewModel: ObservableObject {
     targetReps: Int,
     targetDurationSeconds: Int,
     targetDistance: Float,
-    targetCalories: Float
+    targetCalories: Float,
+    targetWeight: Float
   ) async {
     errorMessage = nil
 
@@ -304,7 +307,8 @@ final class WorkoutPlanViewModel: ObservableObject {
       targetReps: targetReps,
       targetDurationSeconds: targetDurationSeconds,
       targetDistance: targetDistance,
-      targetCalories: targetCalories
+      targetCalories: targetCalories,
+      targetWeight: targetWeight
     )
 
     do {

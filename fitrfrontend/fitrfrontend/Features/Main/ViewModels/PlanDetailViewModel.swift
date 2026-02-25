@@ -21,6 +21,7 @@ struct EnrichedPlanExercise: Identifiable, Hashable {
   let targetDurationSeconds: Int
   let targetDistance: Float
   let targetCalories: Float
+  let targetWeight: Float
 }
 
 struct EnrichedPlanDay: Identifiable, Hashable {
@@ -120,7 +121,8 @@ final class PlanDetailViewModel: ObservableObject {
               targetReps: exercise.targetReps,
               targetDurationSeconds: exercise.targetDurationSeconds,
               targetDistance: exercise.targetDistance,
-              targetCalories: exercise.targetCalories
+              targetCalories: exercise.targetCalories,
+              targetWeight: exercise.targetWeight
             )
           }
           let enrichedDay = EnrichedPlanDay(
