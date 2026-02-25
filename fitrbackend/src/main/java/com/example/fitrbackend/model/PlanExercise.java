@@ -81,7 +81,7 @@ public class PlanExercise {
      */
     @Getter
     @Setter
-    private float targetWeight;
+    private Float targetWeight;
 
     public PlanExercise() {
     }

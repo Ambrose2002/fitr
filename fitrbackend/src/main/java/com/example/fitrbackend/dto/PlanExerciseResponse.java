@@ -21,10 +21,10 @@ public class PlanExerciseResponse {
     @Getter
     private final float targetCalories;
     @Getter
-    private final float targetWeight;
+    private final Float targetWeight;
 
     public PlanExerciseResponse(long id, long plan_day_id, long exercise_id, int targetSets, int targetReps,
-            int targetDurationSeconds, float targetDistance, float targetCalories, float targetWeight) {
+            int targetDurationSeconds, float targetDistance, float targetCalories, Float targetWeight) {
         this.id = id;
         this.plan_day_id = plan_day_id;
         this.exercise_id = exercise_id;
