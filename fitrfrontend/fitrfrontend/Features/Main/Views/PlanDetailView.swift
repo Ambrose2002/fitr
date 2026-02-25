@@ -202,6 +202,9 @@ struct PlanDetailView: View {
           }
           .padding(.vertical, 16)
         }
+        .refreshable {
+          await viewModel.loadPlanDetail()
+        }
       }
     }
     .navigationBarHidden(true)

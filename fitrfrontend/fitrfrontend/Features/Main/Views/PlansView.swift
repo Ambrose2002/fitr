@@ -95,6 +95,9 @@ struct PlansView: View {
             }
             .padding(.vertical, 16)
           }
+          .refreshable {
+            await viewModel.loadPlans()
+          }
         }
 
         // Floating Action Button
