@@ -386,12 +386,7 @@ struct AddPlanDayExerciseSheet: View {
 
   @State private var searchText = ""
   @State private var selectedExercise: ExerciseResponse?
-  @State private var targetSets = ""
-  @State private var targetReps = ""
-  @State private var targetDuration = ""
-  @State private var targetDistance = ""
-  @State private var targetCalories = ""
-  @State private var targetWeight = ""
+  @State private var showTargetsSheet = false
 
   private var filteredExercises: [ExerciseResponse] {
     let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -402,27 +397,8 @@ struct AddPlanDayExerciseSheet: View {
       .sorted { $0.name < $1.name }
   }
 
-  private var isFormValid: Bool {
-    guard let exercise = selectedExercise else { return false }
-    let sets = intValue(targetSets)
-    if sets <= 0 { return false }
-
-    switch exercise.measurementType {
-    case .reps:
-      return intValue(targetReps) > 0
-    case .time:
-      return intValue(targetDuration) > 0
-    case .repsAndTime:
-      return intValue(targetReps) > 0 && intValue(targetDuration) > 0
-    case .repsAndWeight:
-      return intValue(targetReps) > 0 && floatValue(targetWeight) > 0
-    case .timeAndWeight:
-      return intValue(targetDuration) > 0 && floatValue(targetWeight) > 0
-    case .distanceAndTime:
-      return floatValue(targetDistance) > 0 && intValue(targetDuration) > 0
-    case .caloriesAndTime:
-      return floatValue(targetCalories) > 0 && intValue(targetDuration) > 0
-    }
+  private var canContinue: Bool {
+    selectedExercise != nil
   }
 
   var body: some View {
@@ -441,9 +417,6 @@ struct AddPlanDayExerciseSheet: View {
             }
           }
 
-          if let exercise = selectedExercise {
-            targetForm(for: exercise)
-          }
         }
         .padding(16)
       }
@@ -457,25 +430,22 @@ struct AddPlanDayExerciseSheet: View {
         }
         ToolbarItem(placement: .confirmationAction) {
           Button("Add") {
-            guard let exercise = selectedExercise else { return }
-            let targets = PlanExerciseTargets(
-              sets: intValue(targetSets),
-              reps: intValue(targetReps),
-              durationSeconds: intValue(targetDuration),
-              distance: floatValue(targetDistance),
-              calories: floatValue(targetCalories),
-              weight: floatValue(targetWeight)
-            )
-            Task {
-              await onAdd(exercise, targets)
-              dismiss()
-            }
+            showTargetsSheet = true
           }
-          .disabled(!isFormValid)
+          .disabled(!canContinue)
         }
       }
     }
     .presentationDetents([.medium, .large])
+    .sheet(isPresented: $showTargetsSheet) {
+      if let exercise = selectedExercise {
+        AddPlanDayExerciseTargetsSheet(exercise: exercise) { targets in
+          await onAdd(exercise, targets)
+          dismiss()
+        }
+        .presentationDetents([.medium])
+      }
+    }
   }
 
   private var searchField: some View {
@@ -495,8 +465,11 @@ struct AddPlanDayExerciseSheet: View {
     let isSelected = selectedExercise?.id == exercise.id
 
     return Button {
-      selectedExercise = exercise
-      resetTargets(for: exercise)
+      if selectedExercise?.id == exercise.id {
+        selectedExercise = nil
+      } else {
+        selectedExercise = exercise
+      }
     } label: {
       HStack {
         VStack(alignment: .leading, spacing: 6) {
@@ -531,12 +504,94 @@ struct AddPlanDayExerciseSheet: View {
     .buttonStyle(.plain)
   }
 
-  private func targetForm(for exercise: ExerciseResponse) -> some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text("Targets")
-        .font(.system(size: 18, weight: .bold))
-        .foregroundColor(AppColors.textPrimary)
+}
 
+struct AddPlanDayExerciseTargetsSheet: View {
+  @Environment(\.dismiss) private var dismiss
+
+  let exercise: ExerciseResponse
+  let onAdd: (PlanExerciseTargets) async -> Void
+
+  @State private var targetSets = ""
+  @State private var targetReps = ""
+  @State private var targetDuration = ""
+  @State private var targetDistance = ""
+  @State private var targetCalories = ""
+  @State private var targetWeight = ""
+
+  private var isFormValid: Bool {
+    let sets = intValue(targetSets)
+    if sets <= 0 { return false }
+
+    switch exercise.measurementType {
+    case .reps:
+      return intValue(targetReps) > 0
+    case .time:
+      return intValue(targetDuration) > 0
+    case .repsAndTime:
+      return intValue(targetReps) > 0 && intValue(targetDuration) > 0
+    case .repsAndWeight:
+      return intValue(targetReps) > 0 && floatValue(targetWeight) > 0
+    case .timeAndWeight:
+      return intValue(targetDuration) > 0 && floatValue(targetWeight) > 0
+    case .distanceAndTime:
+      return floatValue(targetDistance) > 0 && intValue(targetDuration) > 0
+    case .caloriesAndTime:
+      return floatValue(targetCalories) > 0 && intValue(targetDuration) > 0
+    }
+  }
+
+  var body: some View {
+    NavigationStack {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 12) {
+          Text(exercise.name)
+            .font(.system(size: 22, weight: .bold))
+            .foregroundColor(AppColors.textPrimary)
+
+          Text(exercise.measurementType.label)
+            .font(.system(size: 11, weight: .bold))
+            .foregroundColor(AppColors.accent)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(AppColors.accent.opacity(0.12))
+            .cornerRadius(999)
+
+          targetForm
+        }
+        .padding(16)
+      }
+      .navigationTitle("Targets")
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("Back") {
+            dismiss()
+          }
+        }
+        ToolbarItem(placement: .confirmationAction) {
+          Button("Add") {
+            let targets = PlanExerciseTargets(
+              sets: intValue(targetSets),
+              reps: intValue(targetReps),
+              durationSeconds: intValue(targetDuration),
+              distance: floatValue(targetDistance),
+              calories: floatValue(targetCalories),
+              weight: floatValue(targetWeight)
+            )
+            Task {
+              await onAdd(targets)
+              dismiss()
+            }
+          }
+          .disabled(!isFormValid)
+        }
+      }
+    }
+  }
+
+  private var targetForm: some View {
+    VStack(alignment: .leading, spacing: 12) {
       inputField(title: "Sets", text: $targetSets, placeholder: "3")
 
       switch exercise.measurementType {
@@ -594,15 +649,6 @@ struct AddPlanDayExerciseSheet: View {
             .stroke(Color(.systemGray4), lineWidth: 1)
         )
     }
-  }
-
-  private func resetTargets(for exercise: ExerciseResponse) {
-    targetSets = ""
-    targetReps = ""
-    targetDuration = ""
-    targetDistance = ""
-    targetCalories = ""
-    targetWeight = ""
   }
 
   private func intValue(_ text: String) -> Int {
