@@ -12,6 +12,7 @@ struct PlanDetailView: View {
   @EnvironmentObject var sessionStore: SessionStore
   @StateObject private var viewModel: PlanDetailViewModel = PlanDetailViewModel(
     planId: 0, sessionStore: SessionStore())
+  @State private var selectedDay: EnrichedPlanDay?
 
   let planId: Int64
 
@@ -186,6 +187,9 @@ struct PlanDetailView: View {
                         Task {
                           await viewModel.deletePlanDay(id: day.id)
                         }
+                      },
+                      onTap: {
+                        selectedDay = day
                       }
                     )
                   }
@@ -256,6 +260,9 @@ struct PlanDetailView: View {
         }
       )
     }
+    .navigationDestination(item: $selectedDay) { day in
+      PlanDayDetailView(day: day, planName: viewModel.planDetail?.name ?? "Workout Plan")
+    }
     .task {
       viewModel.updatePlanId(planId)
       viewModel.updateSessionStore(sessionStore)
@@ -270,6 +277,7 @@ struct TrainingDayCard: View {
   let day: EnrichedPlanDay
   let onEdit: (String) -> Void
   let onDelete: () -> Void
+  let onTap: () -> Void
 
   @State private var showEditSheet = false
   @State private var editedName: String = ""
@@ -336,6 +344,10 @@ struct TrainingDayCard: View {
     .padding(12)
     .background(Color(.systemGray6))
     .cornerRadius(12)
+    .contentShape(Rectangle())
+    .onTapGesture {
+      onTap()
+    }
     .sheet(isPresented: $showEditSheet) {
       EditWorkoutDaySheet(
         dayName: editedName,
