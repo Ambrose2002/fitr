@@ -81,6 +81,7 @@ final class PlanDayDetailViewModel: ObservableObject {
         )
       }
     } catch {
+        print("Loading exercises Error: ", error)
       errorMessage = "Failed to load plan day exercises."
     }
   }
@@ -114,6 +115,47 @@ final class PlanDayDetailViewModel: ObservableObject {
       exercises.append(newExercise)
     } catch {
       errorMessage = "Failed to add exercise."
+    }
+  }
+
+  func updateExercise(exercise: EnrichedPlanExercise, targets: PlanExerciseTargets) async {
+    do {
+      let request = CreatePlanDayExerciseRequest(
+        exerciseId: exercise.exerciseId,
+        targetSets: targets.sets,
+        targetReps: targets.reps,
+        targetDurationSeconds: targets.durationSeconds,
+        targetDistance: targets.distance,
+        targetCalories: targets.calories,
+        targetWeight: targets.weight
+      )
+
+      let response = try await workoutPlanService.updateDayExercise(
+        dayId: dayId,
+        exerciseId: exercise.id,
+        request: request
+      )
+
+      if let index = exercises.firstIndex(where: { $0.id == exercise.id }) {
+        exercises[index] = EnrichedPlanExercise(
+          id: response.id,
+          planDayId: response.planDayId,
+          exerciseId: response.exerciseId,
+          name: exercise.name,
+          measurementType: exercise.measurementType,
+          targetSets: response.targetSets,
+          targetReps: response.targetReps,
+          targetDurationSeconds: response.targetDurationSeconds,
+          targetDistance: response.targetDistance,
+          targetCalories: response.targetCalories,
+          targetWeight: response.targetWeight ?? targets.weight
+        )
+      }
+    } catch let apiError as APIErrorResponse {
+        print("Updating error:", apiError)
+      errorMessage = apiError.message
+    } catch {
+      errorMessage = "Failed to update exercise."
     }
   }
 

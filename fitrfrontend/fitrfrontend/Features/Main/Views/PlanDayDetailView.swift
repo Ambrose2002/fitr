@@ -14,6 +14,8 @@ struct PlanDayDetailView: View {
   @StateObject private var viewModel: PlanDayDetailViewModel
   let planName: String
 
+  @State private var editingExercise: EnrichedPlanExercise?
+
   init(planId: Int64, dayId: Int64, dayName: String, planName: String) {
     _viewModel = StateObject(
       wrappedValue: PlanDayDetailViewModel(
@@ -136,9 +138,15 @@ struct PlanDayDetailView: View {
           } else {
             VStack(spacing: 12) {
               ForEach(viewModel.exercises) { exercise in
-                PlanDayExerciseCard(exercise: exercise) {
-                  viewModel.requestRemove(exercise)
-                }
+                PlanDayExerciseCard(
+                  exercise: exercise,
+                  onEdit: {
+                    editingExercise = exercise
+                  },
+                  onRemove: {
+                    viewModel.requestRemove(exercise)
+                  }
+                )
               }
             }
           }
@@ -275,6 +283,11 @@ struct PlanDayDetailView: View {
         await viewModel.addExercise(exercise: exercise, targets: targets)
       }
     }
+    .sheet(item: $editingExercise) { exercise in
+      EditPlanDayExerciseTargetsSheet(exercise: exercise) { targets in
+        await viewModel.updateExercise(exercise: exercise, targets: targets)
+      }
+    }
   }
 }
 
@@ -282,6 +295,7 @@ struct PlanDayExerciseCard: View {
   @EnvironmentObject private var sessionStore: SessionStore
 
   let exercise: EnrichedPlanExercise
+  let onEdit: () -> Void
   let onRemove: () -> Void
 
   private var setCount: Int {
@@ -394,6 +408,12 @@ struct PlanDayExerciseCard: View {
         Spacer()
 
         Menu {
+          Button {
+            onEdit()
+          } label: {
+            Label("Edit", systemImage: "pencil")
+          }
+
           Button(role: .destructive) {
             onRemove()
           } label: {
@@ -750,6 +770,226 @@ struct AddPlanDayExerciseTargetsSheet: View {
           RoundedRectangle(cornerRadius: 10)
             .stroke(Color(.systemGray4), lineWidth: 1)
         )
+    }
+  }
+
+  private func intValue(_ text: String) -> Int {
+    Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+  }
+
+  private func floatValue(_ text: String) -> Float {
+    Float(text.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+  }
+
+  private func backendWeight(from value: Float) -> Float {
+    let kgValue = preferredWeightUnit == .kg ? value : UnitConverter.lbToKg(value)
+    return UnitConverter.round(kgValue, decimalPlaces: 1)
+  }
+
+  private func backendDistance(from value: Float) -> Float {
+    let kmValue = preferredDistanceUnit == .km ? value : UnitConverter.miToKm(value)
+    return UnitConverter.round(kmValue, decimalPlaces: 1)
+  }
+}
+
+struct EditPlanDayExerciseTargetsSheet: View {
+  @Environment(\.dismiss) private var dismiss
+  @EnvironmentObject private var sessionStore: SessionStore
+
+  let exercise: EnrichedPlanExercise
+  let onUpdate: (PlanExerciseTargets) async -> Void
+
+  @State private var targetSets: String
+  @State private var targetReps: String
+  @State private var targetDuration: String
+  @State private var targetDistance: String
+  @State private var targetCalories: String
+  @State private var targetWeight: String
+
+  init(exercise: EnrichedPlanExercise, onUpdate: @escaping (PlanExerciseTargets) async -> Void) {
+    self.exercise = exercise
+    self.onUpdate = onUpdate
+    _targetSets = State(initialValue: "\(exercise.targetSets)")
+    _targetReps = State(initialValue: exercise.targetReps > 0 ? "\(exercise.targetReps)" : "")
+    _targetDuration = State(
+      initialValue: exercise.targetDurationSeconds > 0 ? "\(exercise.targetDurationSeconds)" : ""
+    )
+    _targetDistance = State(initialValue: "")
+    _targetCalories = State(initialValue: "")
+    _targetWeight = State(initialValue: "")
+  }
+
+  private var preferredWeightUnit: Unit {
+    sessionStore.userProfile?.preferredWeightUnit ?? .kg
+  }
+
+  private var preferredDistanceUnit: Unit {
+    sessionStore.userProfile?.preferredDistanceUnit ?? .km
+  }
+
+  private var isFormValid: Bool {
+    let sets = intValue(targetSets)
+    if sets <= 0 { return false }
+
+    switch exercise.measurementType {
+    case .reps:
+      return intValue(targetReps) > 0
+    case .time:
+      return intValue(targetDuration) > 0
+    case .repsAndTime:
+      return intValue(targetReps) > 0 && intValue(targetDuration) > 0
+    case .repsAndWeight:
+      return intValue(targetReps) > 0 && floatValue(targetWeight) > 0
+    case .timeAndWeight:
+      return intValue(targetDuration) > 0 && floatValue(targetWeight) > 0
+    case .distanceAndTime:
+      return floatValue(targetDistance) > 0 && intValue(targetDuration) > 0
+    case .caloriesAndTime:
+      return floatValue(targetCalories) > 0 && intValue(targetDuration) > 0
+    case .none:
+      return false
+    }
+  }
+
+  var body: some View {
+    NavigationStack {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 12) {
+          Text(exercise.name)
+            .font(.system(size: 22, weight: .bold))
+            .foregroundColor(AppColors.textPrimary)
+
+          Text(exercise.measurementBadge)
+            .font(.system(size: 11, weight: .bold))
+            .foregroundColor(AppColors.accent)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(AppColors.accent.opacity(0.12))
+            .cornerRadius(999)
+
+          targetForm
+        }
+        .padding(16)
+      }
+      .navigationTitle("Edit Targets")
+      .navigationBarTitleDisplayMode(.inline)
+      .onAppear {
+        prefillTargets()
+      }
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("Back") {
+            dismiss()
+          }
+        }
+        ToolbarItem(placement: .confirmationAction) {
+          Button("Update") {
+            let weightValue = backendWeight(from: floatValue(targetWeight))
+            let distanceValue = backendDistance(from: floatValue(targetDistance))
+            let targets = PlanExerciseTargets(
+              sets: intValue(targetSets),
+              reps: intValue(targetReps),
+              durationSeconds: intValue(targetDuration),
+              distance: distanceValue,
+              calories: floatValue(targetCalories),
+              weight: weightValue
+            )
+            Task {
+              await onUpdate(targets)
+              dismiss()
+            }
+          }
+          .disabled(!isFormValid)
+        }
+      }
+    }
+  }
+
+  private var targetForm: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      inputField(title: "Sets", text: $targetSets, placeholder: "3")
+
+      switch exercise.measurementType {
+      case .reps:
+        inputField(title: "Target Reps", text: $targetReps, placeholder: "10")
+      case .time:
+        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+      case .repsAndTime:
+        inputField(title: "Target Reps", text: $targetReps, placeholder: "10")
+        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+      case .repsAndWeight:
+        inputField(title: "Target Reps", text: $targetReps, placeholder: "10")
+        inputField(
+          title: "Target Weight (\(preferredWeightUnit.abbreviation))", text: $targetWeight,
+          placeholder: "50", keyboard: .decimalPad
+        )
+      case .timeAndWeight:
+        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+        inputField(
+          title: "Target Weight (\(preferredWeightUnit.abbreviation))", text: $targetWeight,
+          placeholder: "50", keyboard: .decimalPad
+        )
+      case .distanceAndTime:
+        inputField(
+          title: "Target Distance (\(preferredDistanceUnit.abbreviation))", text: $targetDistance,
+          placeholder: "1.0",
+          keyboard: .decimalPad)
+        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+      case .caloriesAndTime:
+        inputField(
+          title: "Target Calories", text: $targetCalories, placeholder: "200", keyboard: .decimalPad
+        )
+        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+      case .none:
+        EmptyView()
+      }
+    }
+    .padding(12)
+    .background(Color(.systemGray6))
+    .cornerRadius(12)
+  }
+
+  private func inputField(
+    title: String,
+    text: Binding<String>,
+    placeholder: String,
+    keyboard: UIKeyboardType = .numberPad
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 6) {
+      Text(title.uppercased())
+        .font(.system(size: 11, weight: .bold))
+        .foregroundColor(.secondary)
+      TextField(placeholder, text: text)
+        .keyboardType(keyboard)
+        .padding(12)
+        .background(Color(.systemBackground))
+        .cornerRadius(10)
+        .overlay(
+          RoundedRectangle(cornerRadius: 10)
+            .stroke(Color(.systemGray4), lineWidth: 1)
+        )
+    }
+  }
+
+  private func prefillTargets() {
+    if exercise.targetDistance > 0 {
+      let displayValue =
+        preferredDistanceUnit == .km
+        ? exercise.targetDistance
+        : UnitConverter.kmToMi(exercise.targetDistance)
+      targetDistance = UnitFormatter.formatValue(displayValue, decimalPlaces: 1)
+    }
+
+    if exercise.targetCalories > 0 {
+      targetCalories = "\(Int(exercise.targetCalories))"
+    }
+
+    if exercise.targetWeight > 0 {
+      let displayValue =
+        preferredWeightUnit == .kg
+        ? exercise.targetWeight
+        : UnitConverter.kgToLb(exercise.targetWeight)
+      targetWeight = UnitFormatter.formatValue(displayValue, decimalPlaces: 1)
     }
   }
 

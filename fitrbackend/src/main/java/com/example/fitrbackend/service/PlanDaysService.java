@@ -1,7 +1,11 @@
 package com.example.fitrbackend.service;
 
+import java.util.List;
+import java.util.Objects;
+
+import org.springframework.stereotype.Service;
+
 import com.example.fitrbackend.dto.CreatePlanDayExerciseRequest;
-import com.example.fitrbackend.dto.PlanDayResponse;
 import com.example.fitrbackend.dto.PlanExerciseResponse;
 import com.example.fitrbackend.exception.DataCreationFailedException;
 import com.example.fitrbackend.exception.DataNotFoundException;
@@ -13,9 +17,6 @@ import com.example.fitrbackend.repository.ExerciseRepository;
 import com.example.fitrbackend.repository.PlanDayRepository;
 import com.example.fitrbackend.repository.PlanExerciseRepository;
 import com.example.fitrbackend.repository.UserRepository;
-import java.util.List;
-import java.util.Objects;
-import org.springframework.stereotype.Service;
 
 @Service
 public class PlanDaysService {
@@ -64,6 +65,7 @@ public class PlanDaysService {
         if (!exercise.isSystemDefined() && !Objects.equals(exercise.getUser().getEmail(), email)) {
             throw new DataCreationFailedException("user does not own exercise");
         }
+        float targetWeight = req.getTargetWeight() != null ? req.getTargetWeight() : 0f;
         PlanExercise planExercise = new PlanExercise(
                 planDay,
                 exercise,
@@ -72,18 +74,21 @@ public class PlanDaysService {
                 req.getTargetDurationSeconds(),
                 req.getTargetDistance(),
                 req.getTargetCalories(),
-                req.getTargetWeight());
+                targetWeight);
         return toPlanExerciseResponse(planExerciseRepo.save(planExercise));
     }
 
     public PlanExerciseResponse updatePlanDayExercise(String email, long dayId, long exerciseId,
             CreatePlanDayExerciseRequest req) {
+                System.out.println("Request made");
         PlanExercise planExercise = planExerciseRepo.findById(exerciseId)
                 .orElseThrow(() -> new DataNotFoundException(exerciseId, "plan exercise"));
         if (!Objects.equals(planExercise.getPlanDay().getId(), dayId)) {
+            System.out.println("throwing error 0");
             throw new DataNotFoundException(exerciseId, "plan exercise");
         }
         if (!Objects.equals(planExercise.getPlanDay().getWorkoutPlan().getUser().getEmail(), email)) {
+            System.out.println("throwing error 1");
             throw new DataNotFoundException(exerciseId, "plan exercise");
         }
         if (req.getTargetSets() >= 0) {
@@ -101,7 +106,7 @@ public class PlanDaysService {
         if (req.getTargetCalories() >= 0) {
             planExercise.setTargetCalories(req.getTargetCalories());
         }
-        if (req.getTargetWeight() >= 0) {
+        if (req.getTargetWeight() != null && req.getTargetWeight() >= 0) {
             planExercise.setTargetWeight(req.getTargetWeight());
         }
         return toPlanExerciseResponse(planExerciseRepo.save(planExercise));

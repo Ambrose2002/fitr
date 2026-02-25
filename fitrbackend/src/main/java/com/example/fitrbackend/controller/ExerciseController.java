@@ -1,10 +1,7 @@
 package com.example.fitrbackend.controller;
 
-import com.example.fitrbackend.dto.CreateExerciseRequest;
-import com.example.fitrbackend.dto.ExerciseResponse;
-import com.example.fitrbackend.exception.AuthenticationFailedException;
-import com.example.fitrbackend.service.ExerciseService;
 import java.util.List;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +12,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.example.fitrbackend.dto.CreateExerciseRequest;
+import com.example.fitrbackend.dto.ExerciseResponse;
+import com.example.fitrbackend.exception.AuthenticationFailedException;
+import com.example.fitrbackend.service.ExerciseService;
 
 @RestController
 @RequestMapping("/api/exercise")
@@ -32,7 +34,6 @@ public class ExerciseController {
         if (systemOnly) {
             return exerciseService.getAllSystemDefinedExercises();
         } else {
-            System.out.println("not system only");
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth == null) {
                 throw new AuthenticationFailedException("auth not found");
