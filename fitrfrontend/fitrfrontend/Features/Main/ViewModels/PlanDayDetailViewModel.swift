@@ -152,7 +152,6 @@ final class PlanDayDetailViewModel: ObservableObject {
         )
       }
     } catch let apiError as APIErrorResponse {
-        print("Updating error:", apiError)
       errorMessage = apiError.message
     } catch {
       errorMessage = "Failed to update exercise."

@@ -201,6 +201,9 @@ struct WorkoutPlanService {
     urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
     addAuthHeaders(&urlRequest)
     urlRequest.httpBody = try JSONEncoder().encode(request)
+    if let body = urlRequest.httpBody, let payload = String(data: body, encoding: .utf8) {
+      print("Update day exercise payload:", payload)
+    }
 
     let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
@@ -457,6 +460,11 @@ struct WorkoutPlanService {
     exerciseId: Int64,
     request: CreatePlanDayExerciseRequest
   ) async throws -> PlanExerciseResponse {
+    print("Making request to edit")
+    if let jsonData = try? JSONEncoder().encode(request),
+       let jsonString = String(data: jsonData, encoding: .utf8) {
+      print("This is the request data:", jsonString)
+    }
     guard
       let url = URL(string: Constants.baseUrl + "/api/plan-days/\(dayId)/exercises/\(exerciseId)")
     else {
@@ -468,6 +476,9 @@ struct WorkoutPlanService {
     urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
     addAuthHeaders(&urlRequest)
     urlRequest.httpBody = try JSONEncoder().encode(request)
+    if let body = urlRequest.httpBody, let payload = String(data: body, encoding: .utf8) {
+      print("Update day exercise payload:", payload)
+    }
 
     let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
@@ -518,3 +529,4 @@ struct WorkoutPlanService {
     }
   }
 }
+

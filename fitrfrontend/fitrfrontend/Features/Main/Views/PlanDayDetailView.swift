@@ -297,9 +297,14 @@ struct PlanDayExerciseCard: View {
   let exercise: EnrichedPlanExercise
   let onEdit: () -> Void
   let onRemove: () -> Void
+  private let maxVisibleSets = 30
 
   private var setCount: Int {
-    max(exercise.targetSets, 1)
+    min(max(exercise.targetSets, 1), maxVisibleSets)
+  }
+
+  private var hasTruncatedSetList: Bool {
+    exercise.targetSets > maxVisibleSets
   }
 
   private var preferredWeightUnit: Unit {
@@ -475,6 +480,12 @@ struct PlanDayExerciseCard: View {
         )
         .cornerRadius(10)
       }
+
+      if hasTruncatedSetList {
+        Text("Showing first \(maxVisibleSets) sets")
+          .font(.system(size: 11, weight: .semibold))
+          .foregroundColor(.secondary)
+      }
     }
     .padding(14)
     .background(Color(.systemBackground))
@@ -627,6 +638,12 @@ struct AddPlanDayExerciseTargetsSheet: View {
   @State private var targetDistance = ""
   @State private var targetCalories = ""
   @State private var targetWeight = ""
+  private let maxSets = 30
+  private let maxReps = 200
+  private let maxDurationSeconds = 21_600
+  private let maxDistance = Float(1_000)
+  private let maxCalories = Float(10_000)
+  private let maxWeight = Float(1_000)
 
   private var preferredWeightUnit: Unit {
     sessionStore.userProfile?.preferredWeightUnit ?? .kg
@@ -637,24 +654,29 @@ struct AddPlanDayExerciseTargetsSheet: View {
   }
 
   private var isFormValid: Bool {
-    let sets = intValue(targetSets)
+    let sets = intValue(targetSets, minimum: 1, maximum: maxSets)
     if sets <= 0 { return false }
 
     switch exercise.measurementType {
     case .reps:
-      return intValue(targetReps) > 0
+      return intValue(targetReps, minimum: 1, maximum: maxReps) > 0
     case .time:
-      return intValue(targetDuration) > 0
+      return intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
     case .repsAndTime:
-      return intValue(targetReps) > 0 && intValue(targetDuration) > 0
+      return intValue(targetReps, minimum: 1, maximum: maxReps) > 0
+        && intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
     case .repsAndWeight:
-      return intValue(targetReps) > 0 && floatValue(targetWeight) > 0
+      return intValue(targetReps, minimum: 1, maximum: maxReps) > 0
+        && floatValue(targetWeight, maximum: maxWeight) > 0
     case .timeAndWeight:
-      return intValue(targetDuration) > 0 && floatValue(targetWeight) > 0
+      return intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
+        && floatValue(targetWeight, maximum: maxWeight) > 0
     case .distanceAndTime:
-      return floatValue(targetDistance) > 0 && intValue(targetDuration) > 0
+      return floatValue(targetDistance, maximum: maxDistance) > 0
+        && intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
     case .caloriesAndTime:
-      return floatValue(targetCalories) > 0 && intValue(targetDuration) > 0
+      return floatValue(targetCalories, maximum: maxCalories) > 0
+        && intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
     }
   }
 
@@ -688,14 +710,14 @@ struct AddPlanDayExerciseTargetsSheet: View {
         }
         ToolbarItem(placement: .confirmationAction) {
           Button("Add") {
-            let weightValue = backendWeight(from: floatValue(targetWeight))
-            let distanceValue = backendDistance(from: floatValue(targetDistance))
+            let weightValue = backendWeight(from: floatValue(targetWeight, maximum: maxWeight))
+            let distanceValue = backendDistance(from: floatValue(targetDistance, maximum: maxDistance))
             let targets = PlanExerciseTargets(
-              sets: intValue(targetSets),
-              reps: intValue(targetReps),
-              durationSeconds: intValue(targetDuration),
+              sets: intValue(targetSets, minimum: 1, maximum: maxSets),
+              reps: intValue(targetReps, minimum: 0, maximum: maxReps),
+              durationSeconds: intValue(targetDuration, minimum: 0, maximum: maxDurationSeconds),
               distance: distanceValue,
-              calories: floatValue(targetCalories),
+              calories: floatValue(targetCalories, maximum: maxCalories),
               weight: weightValue
             )
             Task {
@@ -773,12 +795,18 @@ struct AddPlanDayExerciseTargetsSheet: View {
     }
   }
 
-  private func intValue(_ text: String) -> Int {
-    Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+  private func intValue(_ text: String, minimum: Int = 0, maximum: Int) -> Int {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let value = Int(trimmed), value >= minimum, value <= maximum else { return 0 }
+    return value
   }
 
-  private func floatValue(_ text: String) -> Float {
-    Float(text.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+  private func floatValue(_ text: String, maximum: Float) -> Float {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let value = Float(trimmed), value.isFinite, value >= 0, value <= maximum else {
+      return 0
+    }
+    return value
   }
 
   private func backendWeight(from value: Float) -> Float {
@@ -805,6 +833,12 @@ struct EditPlanDayExerciseTargetsSheet: View {
   @State private var targetDistance: String
   @State private var targetCalories: String
   @State private var targetWeight: String
+  private let maxSets = 30
+  private let maxReps = 200
+  private let maxDurationSeconds = 21_600
+  private let maxDistance = Float(1_000)
+  private let maxCalories = Float(10_000)
+  private let maxWeight = Float(1_000)
 
   init(exercise: EnrichedPlanExercise, onUpdate: @escaping (PlanExerciseTargets) async -> Void) {
     self.exercise = exercise
@@ -828,24 +862,29 @@ struct EditPlanDayExerciseTargetsSheet: View {
   }
 
   private var isFormValid: Bool {
-    let sets = intValue(targetSets)
+    let sets = intValue(targetSets, minimum: 1, maximum: maxSets)
     if sets <= 0 { return false }
 
     switch exercise.measurementType {
     case .reps:
-      return intValue(targetReps) > 0
+      return intValue(targetReps, minimum: 1, maximum: maxReps) > 0
     case .time:
-      return intValue(targetDuration) > 0
+      return intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
     case .repsAndTime:
-      return intValue(targetReps) > 0 && intValue(targetDuration) > 0
+      return intValue(targetReps, minimum: 1, maximum: maxReps) > 0
+        && intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
     case .repsAndWeight:
-      return intValue(targetReps) > 0 && floatValue(targetWeight) > 0
+      return intValue(targetReps, minimum: 1, maximum: maxReps) > 0
+        && floatValue(targetWeight, maximum: maxWeight) > 0
     case .timeAndWeight:
-      return intValue(targetDuration) > 0 && floatValue(targetWeight) > 0
+      return intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
+        && floatValue(targetWeight, maximum: maxWeight) > 0
     case .distanceAndTime:
-      return floatValue(targetDistance) > 0 && intValue(targetDuration) > 0
+      return floatValue(targetDistance, maximum: maxDistance) > 0
+        && intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
     case .caloriesAndTime:
-      return floatValue(targetCalories) > 0 && intValue(targetDuration) > 0
+      return floatValue(targetCalories, maximum: maxCalories) > 0
+        && intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
     case .none:
       return false
     }
@@ -884,14 +923,14 @@ struct EditPlanDayExerciseTargetsSheet: View {
         }
         ToolbarItem(placement: .confirmationAction) {
           Button("Update") {
-            let weightValue = backendWeight(from: floatValue(targetWeight))
-            let distanceValue = backendDistance(from: floatValue(targetDistance))
+            let weightValue = backendWeight(from: floatValue(targetWeight, maximum: maxWeight))
+            let distanceValue = backendDistance(from: floatValue(targetDistance, maximum: maxDistance))
             let targets = PlanExerciseTargets(
-              sets: intValue(targetSets),
-              reps: intValue(targetReps),
-              durationSeconds: intValue(targetDuration),
+              sets: intValue(targetSets, minimum: 1, maximum: maxSets),
+              reps: intValue(targetReps, minimum: 0, maximum: maxReps),
+              durationSeconds: intValue(targetDuration, minimum: 0, maximum: maxDurationSeconds),
               distance: distanceValue,
-              calories: floatValue(targetCalories),
+              calories: floatValue(targetCalories, maximum: maxCalories),
               weight: weightValue
             )
             Task {
@@ -972,15 +1011,28 @@ struct EditPlanDayExerciseTargetsSheet: View {
   }
 
   private func prefillTargets() {
+    targetSets = boundedIntString(exercise.targetSets, minimum: 1, maximum: maxSets)
+    targetReps = boundedIntString(exercise.targetReps, minimum: 1, maximum: maxReps)
+    targetDuration = boundedIntString(
+      exercise.targetDurationSeconds,
+      minimum: 1,
+      maximum: maxDurationSeconds
+    )
+    targetDistance = ""
+    targetCalories = ""
+    targetWeight = ""
+
     if exercise.targetDistance > 0 {
       let displayValue =
         preferredDistanceUnit == .km
         ? exercise.targetDistance
         : UnitConverter.kmToMi(exercise.targetDistance)
-      targetDistance = UnitFormatter.formatValue(displayValue, decimalPlaces: 1)
+      if displayValue > 0 && displayValue <= maxDistance {
+        targetDistance = UnitFormatter.formatValue(displayValue, decimalPlaces: 1)
+      }
     }
 
-    if exercise.targetCalories > 0 {
+    if exercise.targetCalories > 0 && exercise.targetCalories <= maxCalories {
       targetCalories = "\(Int(exercise.targetCalories))"
     }
 
@@ -989,16 +1041,68 @@ struct EditPlanDayExerciseTargetsSheet: View {
         preferredWeightUnit == .kg
         ? exercise.targetWeight
         : UnitConverter.kgToLb(exercise.targetWeight)
-      targetWeight = UnitFormatter.formatValue(displayValue, decimalPlaces: 1)
+      if displayValue > 0 && displayValue <= maxWeight {
+        targetWeight = UnitFormatter.formatValue(displayValue, decimalPlaces: 1)
+      }
+    }
+
+    switch exercise.measurementType {
+    case .reps:
+      targetDuration = ""
+      targetDistance = ""
+      targetCalories = ""
+      targetWeight = ""
+    case .time:
+      targetReps = ""
+      targetDistance = ""
+      targetCalories = ""
+      targetWeight = ""
+    case .repsAndTime:
+      targetDistance = ""
+      targetCalories = ""
+      targetWeight = ""
+    case .repsAndWeight:
+      targetDuration = ""
+      targetDistance = ""
+      targetCalories = ""
+    case .timeAndWeight:
+      targetReps = ""
+      targetDistance = ""
+      targetCalories = ""
+    case .distanceAndTime:
+      targetReps = ""
+      targetCalories = ""
+      targetWeight = ""
+    case .caloriesAndTime:
+      targetReps = ""
+      targetDistance = ""
+      targetWeight = ""
+    case .none:
+      targetReps = ""
+      targetDuration = ""
+      targetDistance = ""
+      targetCalories = ""
+      targetWeight = ""
     }
   }
 
-  private func intValue(_ text: String) -> Int {
-    Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+  private func intValue(_ text: String, minimum: Int = 0, maximum: Int) -> Int {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let value = Int(trimmed), value >= minimum, value <= maximum else { return 0 }
+    return value
   }
 
-  private func floatValue(_ text: String) -> Float {
-    Float(text.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+  private func boundedIntString(_ value: Int, minimum: Int, maximum: Int) -> String {
+    guard value >= minimum && value <= maximum else { return "" }
+    return "\(value)"
+  }
+
+  private func floatValue(_ text: String, maximum: Float) -> Float {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let value = Float(trimmed), value.isFinite, value >= 0, value <= maximum else {
+      return 0
+    }
+    return value
   }
 
   private func backendWeight(from value: Float) -> Float {
