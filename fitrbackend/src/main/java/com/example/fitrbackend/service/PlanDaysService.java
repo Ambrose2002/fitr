@@ -40,8 +40,7 @@ public class PlanDaysService {
     }
 
     public PlanExerciseResponse getPlanDayExercise(String email, long dayId, long exerciseId) {
-        PlanExercise planExercise = planExerciseRepo.findById(exerciseId)
-                .orElseThrow(() -> new DataNotFoundException(exerciseId, "plan exercise"));
+        PlanExercise planExercise = resolvePlanExercise(dayId, exerciseId);
         if (!Objects.equals(planExercise.getPlanDay().getId(), dayId)) {
             throw new DataNotFoundException(exerciseId, "plan exercise");
         }
@@ -66,12 +65,15 @@ public class PlanDaysService {
             throw new DataCreationFailedException("user does not own exercise");
         }
         float targetWeight = req.getTargetWeight() != null ? req.getTargetWeight() : 0f;
+        int targetSets = toNonNegativeInt(req.getTargetSets(), "targetSets");
+        int targetReps = toNonNegativeInt(req.getTargetReps(), "targetReps");
+        int targetDurationSeconds = toNonNegativeInt(req.getTargetDurationSeconds(), "targetDurationSeconds");
         PlanExercise planExercise = new PlanExercise(
                 planDay,
                 exercise,
-                req.getTargetSets(),
-                req.getTargetReps(),
-                req.getTargetDurationSeconds(),
+                targetSets,
+                targetReps,
+                targetDurationSeconds,
                 req.getTargetDistance(),
                 req.getTargetCalories(),
                 targetWeight);
@@ -80,9 +82,8 @@ public class PlanDaysService {
 
     public PlanExerciseResponse updatePlanDayExercise(String email, long dayId, long exerciseId,
             CreatePlanDayExerciseRequest req) {
-                System.out.println("Request made");
-        PlanExercise planExercise = planExerciseRepo.findById(exerciseId)
-                .orElseThrow(() -> new DataNotFoundException(exerciseId, "plan exercise"));
+        System.out.println("Request made");
+        PlanExercise planExercise = resolvePlanExercise(dayId, exerciseId);
         if (!Objects.equals(planExercise.getPlanDay().getId(), dayId)) {
             System.out.println("throwing error 0");
             throw new DataNotFoundException(exerciseId, "plan exercise");
@@ -92,13 +93,14 @@ public class PlanDaysService {
             throw new DataNotFoundException(exerciseId, "plan exercise");
         }
         if (req.getTargetSets() >= 0) {
-            planExercise.setTargetSets(req.getTargetSets());
+            planExercise.setTargetSets(toNonNegativeInt(req.getTargetSets(), "targetSets"));
         }
         if (req.getTargetReps() >= 0) {
-            planExercise.setTargetReps(req.getTargetReps());
+            planExercise.setTargetReps(toNonNegativeInt(req.getTargetReps(), "targetReps"));
         }
         if (req.getTargetDurationSeconds() >= 0) {
-            planExercise.setTargetDurationSeconds(req.getTargetDurationSeconds());
+            planExercise.setTargetDurationSeconds(
+                    toNonNegativeInt(req.getTargetDurationSeconds(), "targetDurationSeconds"));
         }
         if (req.getTargetDistance() >= 0) {
             planExercise.setTargetDistance(req.getTargetDistance());
@@ -112,9 +114,15 @@ public class PlanDaysService {
         return toPlanExerciseResponse(planExerciseRepo.save(planExercise));
     }
 
+    private int toNonNegativeInt(long value, String fieldName) {
+        if (value < 0 || value > Integer.MAX_VALUE) {
+            throw new DataCreationFailedException(fieldName + " out of range");
+        }
+        return (int) value;
+    }
+
     public void deletePlanDayExercise(String email, long dayId, long exerciseId) {
-        PlanExercise planExercise = planExerciseRepo.findById(exerciseId)
-                .orElseThrow(() -> new DataNotFoundException(exerciseId, "plan exercise"));
+        PlanExercise planExercise = resolvePlanExercise(dayId, exerciseId);
         if (!Objects.equals(planExercise.getPlanDay().getId(), dayId)) {
             throw new DataNotFoundException(exerciseId, "plan exercise");
         }
@@ -122,6 +130,12 @@ public class PlanDaysService {
             throw new DataNotFoundException(exerciseId, "plan exercise");
         }
         planExerciseRepo.delete(planExercise);
+    }
+
+    private PlanExercise resolvePlanExercise(long dayId, long exerciseId) {
+        return planExerciseRepo.findById(exerciseId)
+                .orElseGet(() -> planExerciseRepo.findByPlanDayIdAndExerciseId(dayId, exerciseId)
+                        .orElseThrow(() -> new DataNotFoundException(exerciseId, "plan exercise")));
     }
 
     private PlanExerciseResponse toPlanExerciseResponse(PlanExercise planExercise) {

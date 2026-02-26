@@ -5,9 +5,9 @@ import lombok.Getter;
 @Getter
 public class CreatePlanDayExerciseRequest {
     private long exerciseId;
-    private int targetSets;
-    private int targetReps;
-    private int targetDurationSeconds;
+    private long targetSets;
+    private long targetReps;
+    private long targetDurationSeconds;
     private float targetDistance;
     private float targetCalories;
     private Float targetWeight;

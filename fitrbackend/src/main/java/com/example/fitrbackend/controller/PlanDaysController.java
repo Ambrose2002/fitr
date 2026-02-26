@@ -1,10 +1,9 @@
 package com.example.fitrbackend.controller;
 
-import com.example.fitrbackend.dto.CreatePlanDayExerciseRequest;
-import com.example.fitrbackend.dto.PlanExerciseResponse;
-import com.example.fitrbackend.exception.AuthenticationFailedException;
-import com.example.fitrbackend.service.PlanDaysService;
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -16,9 +15,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.fitrbackend.dto.CreatePlanDayExerciseRequest;
+import com.example.fitrbackend.dto.PlanExerciseResponse;
+import com.example.fitrbackend.exception.AuthenticationFailedException;
+import com.example.fitrbackend.service.PlanDaysService;
+
 @RestController
 @RequestMapping("/api/plan-days")
 public class PlanDaysController {
+
+    private static final Logger logger = LoggerFactory.getLogger(PlanDaysController.class);
 
     private final PlanDaysService planDaysService;
 
@@ -27,7 +33,8 @@ public class PlanDaysController {
     }
 
     @PostMapping("/{dayId}/exercises")
-    public PlanExerciseResponse addExerciseToPlanDay(@PathVariable Long dayId, @RequestBody CreatePlanDayExerciseRequest req) {
+    public PlanExerciseResponse addExerciseToPlanDay(@PathVariable Long dayId,
+            @RequestBody CreatePlanDayExerciseRequest req) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) {
             throw new AuthenticationFailedException("auth not found");
@@ -58,7 +65,9 @@ public class PlanDaysController {
     }
 
     @PutMapping("/{dayId}/exercises/{exerciseId}")
-    public PlanExerciseResponse updatePlanDayExercise(@PathVariable Long dayId, @PathVariable Long exerciseId, @RequestBody CreatePlanDayExerciseRequest req) {
+    public PlanExerciseResponse updatePlanDayExercise(@PathVariable Long dayId, @PathVariable Long exerciseId,
+            @RequestBody CreatePlanDayExerciseRequest req) {
+        logger.info("Update plan day exercise request dayId={} exerciseId={} body={}", dayId, exerciseId, req);
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) {
             throw new AuthenticationFailedException("auth not found");
@@ -69,6 +78,7 @@ public class PlanDaysController {
 
     @DeleteMapping("/{dayId}/exercises/{exerciseId}")
     public void deletePlanDayExercise(@PathVariable Long dayId, @PathVariable Long exerciseId) {
+        System.out.println("Request made to controller");
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) {
             throw new AuthenticationFailedException("auth not found");
