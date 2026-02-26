@@ -1109,7 +1109,7 @@ Content-Type: application/json
 | Parameter | Type | Description |
 |---|---|---|
 | `dayId` | Long | The plan day ID |
-| `exerciseId` | Long | The exercise ID |
+| `exerciseId` | Long | The plan exercise ID (the `id` returned by plan day exercises). This endpoint also accepts the catalog exercise ID for backward compatibility. |
 
 **Response** (200 OK):
 
@@ -1122,7 +1122,8 @@ Content-Type: application/json
   "targetReps": 8,
   "targetDurationSeconds": 0,
   "targetDistance": 0,
-  "targetCalories": 0
+  "targetCalories": 0,
+  "targetWeight": 0
 }
 ```
 
@@ -1145,7 +1146,7 @@ Content-Type: application/json
 | Parameter | Type | Description |
 |---|---|---|
 | `dayId` | Long | The plan day ID |
-| `exerciseId` | Long | The exercise ID |
+| `exerciseId` | Long | The plan exercise ID (the `id` returned by plan day exercises). This endpoint also accepts the catalog exercise ID for backward compatibility. |
 
 **Request Body**:
 
@@ -1156,7 +1157,8 @@ Content-Type: application/json
   "targetReps": 10,
   "targetDurationSeconds": 0,
   "targetDistance": 0,
-  "targetCalories": 0
+  "targetCalories": 0,
+  "targetWeight": 0
 }
 ```
 
@@ -1171,7 +1173,8 @@ Content-Type: application/json
   "targetReps": 10,
   "targetDurationSeconds": 0,
   "targetDistance": 0,
-  "targetCalories": 0
+  "targetCalories": 0,
+  "targetWeight": 0
 }
 ```
 
