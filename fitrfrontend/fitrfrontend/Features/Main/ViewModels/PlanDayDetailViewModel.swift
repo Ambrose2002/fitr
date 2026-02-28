@@ -60,6 +60,10 @@ final class PlanDayDetailViewModel: ObservableObject {
     weekday?.fullName ?? "Day \(dayNumber)"
   }
 
+  var existingExerciseIds: Set<Int64> {
+    Set(exercises.map(\.exerciseId))
+  }
+
   func load() async {
     isLoading = true
     errorMessage = nil
@@ -96,6 +100,11 @@ final class PlanDayDetailViewModel: ObservableObject {
   }
 
   func addExercise(exercise: ExerciseResponse, targets: PlanExerciseTargets) async {
+    guard !existingExerciseIds.contains(exercise.id) else {
+      errorMessage = "This exercise is already added to this workout day."
+      return
+    }
+
     do {
       let request = CreatePlanDayExerciseRequest(
         exerciseId: exercise.id,
@@ -122,6 +131,8 @@ final class PlanDayDetailViewModel: ObservableObject {
         targetWeight: response.targetWeight ?? targets.weight
       )
       exercises.append(newExercise)
+    } catch let apiError as APIErrorResponse {
+      errorMessage = apiError.message
     } catch {
       errorMessage = "Failed to add exercise."
     }

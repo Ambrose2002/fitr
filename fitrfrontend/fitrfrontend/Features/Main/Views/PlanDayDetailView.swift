@@ -388,7 +388,8 @@ private struct PlanDayDetailPageView: View {
     }
     .sheet(isPresented: $viewModel.showAddExerciseSheet) {
       AddPlanDayExerciseSheet(
-        exercises: viewModel.availableExercises
+        exercises: viewModel.availableExercises,
+        unavailableExerciseIds: viewModel.existingExerciseIds
       ) { exercise, targets in
         await viewModel.addExercise(exercise: exercise, targets: targets)
       }
@@ -662,6 +663,7 @@ struct AddPlanDayExerciseSheet: View {
   @Environment(\.dismiss) private var dismiss
 
   let exercises: [ExerciseResponse]
+  let unavailableExerciseIds: Set<Int64>
   let onAdd: (ExerciseResponse, PlanExerciseTargets) async -> Void
 
   @State private var searchText = ""
@@ -678,7 +680,12 @@ struct AddPlanDayExerciseSheet: View {
   }
 
   private var canContinue: Bool {
-    selectedExercise != nil
+    guard let selectedExercise else { return false }
+    return !unavailableExerciseIds.contains(selectedExercise.id)
+  }
+
+  private var hasSelectableExercises: Bool {
+    exercises.contains { !unavailableExerciseIds.contains($0.id) }
   }
 
   var body: some View {
@@ -690,6 +697,12 @@ struct AddPlanDayExerciseSheet: View {
             .foregroundColor(AppColors.textPrimary)
 
           searchField
+
+          if !exercises.isEmpty && !hasSelectableExercises {
+            Text("Every available exercise is already in this workout day.")
+              .font(.system(size: 13, weight: .medium))
+              .foregroundColor(AppColors.textSecondary)
+          }
 
           VStack(spacing: 8) {
             ForEach(filteredExercises) { exercise in
@@ -743,8 +756,11 @@ struct AddPlanDayExerciseSheet: View {
 
   private func exerciseRow(_ exercise: ExerciseResponse) -> some View {
     let isSelected = selectedExercise?.id == exercise.id
+    let isUnavailable = unavailableExerciseIds.contains(exercise.id)
 
     return Button {
+      guard !isUnavailable else { return }
+
       if selectedExercise?.id == exercise.id {
         selectedExercise = nil
       } else {
@@ -755,33 +771,49 @@ struct AddPlanDayExerciseSheet: View {
         VStack(alignment: .leading, spacing: 6) {
           Text(exercise.name)
             .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(AppColors.textPrimary)
+            .foregroundColor(isUnavailable ? AppColors.textSecondary : AppColors.textPrimary)
 
           Text(exercise.measurementType.label)
             .font(.system(size: 11, weight: .bold))
-            .foregroundColor(AppColors.accent)
+            .foregroundColor(isUnavailable ? AppColors.textSecondary : AppColors.accent)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(AppColors.accent.opacity(0.12))
+            .background(
+              isUnavailable ? Color(.systemGray5) : AppColors.accent.opacity(0.12)
+            )
             .cornerRadius(999)
         }
 
         Spacer()
 
-        if isSelected {
+        if isUnavailable {
+          HStack(spacing: 6) {
+            Image(systemName: "checkmark.circle.fill")
+              .font(.system(size: 12, weight: .semibold))
+            Text("Already Added")
+              .font(.system(size: 12, weight: .semibold))
+          }
+          .foregroundColor(AppColors.textSecondary)
+        } else if isSelected {
           Image(systemName: "checkmark.circle.fill")
             .foregroundColor(AppColors.accent)
         }
       }
       .padding(12)
-      .background(isSelected ? AppColors.accent.opacity(0.08) : Color(.systemBackground))
+      .background(
+        isUnavailable
+          ? Color(.systemGray6)
+          : (isSelected ? AppColors.accent.opacity(0.08) : Color(.systemBackground))
+      )
       .overlay(
         RoundedRectangle(cornerRadius: 12)
           .stroke(Color(.systemGray4), lineWidth: 1)
       )
       .cornerRadius(12)
+      .opacity(isUnavailable ? 0.6 : 1)
     }
     .buttonStyle(.plain)
+    .disabled(isUnavailable)
   }
 
 }

@@ -64,6 +64,9 @@ public class PlanDaysService {
         if (!exercise.isSystemDefined() && !Objects.equals(exercise.getUser().getEmail(), email)) {
             throw new DataCreationFailedException("user does not own exercise");
         }
+        if (planExerciseRepo.existsByPlanDay_IdAndExercise_Id(dayId, req.getExerciseId())) {
+            throw new DataCreationFailedException("This exercise is already added to this workout day.");
+        }
         float targetWeight = req.getTargetWeight() != null ? req.getTargetWeight() : 0f;
         int targetSets = toNonNegativeInt(req.getTargetSets(), "targetSets");
         int targetReps = toNonNegativeInt(req.getTargetReps(), "targetReps");

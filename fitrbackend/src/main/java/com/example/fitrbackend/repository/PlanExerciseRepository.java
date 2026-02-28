@@ -13,5 +13,7 @@ public interface PlanExerciseRepository extends JpaRepository<PlanExercise, Long
     @Query("SELECT p FROM PlanExercise p WHERE p.planDay.id = ?1")
     List<PlanExercise> findByPlanDayId(Long planDayId);
 
+    boolean existsByPlanDay_IdAndExercise_Id(Long planDayId, Long exerciseId);
+
     Optional<PlanExercise> findByPlanDayIdAndExerciseId(Long planDayId, Long exerciseId);
 }
