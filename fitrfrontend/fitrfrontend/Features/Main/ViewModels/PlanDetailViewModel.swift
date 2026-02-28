@@ -30,6 +30,18 @@ struct EnrichedPlanDay: Identifiable, Hashable {
   let name: String
   let exercises: [EnrichedPlanExercise]
 
+  var weekday: WorkoutWeekday? {
+    WorkoutWeekday.from(dayNumber: dayNumber)
+  }
+
+  var weekdayName: String {
+    weekday?.fullName ?? "Day \(dayNumber)"
+  }
+
+  var weekdayShortName: String {
+    weekday?.shortName ?? "Day \(dayNumber)"
+  }
+
   var durationMinutes: Int {
     let totalSeconds = exercises.reduce(0) { $0 + $1.targetDurationSeconds }
     return totalSeconds > 0 ? totalSeconds / 60 : 0
@@ -67,7 +79,6 @@ final class PlanDetailViewModel: ObservableObject {
   @Published var errorMessage: String?
   @Published var isActiveToggle = false
   @Published var showAddDaySheet = false
-  @Published var newDayName = ""
 
   private var workoutPlanService: WorkoutPlanService
   private var sessionStore: SessionStore
@@ -182,13 +193,18 @@ final class PlanDetailViewModel: ObservableObject {
 
   // MARK: - Plan Day Management
 
-  func addPlanDay(name: String) async {
-    guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+  func addPlanDay(name: String, dayNumber: Int) async {
+    let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmedName.isEmpty else { return }
+    guard availableDayNumbersForNewDay.contains(dayNumber) else {
+      let weekdayName = WorkoutWeekday.from(dayNumber: dayNumber)?.fullName ?? "that day"
+      errorMessage = "A workout day is already assigned to \(weekdayName)."
+      return
+    }
 
-    let nextDayNumber = (enrichedDays.max { $0.dayNumber < $1.dayNumber }?.dayNumber ?? 0) + 1
     let createRequest = CreateWorkoutPlanDayRequest(
-      dayNumber: nextDayNumber,
-      name: name
+      dayNumber: dayNumber,
+      name: trimmedName
     )
 
     do {
@@ -201,24 +217,28 @@ final class PlanDetailViewModel: ObservableObject {
       )
       enrichedDays.append(enrichedDay)
       enrichedDays.sort { $0.dayNumber < $1.dayNumber }
-      newDayName = ""
       showAddDaySheet = false
+    } catch let apiError as APIErrorResponse {
+      errorMessage = apiError.message
     } catch {
-        print("Error occured:", error)
       errorMessage = "Failed to add workout day."
     }
   }
 
-  func updatePlanDay(id: Int64, name: String) async {
-    guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+  func updatePlanDay(id: Int64, name: String, dayNumber: Int) async {
+    let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmedName.isEmpty else { return }
+    guard availableDayNumbers(forEditing: id).contains(dayNumber) else {
+      let weekdayName = WorkoutWeekday.from(dayNumber: dayNumber)?.fullName ?? "that day"
+      errorMessage = "A workout day is already assigned to \(weekdayName)."
+      return
+    }
 
     do {
-      // Get the current day to retrieve its dayNumber
       if let dayIndex = enrichedDays.firstIndex(where: { $0.id == id }) {
-        let dayNumber = enrichedDays[dayIndex].dayNumber
         let updateRequest = CreateWorkoutPlanDayRequest(
           dayNumber: dayNumber,
-          name: name
+          name: trimmedName
         )
         let updatedDay = try await workoutPlanService.updatePlanDay(
           planId: planId, dayId: id, request: updateRequest)
@@ -226,11 +246,14 @@ final class PlanDetailViewModel: ObservableObject {
         let oldDay = enrichedDays[dayIndex]
         enrichedDays[dayIndex] = EnrichedPlanDay(
           id: oldDay.id,
-          dayNumber: oldDay.dayNumber,
+          dayNumber: updatedDay.dayNumber,
           name: updatedDay.name,
           exercises: oldDay.exercises
         )
+        enrichedDays.sort { $0.dayNumber < $1.dayNumber }
       }
+    } catch let apiError as APIErrorResponse {
+      errorMessage = apiError.message
     } catch {
       errorMessage = "Failed to update workout day."
     }
@@ -257,6 +280,28 @@ final class PlanDetailViewModel: ObservableObject {
 
   var planDayCount: Int {
     enrichedDays.count
+  }
+
+  var assignedDayNumbers: Set<Int> {
+    Set(enrichedDays.map(\.dayNumber))
+  }
+
+  var availableDayNumbersForNewDay: [Int] {
+    WorkoutWeekday.allCases.map { $0.rawValue }.filter { !assignedDayNumbers.contains($0) }
+  }
+
+  func availableDayNumbers(forEditing dayId: Int64) -> [Int] {
+    guard let currentDay = enrichedDays.first(where: { $0.id == dayId }) else {
+      return availableDayNumbersForNewDay
+    }
+
+    return WorkoutWeekday.allCases.map { $0.rawValue }.filter {
+      $0 == currentDay.dayNumber || !assignedDayNumbers.contains($0)
+    }
+  }
+
+  var hasAvailableWeekdays: Bool {
+    !availableDayNumbersForNewDay.isEmpty
   }
 
   var totalExercisesCount: Int {
