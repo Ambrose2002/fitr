@@ -193,13 +193,11 @@ struct PlanDetailView: View {
                       day: day,
                       availableDayNumbers: viewModel.availableDayNumbers(forEditing: day.id),
                       onEdit: { newName, newDayNumber in
-                        Task {
-                          await viewModel.updatePlanDay(
-                            id: day.id,
-                            name: newName,
-                            dayNumber: newDayNumber
-                          )
-                        }
+                        try await viewModel.updatePlanDay(
+                          id: day.id,
+                          name: newName,
+                          dayNumber: newDayNumber
+                        )
                       },
                       onDelete: {
                         Task {
@@ -308,7 +306,7 @@ struct PlanDetailView: View {
 struct TrainingDayCard: View {
   let day: EnrichedPlanDay
   let availableDayNumbers: [Int]
-  let onEdit: (String, Int) -> Void
+  let onEdit: (String, Int) async throws -> Void
   let onDelete: () -> Void
   let onTap: () -> Void
 
@@ -375,7 +373,7 @@ struct TrainingDayCard: View {
         currentDayNumber: editedDayNumber,
         availableDayNumbers: availableDayNumbers,
         onSave: { newName, newDayNumber in
-          onEdit(newName, newDayNumber)
+          try await onEdit(newName, newDayNumber)
         }
       )
     }
@@ -519,16 +517,18 @@ struct EditWorkoutDaySheet: View {
   let dayName: String
   let currentDayNumber: Int
   let availableDayNumbers: [Int]
-  let onSave: (String, Int) -> Void
+  let onSave: (String, Int) async throws -> Void
 
   @State private var editedName: String = ""
   @State private var selectedDayNumber: Int?
+  @State private var isSubmitting = false
+  @State private var errorMessage = ""
 
   init(
     dayName: String,
     currentDayNumber: Int,
     availableDayNumbers: [Int],
-    onSave: @escaping (String, Int) -> Void
+    onSave: @escaping (String, Int) async throws -> Void
   ) {
     self.dayName = dayName
     self.currentDayNumber = currentDayNumber
@@ -559,29 +559,83 @@ struct EditWorkoutDaySheet: View {
           )
         }
 
+        if hasOnlyWhitespaceInput || !errorMessage.isEmpty {
+          HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.circle.fill")
+              .font(.system(size: 13, weight: .semibold))
+              .foregroundColor(AppColors.errorRed)
+            Text(hasOnlyWhitespaceInput ? "Workout day name is required." : errorMessage)
+              .font(.system(size: 13, weight: .medium))
+              .foregroundColor(AppColors.errorRed)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+        }
+
         Spacer()
 
         actionButtons(
-          primaryTitle: "Save Changes",
+          primaryTitle: isSubmitting ? "Saving..." : "Save Changes",
           onCancel: { dismiss() },
           primaryAction: {
-            guard let selectedDayNumber else { return }
-            onSave(editedName.trimmingCharacters(in: .whitespacesAndNewlines), selectedDayNumber)
-            dismiss()
+            Task {
+              await submit()
+            }
           },
-          isPrimaryDisabled: !isSubmissionValid
+          isPrimaryDisabled: !isSubmissionValid || isSubmitting
         )
       }
       .padding(16)
       .navigationTitle("Edit Workout Day")
       .navigationBarTitleDisplayMode(.inline)
+      .onChange(of: editedName) { _, _ in
+        if !errorMessage.isEmpty {
+          errorMessage = ""
+        }
+      }
     }
+  }
+
+  private var hasOnlyWhitespaceInput: Bool {
+    !editedName.isEmpty && editedName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
 
   private var isSubmissionValid: Bool {
     let trimmedName = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
     guard let selectedDayNumber else { return false }
     return !trimmedName.isEmpty && availableDayNumbers.contains(selectedDayNumber)
+  }
+
+  @MainActor
+  private func submit() async {
+    guard !isSubmitting else {
+      return
+    }
+
+    guard let selectedDayNumber else {
+      return
+    }
+
+    let trimmedName = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmedName.isEmpty else {
+      errorMessage = ""
+      return
+    }
+
+    isSubmitting = true
+    errorMessage = ""
+
+    defer {
+      isSubmitting = false
+    }
+
+    do {
+      try await onSave(trimmedName, selectedDayNumber)
+      dismiss()
+    } catch let apiError as APIErrorResponse {
+      errorMessage = apiError.message
+    } catch {
+      errorMessage = "Failed to update workout day."
+    }
   }
 }
 

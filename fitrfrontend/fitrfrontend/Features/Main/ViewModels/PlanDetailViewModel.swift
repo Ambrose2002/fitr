@@ -215,38 +215,39 @@ final class PlanDetailViewModel: ObservableObject {
     }
   }
 
-  func updatePlanDay(id: Int64, name: String, dayNumber: Int) async {
+  func updatePlanDay(id: Int64, name: String, dayNumber: Int) async throws {
     let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmedName.isEmpty else { return }
+    guard !trimmedName.isEmpty else {
+      throw APIErrorResponse(message: "Workout day name is required.", timestamp: "", status: 400)
+    }
     guard availableDayNumbers(forEditing: id).contains(dayNumber) else {
       let weekdayName = WorkoutWeekday.from(dayNumber: dayNumber)?.fullName ?? "that day"
-      errorMessage = "A workout day is already assigned to \(weekdayName)."
+      throw APIErrorResponse(
+        message: "A workout day is already assigned to \(weekdayName).",
+        timestamp: "",
+        status: 400
+      )
+    }
+
+    guard let dayIndex = enrichedDays.firstIndex(where: { $0.id == id }) else {
       return
     }
 
-    do {
-      if let dayIndex = enrichedDays.firstIndex(where: { $0.id == id }) {
-        let updateRequest = CreateWorkoutPlanDayRequest(
-          dayNumber: dayNumber,
-          name: trimmedName
-        )
-        let updatedDay = try await workoutPlanService.updatePlanDay(
-          planId: planId, dayId: id, request: updateRequest)
+    let updateRequest = CreateWorkoutPlanDayRequest(
+      dayNumber: dayNumber,
+      name: trimmedName
+    )
+    let updatedDay = try await workoutPlanService.updatePlanDay(
+      planId: planId, dayId: id, request: updateRequest)
 
-        let oldDay = enrichedDays[dayIndex]
-        enrichedDays[dayIndex] = EnrichedPlanDay(
-          id: oldDay.id,
-          dayNumber: updatedDay.dayNumber,
-          name: updatedDay.name,
-          exercises: oldDay.exercises
-        )
-        enrichedDays.sort { $0.dayNumber < $1.dayNumber }
-      }
-    } catch let apiError as APIErrorResponse {
-      errorMessage = apiError.message
-    } catch {
-      errorMessage = "Failed to update workout day."
-    }
+    let oldDay = enrichedDays[dayIndex]
+    enrichedDays[dayIndex] = EnrichedPlanDay(
+      id: oldDay.id,
+      dayNumber: updatedDay.dayNumber,
+      name: updatedDay.name,
+      exercises: oldDay.exercises
+    )
+    enrichedDays.sort { $0.dayNumber < $1.dayNumber }
   }
 
   func deletePlanDay(id: Int64) async {

@@ -141,33 +141,33 @@ final class WorkoutPlanViewModel: ObservableObject {
     return newPlan
   }
 
-  func updatePlan(id: Int64, name: String) async {
-    errorMessage = nil
-
-    // Get current isActive status from existing plan
-    let currentIsActive = plans.first(where: { $0.id == id })?.isActive ?? false
-    let request = UpdateWorkoutPlanRequest(name: name, isActive: currentIsActive)
-
-    do {
-      let updatedPlan = try await workoutPlanService.updatePlan(id: id, request: request)
-      if let index = plans.firstIndex(where: { $0.id == id }) {
-        let summary = PlanSummary(
-          id: updatedPlan.id,
-          name: updatedPlan.name,
-          createdAt: updatedPlan.createdAt,
-          isActive: updatedPlan.isActive,
-          daysCount: plans[index].daysCount,
-          exercisesCount: plans[index].exercisesCount,
-          averageExercisesPerDay: plans[index].averageExercisesPerDay
-        )
-        self.plans[index] = summary
-      }
-      if selectedPlan?.id == id {
-        self.selectedPlan = updatedPlan
-      }
-    } catch {
-      self.errorMessage = error.localizedDescription
+  func updatePlan(id: Int64, name: String) async throws -> WorkoutPlanResponse {
+    let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmedName.isEmpty else {
+      throw APIErrorResponse(message: "Plan name is required.", timestamp: "", status: 400)
     }
+
+    let currentIsActive = plans.first(where: { $0.id == id })?.isActive ?? selectedPlan?.isActive ?? false
+    let request = UpdateWorkoutPlanRequest(name: trimmedName, isActive: currentIsActive)
+
+    let updatedPlan = try await workoutPlanService.updatePlan(id: id, request: request)
+    if let index = plans.firstIndex(where: { $0.id == id }) {
+      let summary = PlanSummary(
+        id: updatedPlan.id,
+        name: updatedPlan.name,
+        createdAt: updatedPlan.createdAt,
+        isActive: updatedPlan.isActive,
+        daysCount: plans[index].daysCount,
+        exercisesCount: plans[index].exercisesCount,
+        averageExercisesPerDay: plans[index].averageExercisesPerDay
+      )
+      self.plans[index] = summary
+    }
+    if selectedPlan?.id == id {
+      self.selectedPlan = updatedPlan
+    }
+
+    return updatedPlan
   }
 
   func deletePlan(id: Int64) async {

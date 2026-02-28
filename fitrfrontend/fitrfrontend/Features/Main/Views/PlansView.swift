@@ -12,6 +12,7 @@ struct PlansView: View {
   @StateObject private var viewModel: WorkoutPlanViewModel
 
   @State private var showCreatePlan = false
+  @State private var planToEdit: PlanSummary?
   @State private var planToDelete: PlanSummary?
   @State private var showDeleteConfirmation = false
   @State private var pendingCreatedPlan: WorkoutPlanResponse?
@@ -99,6 +100,9 @@ struct PlansView: View {
                     ) {
                       PlanCard(
                         plan: plan,
+                        onEdit: {
+                          planToEdit = plan
+                        },
                         onDelete: {
                           planToDelete = plan
                           showDeleteConfirmation = true
@@ -175,11 +179,36 @@ struct PlansView: View {
       }
     }
     .sheet(isPresented: $showCreatePlan, onDismiss: handleCreateSheetDismissed) {
-      CreatePlanSheet(
+      PlanNameSheet(
         isPresented: $showCreatePlan,
-        onCreate: { name in
+        title: "New Plan",
+        headline: "Start a new routine",
+        helperText: "Give this routine a short name. You can add workout days next.",
+        confirmTitle: "Create Plan",
+        initialName: "",
+        onSubmit: { name in
           let createdPlan = try await viewModel.createPlan(name: name)
           pendingCreatedPlan = createdPlan
+        }
+      )
+    }
+    .sheet(item: $planToEdit) { plan in
+      PlanNameSheet(
+        isPresented: Binding(
+          get: { planToEdit != nil },
+          set: { isPresented in
+            if !isPresented {
+              planToEdit = nil
+            }
+          }
+        ),
+        title: "Edit Plan",
+        headline: "Update your plan name",
+        helperText: "Choose a clear name for this training block.",
+        confirmTitle: "Save Changes",
+        initialName: plan.name,
+        onSubmit: { name in
+          _ = try await viewModel.updatePlan(id: plan.id, name: name)
         }
       )
     }
@@ -219,6 +248,7 @@ struct PlansView: View {
 
 struct PlanCard: View {
   let plan: PlanSummary
+  let onEdit: () -> Void
   let onDelete: () -> Void
 
   var body: some View {
@@ -249,6 +279,12 @@ struct PlanCard: View {
         Spacer()
 
         Menu {
+          Button {
+            onEdit()
+          } label: {
+            Label("Edit", systemImage: "pencil")
+          }
+
           Button(role: .destructive) {
             onDelete()
           } label: {
@@ -314,15 +350,39 @@ struct PlanCard: View {
   }
 }
 
-// MARK: - Create Plan Sheet
+// MARK: - Plan Name Sheet
 
-struct CreatePlanSheet: View {
+struct PlanNameSheet: View {
   @Binding var isPresented: Bool
-  let onCreate: (String) async throws -> Void
+  let title: String
+  let headline: String
+  let helperText: String
+  let confirmTitle: String
+  let initialName: String
+  let onSubmit: (String) async throws -> Void
 
-  @State private var planName = ""
+  @State private var planName: String
   @State private var errorMessage = ""
   @State private var isSubmitting = false
+
+  init(
+    isPresented: Binding<Bool>,
+    title: String,
+    headline: String,
+    helperText: String,
+    confirmTitle: String,
+    initialName: String,
+    onSubmit: @escaping (String) async throws -> Void
+  ) {
+    _isPresented = isPresented
+    self.title = title
+    self.headline = headline
+    self.helperText = helperText
+    self.confirmTitle = confirmTitle
+    self.initialName = initialName
+    self.onSubmit = onSubmit
+    _planName = State(initialValue: initialName)
+  }
 
   private var trimmedPlanName: String {
     planName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -334,6 +394,19 @@ struct CreatePlanSheet: View {
 
   private var canSubmit: Bool {
     !trimmedPlanName.isEmpty && !isSubmitting
+  }
+
+  private var submissionTitle: String {
+    guard isSubmitting else {
+      return confirmTitle
+    }
+    return confirmTitle == "Save Changes" ? "Saving..." : "Creating..."
+  }
+
+  private var fallbackErrorMessage: String {
+    confirmTitle == "Save Changes"
+      ? "Failed to update workout plan."
+      : "Failed to create workout plan."
   }
 
   var body: some View {
@@ -348,11 +421,11 @@ struct CreatePlanSheet: View {
             .cornerRadius(12)
 
           VStack(alignment: .leading, spacing: 4) {
-            Text("Start a new routine")
+            Text(headline)
               .font(.system(size: 18, weight: .bold))
               .foregroundColor(AppColors.textPrimary)
 
-            Text("Give this routine a short name. You can add workout days next.")
+            Text(helperText)
               .font(.system(size: 13))
               .foregroundColor(AppColors.textSecondary)
           }
@@ -375,7 +448,7 @@ struct CreatePlanSheet: View {
             TextField(
               "",
               text: $planName,
-              prompt: Text("e.g., Upper Body Strength")
+              prompt: Text(initialName.isEmpty ? "e.g., Upper Body Strength" : initialName)
                 .foregroundColor(AppColors.textSecondary)
             )
             .textInputAutocapitalization(.words)
@@ -430,7 +503,7 @@ struct CreatePlanSheet: View {
                 .scaleEffect(0.85)
             }
 
-            Text(isSubmitting ? "Creating..." : "Create Plan")
+            Text(submissionTitle)
               .font(.system(size: 16, weight: .semibold))
           }
           .foregroundColor(.white)
@@ -444,7 +517,7 @@ struct CreatePlanSheet: View {
       }
       .padding(16)
       .background(Color(.systemBackground))
-      .navigationTitle("New Plan")
+      .navigationTitle(title)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .navigationBarLeading) {
@@ -480,12 +553,12 @@ struct CreatePlanSheet: View {
     }
 
     do {
-      try await onCreate(trimmedPlanName)
+      try await onSubmit(trimmedPlanName)
       isPresented = false
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
     } catch {
-      errorMessage = "Failed to create workout plan."
+      errorMessage = fallbackErrorMessage
     }
   }
 }

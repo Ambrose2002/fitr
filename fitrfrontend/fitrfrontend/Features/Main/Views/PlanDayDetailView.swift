@@ -479,23 +479,23 @@ struct PlanDayExerciseCard: View {
 
     case .time:
       return [
-        ExerciseColumn(header: "TIME (sec)") {
-          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        ExerciseColumn(header: "TIME (min)") {
+          formattedDurationValue($0.targetDurationSeconds)
         }
       ]
 
     case .repsAndTime:
       return [
         ExerciseColumn(header: "REPS") { "\($0.targetReps > 0 ? "\($0.targetReps)" : "--")" },
-        ExerciseColumn(header: "TIME (sec)") {
-          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        ExerciseColumn(header: "TIME (min)") {
+          formattedDurationValue($0.targetDurationSeconds)
         },
       ]
 
     case .timeAndWeight:
       return [
-        ExerciseColumn(header: "TIME (sec)") {
-          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        ExerciseColumn(header: "TIME (min)") {
+          formattedDurationValue($0.targetDurationSeconds)
         },
         ExerciseColumn(header: "WEIGHT (\(preferredWeightUnit.abbreviation))") {
           $0.targetWeight > 0 ? formattedWeight($0.targetWeight) : "--"
@@ -515,8 +515,8 @@ struct PlanDayExerciseCard: View {
         ExerciseColumn(header: "DISTANCE (\(preferredDistanceUnit.abbreviation))") {
           $0.targetDistance > 0 ? formattedDistance($0.targetDistance) : "--"
         },
-        ExerciseColumn(header: "TIME (sec)") {
-          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        ExerciseColumn(header: "TIME (min)") {
+          formattedDurationValue($0.targetDurationSeconds)
         },
       ]
 
@@ -525,8 +525,8 @@ struct PlanDayExerciseCard: View {
         ExerciseColumn(header: "CALORIES") {
           "\($0.targetCalories > 0 ? "\(Int($0.targetCalories))" : "--")"
         },
-        ExerciseColumn(header: "TIME (sec)") {
-          "\($0.targetDurationSeconds > 0 ? "\($0.targetDurationSeconds)" : "--")"
+        ExerciseColumn(header: "TIME (min)") {
+          formattedDurationValue($0.targetDurationSeconds)
         },
       ]
 
@@ -545,6 +545,11 @@ struct PlanDayExerciseCard: View {
   private func formattedDistance(_ km: Float) -> String {
     let displayValue = preferredDistanceUnit == .km ? km : UnitConverter.kmToMi(km)
     return UnitFormatter.formatValue(displayValue, decimalPlaces: 1)
+  }
+
+  private func formattedDurationValue(_ seconds: Int) -> String {
+    guard seconds > 0 else { return "--" }
+    return DurationFormatter.minutesString(from: seconds)
   }
 
   var body: some View {
@@ -825,7 +830,6 @@ struct AddPlanDayExerciseTargetsSheet: View {
   @State private var targetWeight = ""
   private let maxSets = 30
   private let maxReps = 200
-  private let maxDurationSeconds = 21_600
   private let maxDistance = Float(1_000)
   private let maxCalories = Float(10_000)
   private let maxWeight = Float(1_000)
@@ -846,22 +850,22 @@ struct AddPlanDayExerciseTargetsSheet: View {
     case .reps:
       return intValue(targetReps, minimum: 1, maximum: maxReps) > 0
     case .time:
-      return intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
+      return DurationFormatter.isValidMinutesInput(targetDuration)
     case .repsAndTime:
       return intValue(targetReps, minimum: 1, maximum: maxReps) > 0
-        && intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
+        && DurationFormatter.isValidMinutesInput(targetDuration)
     case .repsAndWeight:
       return intValue(targetReps, minimum: 1, maximum: maxReps) > 0
         && floatValue(targetWeight, maximum: maxWeight) > 0
     case .timeAndWeight:
-      return intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
+      return DurationFormatter.isValidMinutesInput(targetDuration)
         && floatValue(targetWeight, maximum: maxWeight) > 0
     case .distanceAndTime:
       return floatValue(targetDistance, maximum: maxDistance) > 0
-        && intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
+        && DurationFormatter.isValidMinutesInput(targetDuration)
     case .caloriesAndTime:
       return floatValue(targetCalories, maximum: maxCalories) > 0
-        && intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
+        && DurationFormatter.isValidMinutesInput(targetDuration)
     }
   }
 
@@ -900,7 +904,7 @@ struct AddPlanDayExerciseTargetsSheet: View {
             let targets = PlanExerciseTargets(
               sets: intValue(targetSets, minimum: 1, maximum: maxSets),
               reps: intValue(targetReps, minimum: 0, maximum: maxReps),
-              durationSeconds: intValue(targetDuration, minimum: 0, maximum: maxDurationSeconds),
+              durationSeconds: DurationFormatter.seconds(fromMinutesText: targetDuration) ?? 0,
               distance: distanceValue,
               calories: floatValue(targetCalories, maximum: maxCalories),
               weight: weightValue
@@ -924,10 +928,16 @@ struct AddPlanDayExerciseTargetsSheet: View {
       case .reps:
         inputField(title: "Target Reps", text: $targetReps, placeholder: "10")
       case .time:
-        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+        inputField(
+          title: "Target Duration (min)", text: $targetDuration, placeholder: "1",
+          keyboard: .decimalPad
+        )
       case .repsAndTime:
         inputField(title: "Target Reps", text: $targetReps, placeholder: "10")
-        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+        inputField(
+          title: "Target Duration (min)", text: $targetDuration, placeholder: "1",
+          keyboard: .decimalPad
+        )
       case .repsAndWeight:
         inputField(title: "Target Reps", text: $targetReps, placeholder: "10")
         inputField(
@@ -935,7 +945,10 @@ struct AddPlanDayExerciseTargetsSheet: View {
           placeholder: "50", keyboard: .decimalPad
         )
       case .timeAndWeight:
-        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+        inputField(
+          title: "Target Duration (min)", text: $targetDuration, placeholder: "1",
+          keyboard: .decimalPad
+        )
         inputField(
           title: "Target Weight (\(preferredWeightUnit.abbreviation))", text: $targetWeight,
           placeholder: "50", keyboard: .decimalPad
@@ -945,12 +958,18 @@ struct AddPlanDayExerciseTargetsSheet: View {
           title: "Target Distance (\(preferredDistanceUnit.abbreviation))", text: $targetDistance,
           placeholder: "1.0",
           keyboard: .decimalPad)
-        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+        inputField(
+          title: "Target Duration (min)", text: $targetDuration, placeholder: "1",
+          keyboard: .decimalPad
+        )
       case .caloriesAndTime:
         inputField(
           title: "Target Calories", text: $targetCalories, placeholder: "200", keyboard: .decimalPad
         )
-        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+        inputField(
+          title: "Target Duration (min)", text: $targetDuration, placeholder: "1",
+          keyboard: .decimalPad
+        )
       }
     }
     .padding(12)
@@ -1020,7 +1039,6 @@ struct EditPlanDayExerciseTargetsSheet: View {
   @State private var targetWeight: String
   private let maxSets = 30
   private let maxReps = 200
-  private let maxDurationSeconds = 21_600
   private let maxDistance = Float(1_000)
   private let maxCalories = Float(10_000)
   private let maxWeight = Float(1_000)
@@ -1034,7 +1052,9 @@ struct EditPlanDayExerciseTargetsSheet: View {
     _targetSets = State(initialValue: "\(exercise.targetSets)")
     _targetReps = State(initialValue: exercise.targetReps > 0 ? "\(exercise.targetReps)" : "")
     _targetDuration = State(
-      initialValue: exercise.targetDurationSeconds > 0 ? "\(exercise.targetDurationSeconds)" : ""
+      initialValue:
+        exercise.targetDurationSeconds > 0
+        ? DurationFormatter.minutesString(from: exercise.targetDurationSeconds) : ""
     )
     _targetDistance = State(initialValue: "")
     _targetCalories = State(initialValue: "")
@@ -1057,22 +1077,22 @@ struct EditPlanDayExerciseTargetsSheet: View {
     case .reps:
       return intValue(targetReps, minimum: 1, maximum: maxReps) > 0
     case .time:
-      return intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
+      return DurationFormatter.isValidMinutesInput(targetDuration)
     case .repsAndTime:
       return intValue(targetReps, minimum: 1, maximum: maxReps) > 0
-        && intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
+        && DurationFormatter.isValidMinutesInput(targetDuration)
     case .repsAndWeight:
       return intValue(targetReps, minimum: 1, maximum: maxReps) > 0
         && floatValue(targetWeight, maximum: maxWeight) > 0
     case .timeAndWeight:
-      return intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
+      return DurationFormatter.isValidMinutesInput(targetDuration)
         && floatValue(targetWeight, maximum: maxWeight) > 0
     case .distanceAndTime:
       return floatValue(targetDistance, maximum: maxDistance) > 0
-        && intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
+        && DurationFormatter.isValidMinutesInput(targetDuration)
     case .caloriesAndTime:
       return floatValue(targetCalories, maximum: maxCalories) > 0
-        && intValue(targetDuration, minimum: 1, maximum: maxDurationSeconds) > 0
+        && DurationFormatter.isValidMinutesInput(targetDuration)
     case .none:
       return false
     }
@@ -1113,7 +1133,7 @@ struct EditPlanDayExerciseTargetsSheet: View {
           Button("Update") {
             let sets = intValue(targetSets, minimum: 1, maximum: maxSets)
             let reps = intValue(targetReps, minimum: 0, maximum: maxReps)
-            let durationSeconds = intValue(targetDuration, minimum: 0, maximum: maxDurationSeconds)
+            let durationSeconds = DurationFormatter.seconds(fromMinutesText: targetDuration) ?? 0
             let distance = backendDistance(from: floatValue(targetDistance, maximum: maxDistance))
             let calories = floatValue(targetCalories, maximum: maxCalories)
             let weight = backendWeight(from: floatValue(targetWeight, maximum: maxWeight))
@@ -1134,10 +1154,16 @@ struct EditPlanDayExerciseTargetsSheet: View {
       case .reps:
         inputField(title: "Target Reps", text: $targetReps, placeholder: "10")
       case .time:
-        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+        inputField(
+          title: "Target Duration (min)", text: $targetDuration, placeholder: "1",
+          keyboard: .decimalPad
+        )
       case .repsAndTime:
         inputField(title: "Target Reps", text: $targetReps, placeholder: "10")
-        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+        inputField(
+          title: "Target Duration (min)", text: $targetDuration, placeholder: "1",
+          keyboard: .decimalPad
+        )
       case .repsAndWeight:
         inputField(title: "Target Reps", text: $targetReps, placeholder: "10")
         inputField(
@@ -1145,7 +1171,10 @@ struct EditPlanDayExerciseTargetsSheet: View {
           placeholder: "50", keyboard: .decimalPad
         )
       case .timeAndWeight:
-        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+        inputField(
+          title: "Target Duration (min)", text: $targetDuration, placeholder: "1",
+          keyboard: .decimalPad
+        )
         inputField(
           title: "Target Weight (\(preferredWeightUnit.abbreviation))", text: $targetWeight,
           placeholder: "50", keyboard: .decimalPad
@@ -1155,12 +1184,18 @@ struct EditPlanDayExerciseTargetsSheet: View {
           title: "Target Distance (\(preferredDistanceUnit.abbreviation))", text: $targetDistance,
           placeholder: "1.0",
           keyboard: .decimalPad)
-        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+        inputField(
+          title: "Target Duration (min)", text: $targetDuration, placeholder: "1",
+          keyboard: .decimalPad
+        )
       case .caloriesAndTime:
         inputField(
           title: "Target Calories", text: $targetCalories, placeholder: "200", keyboard: .decimalPad
         )
-        inputField(title: "Target Duration (sec)", text: $targetDuration, placeholder: "60")
+        inputField(
+          title: "Target Duration (min)", text: $targetDuration, placeholder: "1",
+          keyboard: .decimalPad
+        )
       case .none:
         EmptyView()
       }
@@ -1195,11 +1230,9 @@ struct EditPlanDayExerciseTargetsSheet: View {
   private func prefillTargets() {
     targetSets = boundedIntString(exercise.targetSets, minimum: 1, maximum: maxSets)
     targetReps = boundedIntString(exercise.targetReps, minimum: 1, maximum: maxReps)
-    targetDuration = boundedIntString(
-      exercise.targetDurationSeconds,
-      minimum: 1,
-      maximum: maxDurationSeconds
-    )
+    targetDuration =
+      exercise.targetDurationSeconds > 0
+      ? DurationFormatter.minutesString(from: exercise.targetDurationSeconds) : ""
     targetDistance = ""
     targetCalories = ""
     targetWeight = ""
