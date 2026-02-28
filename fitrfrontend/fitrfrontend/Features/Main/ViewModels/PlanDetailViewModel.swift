@@ -42,22 +42,12 @@ struct EnrichedPlanDay: Identifiable, Hashable {
     weekday?.shortName ?? "Day \(dayNumber)"
   }
 
-  var durationMinutes: Int {
-    let totalSeconds = exercises.reduce(0) { $0 + $1.targetDurationSeconds }
-    return totalSeconds > 0 ? totalSeconds / 60 : 0
+  var estimatedDurationSeconds: Int {
+    WorkoutDurationEstimator.estimatedDurationSeconds(for: exercises)
   }
 
   var estimatedMinutes: Int {
-    let minutes = durationMinutes
-    if minutes > 0 {
-      return minutes
-    }
-
-    let fallbackMinutes = max(
-      exerciseCount * 6,
-      exercises.reduce(0) { $0 + max($1.targetSets, 1) * 2 }
-    )
-    return fallbackMinutes
+    WorkoutDurationEstimator.estimatedMinutes(for: exercises)
   }
 
   var exerciseCount: Int {

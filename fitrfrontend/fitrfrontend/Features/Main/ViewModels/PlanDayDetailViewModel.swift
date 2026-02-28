@@ -47,9 +47,12 @@ final class PlanDayDetailViewModel: ObservableObject {
     exercises.count
   }
 
-  var durationMinutes: Int {
-    let totalSeconds = exercises.reduce(0) { $0 + $1.targetDurationSeconds }
-    return totalSeconds > 0 ? totalSeconds / 60 : 0
+  var estimatedDurationSeconds: Int {
+    WorkoutDurationEstimator.estimatedDurationSeconds(for: exercises)
+  }
+
+  var estimatedMinutes: Int {
+    WorkoutDurationEstimator.estimatedMinutes(for: exercises)
   }
 
   var weekday: WorkoutWeekday? {

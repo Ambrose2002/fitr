@@ -121,15 +121,7 @@ private struct PlanDayDetailPageView: View {
   }
 
   private var estimatedMinutesText: String {
-    if viewModel.durationMinutes > 0 {
-      return "\(viewModel.durationMinutes) min"
-    }
-
-    let fallbackMinutes = max(
-      viewModel.exerciseCount * 6,
-      viewModel.exercises.reduce(0) { $0 + max($1.targetSets, 1) * 2 }
-    )
-    return "\(fallbackMinutes) min"
+    "\(viewModel.estimatedMinutes) min"
   }
 
   var body: some View {
