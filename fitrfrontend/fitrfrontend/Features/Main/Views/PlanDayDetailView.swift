@@ -9,22 +9,115 @@ import SwiftUI
 
 struct PlanDayDetailView: View {
   @Environment(\.dismiss) private var dismiss
-  @EnvironmentObject private var sessionStore: SessionStore
+  @State private var orderedDays: [EnrichedPlanDay]
+  @State private var selectedDayId: Int64
 
-  @StateObject private var viewModel: PlanDayDetailViewModel
+  let planId: Int64
   let planName: String
+  private let onDayDeleted: (Int64) -> Void
+
+  init(
+    planId: Int64,
+    planName: String,
+    days: [EnrichedPlanDay],
+    initialDayId: Int64,
+    onDayDeleted: @escaping (Int64) -> Void
+  ) {
+    let sortedDays = days.sorted { $0.dayNumber < $1.dayNumber }
+    let resolvedDayId = sortedDays.contains(where: { $0.id == initialDayId })
+      ? initialDayId
+      : (sortedDays.first?.id ?? initialDayId)
+
+    self.planId = planId
+    self.planName = planName
+    self.onDayDeleted = onDayDeleted
+    _orderedDays = State(initialValue: sortedDays)
+    _selectedDayId = State(initialValue: resolvedDayId)
+  }
+
+  var body: some View {
+    ZStack {
+      Color(.systemBackground).ignoresSafeArea()
+
+      if !orderedDays.isEmpty {
+        TabView(selection: $selectedDayId) {
+          ForEach(Array(orderedDays.enumerated()), id: \.element.id) { index, day in
+            PlanDayDetailPageView(
+              planId: planId,
+              planName: planName,
+              day: day,
+              pageIndex: index,
+              pageCount: orderedDays.count,
+              isActive: selectedDayId == day.id,
+              onBack: { dismiss() },
+              onDeleteDay: handleDeletedDay
+            )
+            .tag(day.id)
+          }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+      }
+    }
+    .navigationBarBackButtonHidden(true)
+  }
+
+  private func handleDeletedDay(_ dayId: Int64) {
+    guard let deletedIndex = orderedDays.firstIndex(where: { $0.id == dayId }) else {
+      return
+    }
+
+    orderedDays.remove(at: deletedIndex)
+    onDayDeleted(dayId)
+
+    guard !orderedDays.isEmpty else {
+      dismiss()
+      return
+    }
+
+    let nextIndex = min(deletedIndex, orderedDays.count - 1)
+    selectedDayId = orderedDays[nextIndex].id
+  }
+}
+
+private struct PlanDayDetailPageView: View {
+  @StateObject private var viewModel: PlanDayDetailViewModel
+
+  let planName: String
+  let day: EnrichedPlanDay
+  let pageIndex: Int
+  let pageCount: Int
+  let isActive: Bool
+  let onBack: () -> Void
+  let onDeleteDay: (Int64) -> Void
 
   @State private var editingExercise: EnrichedPlanExercise?
+  @State private var hasLoaded = false
 
-  init(planId: Int64, dayId: Int64, dayName: String, dayNumber: Int, planName: String) {
+  init(
+    planId: Int64,
+    planName: String,
+    day: EnrichedPlanDay,
+    pageIndex: Int,
+    pageCount: Int,
+    isActive: Bool,
+    onBack: @escaping () -> Void,
+    onDeleteDay: @escaping (Int64) -> Void
+  ) {
     _viewModel = StateObject(
       wrappedValue: PlanDayDetailViewModel(
         planId: planId,
-        dayId: dayId,
-        dayName: dayName,
-        dayNumber: dayNumber
+        dayId: day.id,
+        dayName: day.name,
+        dayNumber: day.dayNumber
       ))
+
     self.planName = planName
+    self.day = day
+    self.pageIndex = pageIndex
+    self.pageCount = pageCount
+    self.isActive = isActive
+    self.onBack = onBack
+    self.onDeleteDay = onDeleteDay
   }
 
   private var estimatedMinutesText: String {
@@ -47,11 +140,15 @@ struct PlanDayDetailView: View {
       ScrollView {
         VStack(alignment: .leading, spacing: 14) {
           VStack(alignment: .leading, spacing: 8) {
-            weekdayBadge
+            HStack(alignment: .top, spacing: 12) {
+              Text(viewModel.dayName)
+                .font(.system(size: 34, weight: .black))
+                .foregroundColor(AppColors.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text(viewModel.dayName)
-              .font(.system(size: 34, weight: .black))
-              .foregroundColor(AppColors.textPrimary)
+              PlanDayPagerIndicator(pageCount: pageCount, currentIndex: pageIndex)
+                .padding(.top, 10)
+            }
 
             Text("\(viewModel.weekdayName) • Part of the \"\(planName)\" plan.")
               .font(.system(size: 16))
@@ -169,7 +266,7 @@ struct PlanDayDetailView: View {
       VStack(spacing: 0) {
         HStack {
           Button {
-            dismiss()
+            onBack()
           } label: {
             Image(systemName: "chevron.left")
               .font(.system(size: 18, weight: .semibold))
@@ -242,12 +339,18 @@ struct PlanDayDetailView: View {
       .padding(.bottom, 56)
       .background(Color(.systemBackground))
     }
-    .task {
-      await viewModel.load()
+    .onAppear {
+      loadIfNeeded()
     }
-    .onChange(of: viewModel.shouldDismiss) { shouldDismiss in
-      if shouldDismiss {
-        dismiss()
+    .onChange(of: isActive) { _, active in
+      if active {
+        loadIfNeeded()
+      }
+    }
+    .onChange(of: viewModel.didDeleteDay) { _, didDeleteDay in
+      if didDeleteDay {
+        onDeleteDay(day.id)
+        viewModel.didDeleteDay = false
       }
     }
     .alert(
@@ -316,18 +419,35 @@ struct PlanDayDetailView: View {
     }
   }
 
-  private var weekdayBadge: some View {
-    HStack(spacing: 6) {
-      AppIcons.calendar
-        .font(.system(size: 11, weight: .bold))
-      Text(viewModel.weekday?.badgeName ?? "DAY")
-        .font(.system(size: 11, weight: .bold))
+  private func loadIfNeeded() {
+    guard isActive, !hasLoaded else { return }
+    hasLoaded = true
+    Task {
+      await viewModel.load()
     }
-    .foregroundColor(AppColors.accent)
-    .padding(.horizontal, 10)
-    .padding(.vertical, 5)
-    .background(AppColors.accent.opacity(0.12))
-    .clipShape(Capsule())
+  }
+}
+
+private struct PlanDayPagerIndicator: View {
+  let pageCount: Int
+  let currentIndex: Int
+
+  var body: some View {
+    if pageCount > 1 {
+      HStack(spacing: 6) {
+        ForEach(0..<pageCount, id: \.self) { index in
+          if index == currentIndex {
+            Capsule()
+              .fill(AppColors.accent)
+              .frame(width: 14, height: 4)
+          } else {
+            Circle()
+              .fill(AppColors.borderGray.opacity(0.85))
+              .frame(width: 4, height: 4)
+          }
+        }
+      }
+    }
   }
 }
 

@@ -284,10 +284,15 @@ struct PlanDetailView: View {
     .navigationDestination(item: $selectedDay) { day in
       PlanDayDetailView(
         planId: planId,
-        dayId: day.id,
-        dayName: day.name,
-        dayNumber: day.dayNumber,
-        planName: viewModel.planDetail?.name ?? "Workout Plan"
+        planName: viewModel.planDetail?.name ?? "Workout Plan",
+        days: viewModel.enrichedDays,
+        initialDayId: day.id,
+        onDayDeleted: { deletedId in
+          viewModel.removeDeletedDay(id: deletedId)
+          if viewModel.enrichedDays.isEmpty {
+            selectedDay = nil
+          }
+        }
       )
     }
     .task {
