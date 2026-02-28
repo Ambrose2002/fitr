@@ -16,12 +16,13 @@ struct PlanDayDetailView: View {
 
   @State private var editingExercise: EnrichedPlanExercise?
 
-  init(planId: Int64, dayId: Int64, dayName: String, planName: String) {
+  init(planId: Int64, dayId: Int64, dayName: String, dayNumber: Int, planName: String) {
     _viewModel = StateObject(
       wrappedValue: PlanDayDetailViewModel(
         planId: planId,
         dayId: dayId,
-        dayName: dayName
+        dayName: dayName,
+        dayNumber: dayNumber
       ))
     self.planName = planName
   }
@@ -46,13 +47,15 @@ struct PlanDayDetailView: View {
       ScrollView {
         VStack(alignment: .leading, spacing: 14) {
           VStack(alignment: .leading, spacing: 8) {
+            weekdayBadge
+
             Text(viewModel.dayName)
               .font(.system(size: 34, weight: .black))
               .foregroundColor(AppColors.textPrimary)
 
-            Text("Part of the \"\(planName)\" plan.")
+            Text("\(viewModel.weekdayName) • Part of the \"\(planName)\" plan.")
               .font(.system(size: 16))
-              .foregroundColor(.secondary)
+              .foregroundColor(AppColors.textSecondary)
           }
 
           HStack(spacing: 0) {
@@ -311,6 +314,20 @@ struct PlanDayDetailView: View {
         }
       }
     }
+  }
+
+  private var weekdayBadge: some View {
+    HStack(spacing: 6) {
+      AppIcons.calendar
+        .font(.system(size: 11, weight: .bold))
+      Text(viewModel.weekday?.badgeName ?? "DAY")
+        .font(.system(size: 11, weight: .bold))
+    }
+    .foregroundColor(AppColors.accent)
+    .padding(.horizontal, 10)
+    .padding(.vertical, 5)
+    .background(AppColors.accent.opacity(0.12))
+    .clipShape(Capsule())
   }
 }
 
