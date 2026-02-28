@@ -42,7 +42,8 @@ public class WorkoutPlanService {
             throw new DataNotFoundException(email);
         }
 
-        WorkoutPlan workoutPlan = new WorkoutPlan(user, req.getName());
+        String validatedName = validateWorkoutPlanName(req.getName());
+        WorkoutPlan workoutPlan = new WorkoutPlan(user, validatedName);
         return toWorkoutPlanResponse(workoutPlanRepo.save(workoutPlan));
     }
 
@@ -61,7 +62,7 @@ public class WorkoutPlanService {
         if (!Objects.equals(workoutPlan.getUser().getEmail(), email)) {
             throw new DataNotFoundException(id, "workout plan");
         }
-        workoutPlan.setName(req.getName());
+        workoutPlan.setName(validateWorkoutPlanName(req.getName()));
         if (req.getIsActive() != null) {
             workoutPlan.setActive(req.getIsActive());
         }
@@ -176,6 +177,19 @@ public class WorkoutPlanService {
         if (dayNumber <= 0 || dayNumber > 7) {
             throw new DataCreationFailedException("dayNumber must be between 1 and 7");
         }
+    }
+
+    private String validateWorkoutPlanName(String name) {
+        if (name == null) {
+            throw new DataCreationFailedException("name cannot be empty");
+        }
+
+        String trimmedName = name.trim();
+        if (trimmedName.isEmpty()) {
+            throw new DataCreationFailedException("name cannot be empty");
+        }
+
+        return trimmedName;
     }
 
     private String validatePlanDayName(String name) {

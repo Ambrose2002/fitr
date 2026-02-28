@@ -67,6 +67,6 @@ public class WorkoutPlan {
         this.user = user;
         this.name = name;
         this.createdAt = Instant.now();
-        this.isActive = true;
+        this.isActive = false;
     }
 }
