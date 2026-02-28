@@ -268,6 +268,10 @@ final class PlanDetailViewModel: ObservableObject {
     }
   }
 
+  func removeDeletedDay(id: Int64) {
+    enrichedDays.removeAll { $0.id == id }
+  }
+
   func deletePlan() async {
     do {
       try await workoutPlanService.deletePlan(id: planId)

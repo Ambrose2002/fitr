@@ -27,7 +27,7 @@ final class PlanDayDetailViewModel: ObservableObject {
   @Published var showDeleteDayConfirmation = false
   @Published var showRemoveConfirmation = false
   @Published var pendingRemoveExercise: EnrichedPlanExercise?
-  @Published var shouldDismiss = false
+  @Published var didDeleteDay = false
 
   let planId: Int64
   let dayId: Int64
@@ -285,7 +285,7 @@ final class PlanDayDetailViewModel: ObservableObject {
   func deleteDay() async {
     do {
       try await workoutPlanService.deletePlanDay(planId: planId, dayId: dayId)
-      shouldDismiss = true
+      didDeleteDay = true
     } catch {
       errorMessage = "Failed to delete workout day."
     }
