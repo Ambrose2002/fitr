@@ -122,27 +122,23 @@ final class WorkoutPlanViewModel: ObservableObject {
     }
   }
 
-  func createPlan(name: String) async {
-    errorMessage = nil
+  func createPlan(name: String) async throws -> WorkoutPlanResponse {
+    let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    let request = CreateWorkoutPlanRequest(name: trimmedName)
 
-    let request = CreateWorkoutPlanRequest(name: name)
-
-    do {
-      let newPlan = try await workoutPlanService.createPlan(request: request)
-      let summary = PlanSummary(
-        id: newPlan.id,
-        name: newPlan.name,
-        createdAt: newPlan.createdAt,
-        isActive: newPlan.isActive,
-        daysCount: 0,
-        exercisesCount: 0,
-        averageExercisesPerDay: 0
-      )
-      self.plans.insert(summary, at: 0)
-      self.selectedPlan = newPlan
-    } catch {
-      self.errorMessage = error.localizedDescription
-    }
+    let newPlan = try await workoutPlanService.createPlan(request: request)
+    let summary = PlanSummary(
+      id: newPlan.id,
+      name: newPlan.name,
+      createdAt: newPlan.createdAt,
+      isActive: newPlan.isActive,
+      daysCount: 0,
+      exercisesCount: 0,
+      averageExercisesPerDay: 0
+    )
+    self.plans.insert(summary, at: 0)
+    self.selectedPlan = newPlan
+    return newPlan
   }
 
   func updatePlan(id: Int64, name: String) async {

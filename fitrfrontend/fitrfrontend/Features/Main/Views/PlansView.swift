@@ -14,7 +14,8 @@ struct PlansView: View {
   @State private var showCreatePlan = false
   @State private var planToDelete: PlanSummary?
   @State private var showDeleteConfirmation = false
-  @State private var newPlanName = ""
+  @State private var pendingCreatedPlan: WorkoutPlanResponse?
+  @State private var createdPlanToOpen: WorkoutPlanResponse?
 
   init(sessionStore: SessionStore) {
     _viewModel = StateObject(wrappedValue: WorkoutPlanViewModel(sessionStore: sessionStore))
@@ -69,6 +70,24 @@ struct PlansView: View {
                   Text("Create your first plan to get started")
                     .font(.caption)
                     .foregroundColor(.secondary)
+
+                  Button {
+                    showCreatePlan = true
+                  } label: {
+                    HStack(spacing: 8) {
+                      Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .bold))
+                      Text("Create Your First Plan")
+                        .font(.system(size: 15, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(AppColors.accent)
+                    .cornerRadius(12)
+                  }
+                  .buttonStyle(.plain)
+                  .padding(.top, 4)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(40)
@@ -101,26 +120,30 @@ struct PlansView: View {
         }
 
         // Floating Action Button
-        VStack {
-          Spacer()
-          HStack {
+        if !viewModel.isLoading {
+          VStack {
             Spacer()
-            Button {
-              showCreatePlan = true
-            } label: {
-              Image(systemName: "plus")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(.white)
-                .frame(width: 56, height: 56)
-                .background(AppColors.accent)
-                .cornerRadius(28)
-                .shadow(color: AppColors.accent.opacity(0.3), radius: 8, x: 0, y: 4)
+            HStack {
+              Spacer()
+              Button {
+                showCreatePlan = true
+              } label: {
+                Image(systemName: "plus")
+                  .font(.system(size: 20, weight: .semibold))
+                  .foregroundColor(.white)
+                  .frame(width: 56, height: 56)
+                  .background(AppColors.accent)
+                  .cornerRadius(28)
+                  .shadow(color: AppColors.accent.opacity(0.3), radius: 8, x: 0, y: 4)
+              }
+              .padding(.trailing, 24)
+              .padding(.bottom, 92)
             }
-            .padding(.trailing, 24)
-            .padding(.bottom, 24)
           }
         }
-        .ignoresSafeArea()
+      }
+      .navigationDestination(item: $createdPlanToOpen) { plan in
+        PlanDetailView(planId: plan.id)
       }
       .navigationBarHidden(true)
       .safeAreaInset(edge: .top) {
@@ -151,14 +174,12 @@ struct PlansView: View {
         }
       }
     }
-    .sheet(isPresented: $showCreatePlan) {
+    .sheet(isPresented: $showCreatePlan, onDismiss: handleCreateSheetDismissed) {
       CreatePlanSheet(
         isPresented: $showCreatePlan,
         onCreate: { name in
-          Task {
-            await viewModel.createPlan(name: name)
-            showCreatePlan = false
-          }
+          let createdPlan = try await viewModel.createPlan(name: name)
+          pendingCreatedPlan = createdPlan
         }
       )
     }
@@ -182,6 +203,15 @@ struct PlansView: View {
     .task {
       await viewModel.loadPlans()
     }
+  }
+
+  private func handleCreateSheetDismissed() {
+    guard let createdPlan = pendingCreatedPlan else {
+      return
+    }
+
+    pendingCreatedPlan = nil
+    createdPlanToOpen = createdPlan
   }
 }
 
@@ -288,55 +318,132 @@ struct PlanCard: View {
 
 struct CreatePlanSheet: View {
   @Binding var isPresented: Bool
-  let onCreate: (String) -> Void
+  let onCreate: (String) async throws -> Void
 
   @State private var planName = ""
   @State private var errorMessage = ""
+  @State private var isSubmitting = false
+
+  private var trimmedPlanName: String {
+    planName.trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+
+  private var hasOnlyWhitespaceInput: Bool {
+    !planName.isEmpty && trimmedPlanName.isEmpty
+  }
+
+  private var canSubmit: Bool {
+    !trimmedPlanName.isEmpty && !isSubmitting
+  }
 
   var body: some View {
     NavigationStack {
-      VStack(spacing: 16) {
-        VStack(alignment: .leading, spacing: 8) {
+      VStack(alignment: .leading, spacing: 20) {
+        HStack(spacing: 12) {
+          AppIcons.plans
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundColor(AppColors.accent)
+            .frame(width: 42, height: 42)
+            .background(AppColors.accent.opacity(0.12))
+            .cornerRadius(12)
+
+          VStack(alignment: .leading, spacing: 4) {
+            Text("Start a new routine")
+              .font(.system(size: 18, weight: .bold))
+              .foregroundColor(AppColors.textPrimary)
+
+            Text("Give this routine a short name. You can add workout days next.")
+              .font(.system(size: 13))
+              .foregroundColor(AppColors.textSecondary)
+          }
+        }
+        .padding(.top, 8)
+
+        VStack(alignment: .leading, spacing: 12) {
           Text("Plan Name")
-            .font(.system(size: 16, weight: .semibold))
+            .font(.system(size: 13, weight: .bold))
             .foregroundColor(AppColors.textPrimary)
 
-          TextField("e.g., Upper Body Strength", text: $planName)
-            .padding(12)
-            .background(Color(.systemGray6))
-            .cornerRadius(8)
-            .submitLabel(.done)
-        }
+          HStack(spacing: 12) {
+            AppIcons.calendar
+              .font(.system(size: 15, weight: .semibold))
+              .foregroundColor(AppColors.textSecondary)
+              .frame(width: 34, height: 34)
+              .background(Color(.systemGray6))
+              .cornerRadius(10)
 
-        if !errorMessage.isEmpty {
-          HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.circle")
-              .foregroundColor(.red)
-            Text(errorMessage)
-              .font(.caption)
-              .foregroundColor(.red)
+            TextField(
+              "",
+              text: $planName,
+              prompt: Text("e.g., Upper Body Strength")
+                .foregroundColor(AppColors.textSecondary)
+            )
+            .textInputAutocapitalization(.words)
+            .autocorrectionDisabled()
+            .submitLabel(.done)
+            .onSubmit {
+              Task {
+                await submit()
+              }
+            }
           }
+          .padding(.horizontal, 14)
+          .padding(.vertical, 12)
+          .background(AppColors.surface)
+          .overlay(
+            RoundedRectangle(cornerRadius: 14)
+              .stroke(
+                hasOnlyWhitespaceInput ? AppColors.errorRed : AppColors.borderGray,
+                lineWidth: 1
+              )
+          )
+          .cornerRadius(14)
+        }
+        .padding(16)
+        .background(Color(.systemGray6))
+        .cornerRadius(18)
+
+        if hasOnlyWhitespaceInput || !errorMessage.isEmpty {
+          HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.circle.fill")
+              .font(.system(size: 13, weight: .semibold))
+              .foregroundColor(AppColors.errorRed)
+            Text(hasOnlyWhitespaceInput ? "Plan name is required." : errorMessage)
+              .font(.system(size: 13, weight: .medium))
+              .foregroundColor(AppColors.errorRed)
+          }
+          .padding(.horizontal, 4)
         }
 
         Spacer()
 
         Button {
-          if planName.trimmingCharacters(in: .whitespaces).isEmpty {
-            errorMessage = "Plan name is required"
-          } else {
-            onCreate(planName)
+          Task {
+            await submit()
           }
         } label: {
-          Text("Create Plan")
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .frame(height: 44)
-            .background(AppColors.accent)
-            .cornerRadius(8)
+          HStack {
+            if isSubmitting {
+              ProgressView()
+                .progressViewStyle(.circular)
+                .tint(.white)
+                .scaleEffect(0.85)
+            }
+
+            Text(isSubmitting ? "Creating..." : "Create Plan")
+              .font(.system(size: 16, weight: .semibold))
+          }
+          .foregroundColor(.white)
+          .frame(maxWidth: .infinity)
+          .frame(height: 50)
+          .background(canSubmit ? AppColors.accent : AppColors.accent.opacity(0.4))
+          .cornerRadius(14)
         }
+        .buttonStyle(.plain)
+        .disabled(!canSubmit)
       }
       .padding(16)
+      .background(Color(.systemBackground))
       .navigationTitle("New Plan")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
@@ -346,6 +453,39 @@ struct CreatePlanSheet: View {
           }
         }
       }
+      .onChange(of: planName) { _, _ in
+        if !errorMessage.isEmpty {
+          errorMessage = ""
+        }
+      }
+    }
+  }
+
+  @MainActor
+  private func submit() async {
+    guard !isSubmitting else {
+      return
+    }
+
+    guard !trimmedPlanName.isEmpty else {
+      errorMessage = ""
+      return
+    }
+
+    isSubmitting = true
+    errorMessage = ""
+
+    defer {
+      isSubmitting = false
+    }
+
+    do {
+      try await onCreate(trimmedPlanName)
+      isPresented = false
+    } catch let apiError as APIErrorResponse {
+      errorMessage = apiError.message
+    } catch {
+      errorMessage = "Failed to create workout plan."
     }
   }
 }

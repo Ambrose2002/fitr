@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct WorkoutPlanResponse: Codable, Identifiable {
+struct WorkoutPlanResponse: Codable, Identifiable, Hashable {
   let id: Int64
   let userId: Int64
   let name: String
