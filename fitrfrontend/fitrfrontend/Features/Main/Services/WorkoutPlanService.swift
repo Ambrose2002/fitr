@@ -201,9 +201,6 @@ struct WorkoutPlanService {
     urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
     addAuthHeaders(&urlRequest)
     urlRequest.httpBody = try JSONEncoder().encode(request)
-    if let body = urlRequest.httpBody, let payload = String(data: body, encoding: .utf8) {
-      print("Update day exercise payload:", payload)
-    }
 
     let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
@@ -460,13 +457,32 @@ struct WorkoutPlanService {
     exerciseId: Int64,
     request: CreatePlanDayExerciseRequest
   ) async throws -> PlanExerciseResponse {
-    print("Making request to edit")
-    if let jsonData = try? JSONEncoder().encode(request),
-       let jsonString = String(data: jsonData, encoding: .utf8) {
-      print("This is the request data:", jsonString)
-    }
+    try await updateDayExercise(
+      dayId: dayId,
+      planExerciseId: exerciseId,
+      catalogExerciseId: request.exerciseId,
+      targetSets: request.targetSets,
+      targetReps: request.targetReps,
+      targetDurationSeconds: request.targetDurationSeconds,
+      targetDistance: request.targetDistance,
+      targetCalories: request.targetCalories,
+      targetWeight: request.targetWeight
+    )
+  }
+
+  func updateDayExercise(
+    dayId: Int64,
+    planExerciseId: Int64,
+    catalogExerciseId: Int64,
+    targetSets: Int,
+    targetReps: Int,
+    targetDurationSeconds: Int,
+    targetDistance: Float,
+    targetCalories: Float,
+    targetWeight: Float
+  ) async throws -> PlanExerciseResponse {
     guard
-      let url = URL(string: Constants.baseUrl + "/api/plan-days/\(dayId)/exercises/\(exerciseId)")
+      let url = URL(string: Constants.baseUrl + "/api/plan-days/\(dayId)/exercises/\(planExerciseId)")
     else {
       throw URLError(.badURL)
     }
@@ -475,10 +491,16 @@ struct WorkoutPlanService {
     urlRequest.httpMethod = "PUT"
     urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
     addAuthHeaders(&urlRequest)
-    urlRequest.httpBody = try JSONEncoder().encode(request)
-    if let body = urlRequest.httpBody, let payload = String(data: body, encoding: .utf8) {
-      print("Update day exercise payload:", payload)
-    }
+    let payload: [String: Any] = [
+      "exerciseId": NSNumber(value: catalogExerciseId),
+      "targetSets": NSNumber(value: targetSets),
+      "targetReps": NSNumber(value: targetReps),
+      "targetDurationSeconds": NSNumber(value: targetDurationSeconds),
+      "targetDistance": NSNumber(value: targetDistance),
+      "targetCalories": NSNumber(value: targetCalories),
+      "targetWeight": NSNumber(value: targetWeight),
+    ]
+    urlRequest.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
     let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
@@ -529,4 +551,3 @@ struct WorkoutPlanService {
     }
   }
 }
-

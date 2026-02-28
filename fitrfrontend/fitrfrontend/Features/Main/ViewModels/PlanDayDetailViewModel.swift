@@ -81,7 +81,6 @@ final class PlanDayDetailViewModel: ObservableObject {
         )
       }
     } catch {
-        print("Loading exercises Error: ", error)
       errorMessage = "Failed to load plan day exercises."
     }
   }
@@ -118,39 +117,138 @@ final class PlanDayDetailViewModel: ObservableObject {
     }
   }
 
-  func updateExercise(exercise: EnrichedPlanExercise, targets: PlanExerciseTargets) async {
-    do {
-      let request = CreatePlanDayExerciseRequest(
-        exerciseId: exercise.exerciseId,
-        targetSets: targets.sets,
-        targetReps: targets.reps,
-        targetDurationSeconds: targets.durationSeconds,
-        targetDistance: targets.distance,
-        targetCalories: targets.calories,
-        targetWeight: targets.weight
-      )
+  func updateExercise(
+    planExerciseId: Int64,
+    catalogExerciseId: Int64,
+    targetSets: Int,
+    targetReps: Int,
+    targetDurationSeconds: Int,
+    targetDistance: Float,
+    targetCalories: Float,
+    targetWeight: Float
+  ) async {
+    let sets = targetSets
+    let reps = targetReps
+    let durationSeconds = targetDurationSeconds
+    let distance = targetDistance
+    let calories = targetCalories
+    let weight = targetWeight
 
+    let maxSets = 30
+    let maxReps = 200
+    let maxDurationSeconds = 21_600
+
+    guard let index = exercises.firstIndex(where: { $0.id == planExerciseId }) else {
+      errorMessage = "Exercise not found."
+      return
+    }
+
+    let existingExercise = exercises[index]
+
+    guard (1...maxSets).contains(sets) else {
+      errorMessage = "Invalid exercise targets."
+      return
+    }
+
+    var sanitizedReps = 0
+    var sanitizedDurationSeconds = 0
+    var sanitizedDistance: Float = 0
+    var sanitizedCalories: Float = 0
+    var sanitizedWeight: Float = 0
+
+    switch existingExercise.measurementType {
+    case .reps:
+      guard (1...maxReps).contains(reps) else {
+        errorMessage = "Invalid exercise targets."
+        return
+      }
+      sanitizedReps = reps
+
+    case .time:
+      guard (1...maxDurationSeconds).contains(durationSeconds) else {
+        errorMessage = "Invalid exercise targets."
+        return
+      }
+      sanitizedDurationSeconds = durationSeconds
+
+    case .repsAndTime:
+      guard (1...maxReps).contains(reps), (1...maxDurationSeconds).contains(durationSeconds) else {
+        errorMessage = "Invalid exercise targets."
+        return
+      }
+      sanitizedReps = reps
+      sanitizedDurationSeconds = durationSeconds
+
+    case .repsAndWeight:
+      guard (1...maxReps).contains(reps), weight.isFinite, weight > 0 else {
+        errorMessage = "Invalid exercise targets."
+        return
+      }
+      sanitizedReps = reps
+      sanitizedWeight = weight
+
+    case .timeAndWeight:
+      guard (1...maxDurationSeconds).contains(durationSeconds), weight.isFinite, weight > 0 else {
+        errorMessage = "Invalid exercise targets."
+        return
+      }
+      sanitizedDurationSeconds = durationSeconds
+      sanitizedWeight = weight
+
+    case .distanceAndTime:
+      guard
+        (1...maxDurationSeconds).contains(durationSeconds),
+        distance.isFinite,
+        distance > 0
+      else {
+        errorMessage = "Invalid exercise targets."
+        return
+      }
+      sanitizedDurationSeconds = durationSeconds
+      sanitizedDistance = distance
+
+    case .caloriesAndTime:
+      guard
+        (1...maxDurationSeconds).contains(durationSeconds),
+        calories.isFinite,
+        calories > 0
+      else {
+        errorMessage = "Invalid exercise targets."
+        return
+      }
+      sanitizedDurationSeconds = durationSeconds
+      sanitizedCalories = calories
+
+    case .none:
+      break
+    }
+
+    do {
       let response = try await workoutPlanService.updateDayExercise(
         dayId: dayId,
-        exerciseId: exercise.id,
-        request: request
+        planExerciseId: planExerciseId,
+        catalogExerciseId: catalogExerciseId,
+        targetSets: sets,
+        targetReps: sanitizedReps,
+        targetDurationSeconds: sanitizedDurationSeconds,
+        targetDistance: sanitizedDistance,
+        targetCalories: sanitizedCalories,
+        targetWeight: sanitizedWeight
       )
 
-      if let index = exercises.firstIndex(where: { $0.id == exercise.id }) {
-        exercises[index] = EnrichedPlanExercise(
-          id: response.id,
-          planDayId: response.planDayId,
-          exerciseId: response.exerciseId,
-          name: exercise.name,
-          measurementType: exercise.measurementType,
-          targetSets: response.targetSets,
-          targetReps: response.targetReps,
-          targetDurationSeconds: response.targetDurationSeconds,
-          targetDistance: response.targetDistance,
-          targetCalories: response.targetCalories,
-          targetWeight: response.targetWeight ?? targets.weight
-        )
-      }
+      exercises[index] = EnrichedPlanExercise(
+        id: response.id,
+        planDayId: response.planDayId,
+        exerciseId: response.exerciseId,
+        name: existingExercise.name,
+        measurementType: existingExercise.measurementType,
+        targetSets: response.targetSets,
+        targetReps: response.targetReps,
+        targetDurationSeconds: response.targetDurationSeconds,
+        targetDistance: response.targetDistance,
+        targetCalories: response.targetCalories,
+        targetWeight: response.targetWeight ?? sanitizedWeight
+      )
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
     } catch {

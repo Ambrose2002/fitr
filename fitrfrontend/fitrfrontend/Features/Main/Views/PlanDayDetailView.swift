@@ -284,8 +284,27 @@ struct PlanDayDetailView: View {
       }
     }
     .sheet(item: $editingExercise) { exercise in
-      EditPlanDayExerciseTargetsSheet(exercise: exercise) { targets in
-        await viewModel.updateExercise(exercise: exercise, targets: targets)
+      let planExerciseId = exercise.id
+      let catalogExerciseId = exercise.exerciseId
+      EditPlanDayExerciseTargetsSheet(exercise: exercise) {
+        sets,
+        reps,
+        durationSeconds,
+        distance,
+        calories,
+        weight in
+        Task {
+          await viewModel.updateExercise(
+            planExerciseId: planExerciseId,
+            catalogExerciseId: catalogExerciseId,
+            targetSets: sets,
+            targetReps: reps,
+            targetDurationSeconds: durationSeconds,
+            targetDistance: distance,
+            targetCalories: calories,
+            targetWeight: weight
+          )
+        }
       }
     }
   }
@@ -825,7 +844,7 @@ struct EditPlanDayExerciseTargetsSheet: View {
   @EnvironmentObject private var sessionStore: SessionStore
 
   let exercise: EnrichedPlanExercise
-  let onUpdate: (PlanExerciseTargets) async -> Void
+  let onUpdate: (Int, Int, Int, Float, Float, Float) -> Void
 
   @State private var targetSets: String
   @State private var targetReps: String
@@ -840,7 +859,10 @@ struct EditPlanDayExerciseTargetsSheet: View {
   private let maxCalories = Float(10_000)
   private let maxWeight = Float(1_000)
 
-  init(exercise: EnrichedPlanExercise, onUpdate: @escaping (PlanExerciseTargets) async -> Void) {
+  init(
+    exercise: EnrichedPlanExercise,
+    onUpdate: @escaping (Int, Int, Int, Float, Float, Float) -> Void
+  ) {
     self.exercise = exercise
     self.onUpdate = onUpdate
     _targetSets = State(initialValue: "\(exercise.targetSets)")
@@ -923,20 +945,14 @@ struct EditPlanDayExerciseTargetsSheet: View {
         }
         ToolbarItem(placement: .confirmationAction) {
           Button("Update") {
-            let weightValue = backendWeight(from: floatValue(targetWeight, maximum: maxWeight))
-            let distanceValue = backendDistance(from: floatValue(targetDistance, maximum: maxDistance))
-            let targets = PlanExerciseTargets(
-              sets: intValue(targetSets, minimum: 1, maximum: maxSets),
-              reps: intValue(targetReps, minimum: 0, maximum: maxReps),
-              durationSeconds: intValue(targetDuration, minimum: 0, maximum: maxDurationSeconds),
-              distance: distanceValue,
-              calories: floatValue(targetCalories, maximum: maxCalories),
-              weight: weightValue
-            )
-            Task {
-              await onUpdate(targets)
-              dismiss()
-            }
+            let sets = intValue(targetSets, minimum: 1, maximum: maxSets)
+            let reps = intValue(targetReps, minimum: 0, maximum: maxReps)
+            let durationSeconds = intValue(targetDuration, minimum: 0, maximum: maxDurationSeconds)
+            let distance = backendDistance(from: floatValue(targetDistance, maximum: maxDistance))
+            let calories = floatValue(targetCalories, maximum: maxCalories)
+            let weight = backendWeight(from: floatValue(targetWeight, maximum: maxWeight))
+            onUpdate(sets, reps, durationSeconds, distance, calories, weight)
+            dismiss()
           }
           .disabled(!isFormValid)
         }
