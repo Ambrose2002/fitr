@@ -44,19 +44,19 @@ struct PlanDayDetailView: View {
         .ignoresSafeArea()
 
       ScrollView {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
           VStack(alignment: .leading, spacing: 8) {
             Text(viewModel.dayName)
-              .font(.system(size: 38, weight: .black))
+              .font(.system(size: 34, weight: .black))
               .foregroundColor(AppColors.textPrimary)
 
             Text("Part of the \"\(planName)\" plan.")
-              .font(.system(size: 17))
+              .font(.system(size: 16))
               .foregroundColor(.secondary)
           }
 
           HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
               Label {
                 Text("EST. TIME")
                   .font(.system(size: 11, weight: .bold))
@@ -67,16 +67,16 @@ struct PlanDayDetailView: View {
               .foregroundColor(.secondary)
 
               Text(estimatedMinutesText)
-                .font(.system(size: 33, weight: .black))
+                .font(.system(size: 28, weight: .black))
                 .foregroundColor(AppColors.textPrimary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Divider()
-              .frame(height: 70)
-              .padding(.horizontal, 16)
+              .frame(height: 58)
+              .padding(.horizontal, 14)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
               Label {
                 Text("EXERCISES")
                   .font(.system(size: 11, weight: .bold))
@@ -87,13 +87,13 @@ struct PlanDayDetailView: View {
               .foregroundColor(.secondary)
 
               Text("\(viewModel.exerciseCount)")
-                .font(.system(size: 33, weight: .black))
+                .font(.system(size: 28, weight: .black))
                 .foregroundColor(AppColors.textPrimary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
           }
-          .padding(.horizontal, 16)
-          .padding(.vertical, 14)
+          .padding(.horizontal, 14)
+          .padding(.vertical, 12)
           .background(Color(.systemGray6))
           .overlay(
             RoundedRectangle(cornerRadius: 14)
@@ -113,6 +113,10 @@ struct PlanDayDetailView: View {
             }
             .font(.system(size: 11, weight: .bold))
             .foregroundColor(AppColors.accent)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(AppColors.accent.opacity(0.08))
+            .clipShape(Capsule())
           }
 
           if viewModel.isLoading {
@@ -206,33 +210,33 @@ struct PlanDayDetailView: View {
       } label: {
         HStack {
           Text("Start This Workout")
-            .font(.system(size: 30, weight: .black))
+            .font(.system(size: 24, weight: .black))
             .foregroundColor(.white)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
-            .padding(.leading, 20)
+            .padding(.leading, 18)
           Spacer()
         }
-        .frame(height: 64)
+        .frame(height: 56)
         .background(AppColors.accent)
-        .cornerRadius(16)
+        .cornerRadius(14)
         .overlay(alignment: .trailing) {
           Circle()
             .fill(AppColors.accent)
-            .frame(width: 52, height: 52)
-            .shadow(color: AppColors.accent.opacity(0.35), radius: 6, x: 0, y: 4)
+            .frame(width: 44, height: 44)
+            .shadow(color: AppColors.accent.opacity(0.28), radius: 4, x: 0, y: 3)
             .overlay {
               Image(systemName: "plus")
-                .font(.system(size: 24, weight: .semibold))
+                .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(.white)
             }
-            .padding(.trailing, 8)
+            .padding(.trailing, 6)
         }
       }
       .buttonStyle(.plain)
       .padding(.horizontal, 16)
-      .padding(.vertical, 10)
-      .padding(.bottom, 60)
+      .padding(.vertical, 8)
+      .padding(.bottom, 56)
       .background(Color(.systemBackground))
     }
     .task {
@@ -317,6 +321,8 @@ struct PlanDayExerciseCard: View {
   let onEdit: () -> Void
   let onRemove: () -> Void
   private let maxVisibleSets = 30
+  private let setColumnWidth: CGFloat = 40
+  private let rowHeight: CGFloat = 42
 
   private var setCount: Int {
     min(max(exercise.targetSets, 1), maxVisibleSets)
@@ -412,19 +418,19 @@ struct PlanDayExerciseCard: View {
   }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
+    VStack(alignment: .leading, spacing: 12) {
       HStack(alignment: .top) {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
           Text(exercise.measurementBadge)
             .font(.system(size: 10, weight: .bold))
             .foregroundColor(AppColors.accent)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
             .background(AppColors.accent.opacity(0.12))
             .cornerRadius(999)
 
           Text(exercise.name)
-            .font(.system(size: 33, weight: .black))
+            .font(.system(size: 28, weight: .black))
             .foregroundColor(AppColors.textPrimary)
             .lineLimit(2)
         }
@@ -445,47 +451,46 @@ struct PlanDayExerciseCard: View {
           }
         } label: {
           Image(systemName: "ellipsis")
-            .font(.system(size: 14, weight: .semibold))
+            .font(.system(size: 13, weight: .semibold))
             .foregroundColor(.secondary)
-            .frame(width: 24, height: 24)
+            .frame(width: 20, height: 20)
         }
       }
 
       VStack(spacing: 0) {
-        // Dynamic table header
         HStack(spacing: 8) {
           Text("SET")
-            .font(.system(size: 12, weight: .bold))
+            .font(.system(size: 11, weight: .bold))
             .foregroundColor(.secondary)
-            .frame(width: 50, alignment: .leading)
+            .frame(width: setColumnWidth, alignment: .leading)
 
           ForEach(Array(columns.enumerated()), id: \.offset) { _, column in
             Text(column.header)
-              .font(.system(size: 12, weight: .bold))
+              .font(.system(size: 11, weight: .bold))
               .foregroundColor(.secondary)
               .frame(maxWidth: .infinity, alignment: .center)
           }
         }
-        .padding(.horizontal, 12)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 10)
+        .padding(.bottom, 6)
 
         VStack(spacing: 0) {
           ForEach(1...setCount, id: \.self) { setIndex in
             HStack(spacing: 8) {
               Text("\(setIndex)")
-                .font(.system(size: 22, weight: .medium))
+                .font(.system(size: 18, weight: .medium))
                 .foregroundColor(AppColors.textPrimary)
-                .frame(width: 50, alignment: .leading)
+                .frame(width: setColumnWidth, alignment: .leading)
 
               ForEach(Array(columns.enumerated()), id: \.offset) { index, column in
                 Text(column.getValue(exercise))
-                  .font(.system(size: 22, weight: .bold))
+                  .font(.system(size: 18, weight: .bold))
                   .foregroundColor(index == 0 ? AppColors.textPrimary : AppColors.accent)
                   .frame(maxWidth: .infinity, alignment: .center)
               }
             }
-            .frame(height: 50)
-            .padding(.horizontal, 12)
+            .frame(height: rowHeight)
+            .padding(.horizontal, 10)
 
             if setIndex != setCount {
               Divider()
@@ -502,11 +507,11 @@ struct PlanDayExerciseCard: View {
 
       if hasTruncatedSetList {
         Text("Showing first \(maxVisibleSets) sets")
-          .font(.system(size: 11, weight: .semibold))
+          .font(.system(size: 10, weight: .semibold))
           .foregroundColor(.secondary)
       }
     }
-    .padding(14)
+    .padding(12)
     .background(Color(.systemBackground))
     .overlay(
       RoundedRectangle(cornerRadius: 12)
