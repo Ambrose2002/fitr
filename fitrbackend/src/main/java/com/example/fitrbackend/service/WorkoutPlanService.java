@@ -118,13 +118,11 @@ public class WorkoutPlanService {
             throw new DataNotFoundException(planId, "workout plan");
         }
 
-        if (req.getDayNumber() <= 0 || req.getDayNumber() > 7) {
-            throw new DataCreationFailedException("dayNumber must be between 1 and 7");
-        }
-        if (req.getName() == null || req.getName().isEmpty()) {
-            throw new DataCreationFailedException("name cannot be empty");
-        }
-        PlanDay planDay = new PlanDay(workoutPlan, req.getDayNumber(), req.getName());
+        validateDayNumber(req.getDayNumber());
+        String validatedName = validatePlanDayName(req.getName());
+        ensureDayNumberAvailable(planId, req.getDayNumber());
+
+        PlanDay planDay = new PlanDay(workoutPlan, req.getDayNumber(), validatedName);
         return toPlanDayResponse(planDayRepo.save(planDay));
     }
 
@@ -143,11 +141,16 @@ public class WorkoutPlanService {
         if (!Objects.equals(planDay.getWorkoutPlan().getId(), planId)) {
             throw new DataNotFoundException(dayId, "plan day");
         }
-        if (req.getDayNumber() >= 1 && req.getDayNumber() <= 7) {
-            planDay.setDayNumber(req.getDayNumber());
+
+        if (req.getDayNumber() != 0) {
+            validateDayNumber(req.getDayNumber());
+            if (req.getDayNumber() != planDay.getDayNumber()) {
+                ensureDayNumberAvailableForUpdate(planId, dayId, req.getDayNumber());
+                planDay.setDayNumber(req.getDayNumber());
+            }
         }
-        if (req.getName() != null && !req.getName().isEmpty()) {
-            planDay.setName(req.getName());
+        if (req.getName() != null) {
+            planDay.setName(validatePlanDayName(req.getName()));
         }
         return toPlanDayResponse(planDayRepo.save(planDay));
     }
@@ -167,6 +170,52 @@ public class WorkoutPlanService {
             throw new DataNotFoundException(dayId, "plan day");
         }
         planDayRepo.delete(planDay);
+    }
+
+    private void validateDayNumber(int dayNumber) {
+        if (dayNumber <= 0 || dayNumber > 7) {
+            throw new DataCreationFailedException("dayNumber must be between 1 and 7");
+        }
+    }
+
+    private String validatePlanDayName(String name) {
+        if (name == null) {
+            throw new DataCreationFailedException("name cannot be empty");
+        }
+
+        String trimmedName = name.trim();
+        if (trimmedName.isEmpty()) {
+            throw new DataCreationFailedException("name cannot be empty");
+        }
+
+        return trimmedName;
+    }
+
+    private void ensureDayNumberAvailable(long planId, int dayNumber) {
+        if (planDayRepo.existsByWorkoutPlan_IdAndDayNumber(planId, dayNumber)) {
+            throw new DataCreationFailedException(
+                    "A workout day is already assigned to " + weekdayName(dayNumber) + ".");
+        }
+    }
+
+    private void ensureDayNumberAvailableForUpdate(long planId, long dayId, int dayNumber) {
+        if (planDayRepo.existsByWorkoutPlan_IdAndDayNumberAndIdNot(planId, dayNumber, dayId)) {
+            throw new DataCreationFailedException(
+                    "A workout day is already assigned to " + weekdayName(dayNumber) + ".");
+        }
+    }
+
+    private String weekdayName(int dayNumber) {
+        return switch (dayNumber) {
+            case 1 -> "Sunday";
+            case 2 -> "Monday";
+            case 3 -> "Tuesday";
+            case 4 -> "Wednesday";
+            case 5 -> "Thursday";
+            case 6 -> "Friday";
+            case 7 -> "Saturday";
+            default -> "that day";
+        };
     }
 
     private WorkoutPlanResponse toWorkoutPlanResponse(WorkoutPlan workoutPlan) {
