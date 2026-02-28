@@ -32,13 +32,15 @@ final class PlanDayDetailViewModel: ObservableObject {
   let planId: Int64
   let dayId: Int64
   let dayName: String
+  let dayNumber: Int
 
   private let workoutPlanService = WorkoutPlanService()
 
-  init(planId: Int64, dayId: Int64, dayName: String) {
+  init(planId: Int64, dayId: Int64, dayName: String, dayNumber: Int) {
     self.planId = planId
     self.dayId = dayId
     self.dayName = dayName
+    self.dayNumber = dayNumber
   }
 
   var exerciseCount: Int {
@@ -48,6 +50,14 @@ final class PlanDayDetailViewModel: ObservableObject {
   var durationMinutes: Int {
     let totalSeconds = exercises.reduce(0) { $0 + $1.targetDurationSeconds }
     return totalSeconds > 0 ? totalSeconds / 60 : 0
+  }
+
+  var weekday: WorkoutWeekday? {
+    WorkoutWeekday.from(dayNumber: dayNumber)
+  }
+
+  var weekdayName: String {
+    weekday?.fullName ?? "Day \(dayNumber)"
   }
 
   func load() async {
