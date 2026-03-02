@@ -79,10 +79,85 @@ struct ActiveWorkoutContext: Codable, Equatable, Identifiable {
   let locationName: String?
   let startedAt: Date
   let isPaused: Bool
+  let pausedAt: Date?
+  let pausedDurationSeconds: Double
   let restTimerEndsAt: Date?
   let plannedExercises: [ActiveWorkoutPlannedExercise]
 
   var id: Int64 { workoutId }
+
+  enum CodingKeys: String, CodingKey {
+    case workoutId
+    case origin
+    case sessionTitle
+    case locationId
+    case locationName
+    case startedAt
+    case isPaused
+    case pausedAt
+    case pausedDurationSeconds
+    case restTimerEndsAt
+    case plannedExercises
+  }
+
+  init(
+    workoutId: Int64,
+    origin: WorkoutExecutionOrigin,
+    sessionTitle: String,
+    locationId: Int64?,
+    locationName: String?,
+    startedAt: Date,
+    isPaused: Bool,
+    pausedAt: Date?,
+    pausedDurationSeconds: Double,
+    restTimerEndsAt: Date?,
+    plannedExercises: [ActiveWorkoutPlannedExercise]
+  ) {
+    self.workoutId = workoutId
+    self.origin = origin
+    self.sessionTitle = sessionTitle
+    self.locationId = locationId
+    self.locationName = locationName
+    self.startedAt = startedAt
+    self.isPaused = isPaused
+    self.pausedAt = pausedAt
+    self.pausedDurationSeconds = pausedDurationSeconds
+    self.restTimerEndsAt = restTimerEndsAt
+    self.plannedExercises = plannedExercises
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    workoutId = try container.decode(Int64.self, forKey: .workoutId)
+    origin = try container.decode(WorkoutExecutionOrigin.self, forKey: .origin)
+    sessionTitle = try container.decode(String.self, forKey: .sessionTitle)
+    locationId = try container.decodeIfPresent(Int64.self, forKey: .locationId)
+    locationName = try container.decodeIfPresent(String.self, forKey: .locationName)
+    startedAt = try container.decode(Date.self, forKey: .startedAt)
+    isPaused = try container.decode(Bool.self, forKey: .isPaused)
+    pausedAt = try container.decodeIfPresent(Date.self, forKey: .pausedAt)
+    pausedDurationSeconds =
+      try container.decodeIfPresent(Double.self, forKey: .pausedDurationSeconds) ?? 0
+    restTimerEndsAt = try container.decodeIfPresent(Date.self, forKey: .restTimerEndsAt)
+    plannedExercises =
+      try container.decodeIfPresent([ActiveWorkoutPlannedExercise].self, forKey: .plannedExercises)
+      ?? []
+  }
+
+  func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(workoutId, forKey: .workoutId)
+    try container.encode(origin, forKey: .origin)
+    try container.encode(sessionTitle, forKey: .sessionTitle)
+    try container.encodeIfPresent(locationId, forKey: .locationId)
+    try container.encodeIfPresent(locationName, forKey: .locationName)
+    try container.encode(startedAt, forKey: .startedAt)
+    try container.encode(isPaused, forKey: .isPaused)
+    try container.encodeIfPresent(pausedAt, forKey: .pausedAt)
+    try container.encode(pausedDurationSeconds, forKey: .pausedDurationSeconds)
+    try container.encodeIfPresent(restTimerEndsAt, forKey: .restTimerEndsAt)
+    try container.encode(plannedExercises, forKey: .plannedExercises)
+  }
 }
 
 @MainActor
@@ -116,6 +191,8 @@ final class ActiveWorkoutCoordinator: ObservableObject {
       locationName: workout.locationName,
       startedAt: workout.startTime,
       isPaused: false,
+      pausedAt: nil,
+      pausedDurationSeconds: 0,
       restTimerEndsAt: nil,
       plannedExercises: []
     )
@@ -166,6 +243,8 @@ final class ActiveWorkoutCoordinator: ObservableObject {
       locationName: workout.locationName,
       startedAt: workout.startTime,
       isPaused: false,
+      pausedAt: nil,
+      pausedDurationSeconds: 0,
       restTimerEndsAt: nil,
       plannedExercises: plannedExercises
     )
@@ -192,6 +271,8 @@ final class ActiveWorkoutCoordinator: ObservableObject {
           locationName: remoteWorkout.locationName,
           startedAt: remoteWorkout.startTime,
           isPaused: existingContext.isPaused,
+          pausedAt: existingContext.pausedAt,
+          pausedDurationSeconds: existingContext.pausedDurationSeconds,
           restTimerEndsAt: existingContext.restTimerEndsAt,
           plannedExercises: existingContext.plannedExercises
         )
@@ -205,6 +286,8 @@ final class ActiveWorkoutCoordinator: ObservableObject {
           locationName: remoteWorkout.locationName,
           startedAt: remoteWorkout.startTime,
           isPaused: false,
+          pausedAt: nil,
+          pausedDurationSeconds: 0,
           restTimerEndsAt: nil,
           plannedExercises: []
         )
@@ -240,6 +323,8 @@ final class ActiveWorkoutCoordinator: ObservableObject {
       locationName: activeContext.locationName,
       startedAt: activeContext.startedAt,
       isPaused: activeContext.isPaused,
+      pausedAt: activeContext.pausedAt,
+      pausedDurationSeconds: activeContext.pausedDurationSeconds,
       restTimerEndsAt: endDate,
       plannedExercises: activeContext.plannedExercises
     )
@@ -259,6 +344,33 @@ final class ActiveWorkoutCoordinator: ObservableObject {
       locationName: workout.locationName,
       startedAt: activeContext.startedAt,
       isPaused: activeContext.isPaused,
+      pausedAt: activeContext.pausedAt,
+      pausedDurationSeconds: activeContext.pausedDurationSeconds,
+      restTimerEndsAt: activeContext.restTimerEndsAt,
+      plannedExercises: activeContext.plannedExercises
+    )
+    setActiveContext(updatedContext, shouldPresent: false)
+  }
+
+  func syncSessionTimerState(
+    isPaused: Bool,
+    pausedAt: Date?,
+    pausedDurationSeconds: Double
+  ) {
+    guard let activeContext else {
+      return
+    }
+
+    let updatedContext = ActiveWorkoutContext(
+      workoutId: activeContext.workoutId,
+      origin: activeContext.origin,
+      sessionTitle: activeContext.sessionTitle,
+      locationId: activeContext.locationId,
+      locationName: activeContext.locationName,
+      startedAt: activeContext.startedAt,
+      isPaused: isPaused,
+      pausedAt: pausedAt,
+      pausedDurationSeconds: pausedDurationSeconds,
       restTimerEndsAt: activeContext.restTimerEndsAt,
       plannedExercises: activeContext.plannedExercises
     )
@@ -270,12 +382,17 @@ final class ActiveWorkoutCoordinator: ObservableObject {
       throw URLError(.badURL)
     }
 
+    let finishTimestamp = Date()
+    let effectiveEndDate = activeContext.startedAt.addingTimeInterval(
+      effectiveElapsedSeconds(for: activeContext, asOf: finishTimestamp)
+    )
+
     let response = try await workoutsService.updateWorkoutSession(
       id: activeContext.workoutId,
       request: CreateWorkoutSessionRequest(
         locationId: activeContext.locationId,
         notes: notes,
-        endTime: ISO8601DateFormatter().string(from: Date()),
+        endTime: ISO8601DateFormatter().string(from: effectiveEndDate),
         title: title
       ))
     return response
@@ -296,6 +413,19 @@ final class ActiveWorkoutCoordinator: ObservableObject {
 
   func resetLocalState() {
     clearStoredContext()
+  }
+
+  private func effectiveElapsedSeconds(for context: ActiveWorkoutContext, asOf now: Date) -> Double {
+    let wallClockElapsed = now.timeIntervalSince(context.startedAt)
+    let currentPauseSeconds: Double
+
+    if context.isPaused, let pausedAt = context.pausedAt {
+      currentPauseSeconds = max(now.timeIntervalSince(pausedAt), 0)
+    } else {
+      currentPauseSeconds = 0
+    }
+
+    return max(0, wallClockElapsed - context.pausedDurationSeconds - currentPauseSeconds)
   }
 
   private func normalizedTitle(from title: String?, fallback: String) -> String {

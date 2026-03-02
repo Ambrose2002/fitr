@@ -108,9 +108,11 @@ final class WorkoutsViewModel: ObservableObject {
   @Published var allCompletedWorkouts: [WorkoutSessionResponse] = []
   @Published var isLoading = true
   @Published var errorMessage: String?
+  @Published var actionErrorMessage: String?
   @Published var showFilterSheet = false
   @Published var appliedFilters = WorkoutHistoryFilters()
   @Published var draftFilters = WorkoutHistoryFilters()
+  @Published var isDeletingWorkout = false
 
   private let workoutsService: WorkoutsService
   let sessionStore: SessionStore
@@ -199,6 +201,7 @@ final class WorkoutsViewModel: ObservableObject {
   func loadWorkoutHistory() async {
     isLoading = true
     errorMessage = nil
+    actionErrorMessage = nil
 
     defer {
       isLoading = false
@@ -266,6 +269,28 @@ final class WorkoutsViewModel: ObservableObject {
     draftFilters = sanitize(filters: draftFilters)
   }
 
+  func deleteWorkoutFromHistory(id: Int64) async {
+    guard !isDeletingWorkout else {
+      return
+    }
+
+    isDeletingWorkout = true
+    actionErrorMessage = nil
+
+    defer {
+      isDeletingWorkout = false
+    }
+
+    do {
+      try await workoutsService.deleteWorkoutSession(id: id)
+      removeWorkout(id: id)
+    } catch let apiError as APIErrorResponse {
+      actionErrorMessage = apiError.message
+    } catch {
+      actionErrorMessage = "Failed to delete that workout."
+    }
+  }
+
   private static let noLocationLabel = "No location"
 
   private static let monthKeyFormatter: Foundation.DateFormatter = {
@@ -312,6 +337,15 @@ final class WorkoutsViewModel: ObservableObject {
       }
       return $0.startTime > $1.startTime
     }
+  }
+
+  private func removeWorkout(id: Int64) {
+    allCompletedWorkouts.removeAll { $0.id == id }
+    allCompletedWorkouts = Self.sortedCompletedWorkouts(
+      allCompletedWorkouts.filter { $0.endTime != nil }
+    )
+    appliedFilters = sanitize(filters: appliedFilters)
+    draftFilters = sanitize(filters: draftFilters)
   }
 
   private var filteredRows: [WorkoutHistoryRow] {

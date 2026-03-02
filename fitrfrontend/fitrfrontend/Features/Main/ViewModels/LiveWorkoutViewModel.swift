@@ -137,6 +137,7 @@ final class LiveWorkoutViewModel: ObservableObject {
   @Published var requestedScrollToExerciseId: String?
   @Published var restTimerEndsAt: Date?
   @Published var currentDate = Date()
+  @Published private(set) var isTimerPaused: Bool
 
   let context: ActiveWorkoutContext
 
@@ -144,14 +145,20 @@ final class LiveWorkoutViewModel: ObservableObject {
   private let workoutsService = WorkoutsService()
   private let locationsService = LocationsService()
   private let workoutPlanService = WorkoutPlanService()
+  private weak var activeWorkoutCoordinator: ActiveWorkoutCoordinator?
   private var timerCancellable: AnyCancellable?
   private var hasLoadedLocationsForEditing = false
+  private var pausedAt: Date?
+  private var pausedDurationSeconds: Double
   private var preserveErrorOnNextSetEditorDismiss = false
 
   init(context: ActiveWorkoutContext, sessionStore: SessionStore) {
     self.context = context
     self.sessionStore = sessionStore
     self.restTimerEndsAt = context.restTimerEndsAt
+    self.isTimerPaused = context.isPaused
+    self.pausedAt = context.pausedAt
+    self.pausedDurationSeconds = context.pausedDurationSeconds
     configureTimer()
   }
 
@@ -206,7 +213,17 @@ final class LiveWorkoutViewModel: ObservableObject {
 
   var elapsedText: String {
     let startDate = workout?.startTime ?? context.startedAt
-    let seconds = max(Int(currentDate.timeIntervalSince(startDate)), 0)
+    let wallClockElapsed = max(currentDate.timeIntervalSince(startDate), 0)
+    let currentPauseSeconds: Double
+
+    if isTimerPaused, let pausedAt {
+      currentPauseSeconds = max(currentDate.timeIntervalSince(pausedAt), 0)
+    } else {
+      currentPauseSeconds = 0
+    }
+
+    let elapsedSeconds = max(0, wallClockElapsed - pausedDurationSeconds - currentPauseSeconds)
+    let seconds = Int(elapsedSeconds)
     let minutes = seconds / 60
     let remainingSeconds = seconds % 60
     return String(format: "%02d:%02d", minutes, remainingSeconds)
@@ -241,6 +258,29 @@ final class LiveWorkoutViewModel: ObservableObject {
 
   var preferredDistanceUnit: Unit {
     sessionStore.userProfile?.preferredDistanceUnit ?? .km
+  }
+
+  func attachCoordinator(_ coordinator: ActiveWorkoutCoordinator) {
+    activeWorkoutCoordinator = coordinator
+  }
+
+  func toggleSessionTimerPause() {
+    if isTimerPaused {
+      if let pausedAt {
+        pausedDurationSeconds += max(currentDate.timeIntervalSince(pausedAt), 0)
+      }
+      isTimerPaused = false
+      self.pausedAt = nil
+    } else {
+      isTimerPaused = true
+      pausedAt = currentDate
+    }
+
+    activeWorkoutCoordinator?.syncSessionTimerState(
+      isPaused: isTimerPaused,
+      pausedAt: pausedAt,
+      pausedDurationSeconds: pausedDurationSeconds
+    )
   }
 
   func load() async {
