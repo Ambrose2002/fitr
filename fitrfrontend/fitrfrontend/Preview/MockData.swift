@@ -46,23 +46,43 @@ struct MockData {
     return workout.workoutExercises.map { exercise in
       let setLogs = exercise.setLogs
       let setCount = setLogs.count
-      let avgReps = setCount > 0 ? Float(setLogs.map { $0.reps }.reduce(0, +)) / Float(setCount) : 0
-      let avgWeight = setCount > 0 ? setLogs.map { $0.weight }.reduce(0, +) / Float(setCount) : 0
-      let maxWeight = setLogs.map { $0.weight }.max() ?? 0
-      let totalVolume = setLogs.reduce(0) { $0 + (Float($1.reps) * $1.weight) }
-      let totalCalories = setLogs.map { $0.calories }.reduce(0, +)
+      let avgReps = averageValue(for: setLogs.map { Float($0.reps) })
+      let avgWeight = averageValue(for: setLogs.map(\.weight))
+      let avgDurationSeconds = averageDurationSeconds(for: setLogs)
+      let avgDistance = averageValue(for: setLogs.map(\.distance))
+      let avgCalories = averageValue(for: setLogs.map(\.calories))
 
       return WorkoutExerciseStats(
         id: exercise.id,
         exerciseName: exercise.exercise.name,
+        measurementType: exercise.exercise.measurementType,
         setCount: setCount,
         avgReps: avgReps,
         avgWeight: avgWeight,
-        maxWeight: maxWeight,
-        totalVolume: totalVolume,
-        totalCalories: totalCalories
+        avgDurationSeconds: avgDurationSeconds,
+        avgDistance: avgDistance,
+        avgCalories: avgCalories
       )
     }
+  }
+
+  private static func averageValue(for values: [Float]) -> Float? {
+    let filteredValues = values.filter { $0 > 0 }
+    guard !filteredValues.isEmpty else {
+      return nil
+    }
+
+    return filteredValues.reduce(0, +) / Float(filteredValues.count)
+  }
+
+  private static func averageDurationSeconds(for setLogs: [SetLogResponse]) -> Int? {
+    let durations = setLogs.compactMap(\.durationSeconds).filter { $0 > 0 }
+    guard !durations.isEmpty else {
+      return nil
+    }
+
+    let totalDuration = durations.reduce(0, +)
+    return Int((Double(totalDuration) / Double(durations.count)).rounded())
   }
 
   // MARK: - Home Screen Data
