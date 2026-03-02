@@ -25,7 +25,21 @@ struct APIEndpoints {
     
     // Workout Sessions
     static let workouts = "/api/workouts"
+    static let activeWorkout = "/api/workouts/active"
     static func workout(id: Int) -> String { "/api/workouts/\(id)" }
+    static func workoutExercises(workoutId: Int) -> String { "/api/workouts/\(workoutId)/exercises" }
+    static func workoutExerciseSets(workoutExerciseId: Int) -> String {
+        "/api/workout-exercises/\(workoutExerciseId)/sets"
+    }
+    static func workoutExerciseSet(workoutExerciseId: Int, setId: Int) -> String {
+        "/api/workout-exercises/\(workoutExerciseId)/sets/\(setId)"
+    }
+    static func workoutExerciseSetLogs(workoutExerciseId: Int) -> String {
+        "/api/workout-exercises/\(workoutExerciseId)/set-logs"
+    }
+    static func workoutExerciseSetLog(workoutExerciseId: Int, setId: Int) -> String {
+        "/api/workout-exercises/\(workoutExerciseId)/set-logs/\(setId)"
+    }
     
     // Body Metrics
     static let bodyMetrics = "/api/body-metrics"

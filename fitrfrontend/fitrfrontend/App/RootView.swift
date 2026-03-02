@@ -9,16 +9,18 @@ import SwiftUI
 
 struct RootView: View {
   @EnvironmentObject var sessionStore: SessionStore
+  @EnvironmentObject var activeWorkoutCoordinator: ActiveWorkoutCoordinator
 
   var body: some View {
+    let content: AnyView
 
     switch sessionStore.authState {
     case .loading:
-      return AnyView(ProgressView())
+      content = AnyView(ProgressView())
 
     case .authenticated:
       if sessionStore.isCheckingProfile {
-        return AnyView(
+        content = AnyView(
           VStack(spacing: 16) {
             ProgressView()
             Text("Setting up your profile...")
@@ -28,16 +30,23 @@ struct RootView: View {
           .padding()
         )
       } else if sessionStore.hasCreatedProfile {
-        return AnyView(MainAppView())
+        content = AnyView(MainAppView())
       } else {
-        return AnyView(CreateProfileView(sessionStore: sessionStore))
+        content = AnyView(CreateProfileView(sessionStore: sessionStore))
       }
 
     case .unauthenticated:
-      return AnyView(
+      content = AnyView(
         NavigationStack {
           WelcomeView(sessionStore: sessionStore)
         })
     }
+
+    return content
+      .onChange(of: sessionStore.authState) { _, authState in
+        if case .unauthenticated = authState {
+          activeWorkoutCoordinator.resetLocalState()
+        }
+      }
   }
 }

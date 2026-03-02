@@ -11,9 +11,12 @@ import SwiftUI
 struct fitrfrontendApp: App {
     
     @StateObject private var sessionStore = SessionStore()
+    @StateObject private var activeWorkoutCoordinator = ActiveWorkoutCoordinator()
     var body: some Scene {
         WindowGroup {
-            RootView().environmentObject(sessionStore)
+            RootView()
+                .environmentObject(sessionStore)
+                .environmentObject(activeWorkoutCoordinator)
         }
     }
 }
