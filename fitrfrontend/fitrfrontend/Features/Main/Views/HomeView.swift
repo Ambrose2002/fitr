@@ -11,8 +11,14 @@ import SwiftUI
 struct HomeView: View {
   @EnvironmentObject var sessionStore: SessionStore
   @StateObject private var viewModel: HomeViewModel
+  private let onNewPlanTap: () -> Void
 
-  init(sessionStore: SessionStore, initialData: HomeScreenData? = nil) {
+  init(
+    sessionStore: SessionStore,
+    onNewPlanTap: @escaping () -> Void = {},
+    initialData: HomeScreenData? = nil
+  ) {
+    self.onNewPlanTap = onNewPlanTap
     _viewModel = StateObject(
       wrappedValue: HomeViewModel(sessionStore: sessionStore, initialData: initialData))
   }
@@ -221,7 +227,7 @@ struct HomeView: View {
                     icon: "clipboard.fill",
                     label: "New Plan",
                     color: Color(red: 0.8, green: 0.7, blue: 1.0),
-                    action: {}
+                    action: onNewPlanTap
                   )
                 }
                 .padding(.horizontal, 16)

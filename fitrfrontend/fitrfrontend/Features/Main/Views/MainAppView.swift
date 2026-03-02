@@ -9,6 +9,7 @@ import SwiftUI
 
 struct MainAppView: View {
   @State private var selectedTab: AppTab = .home
+  @State private var pendingPlansLaunchAction: PlansLaunchAction?
   @EnvironmentObject var sessionStore: SessionStore
 
   enum AppTab: String, CaseIterable, Identifiable {
@@ -37,9 +38,18 @@ struct MainAppView: View {
       Group {
         switch selectedTab {
         case .home:
-          HomeView(sessionStore: sessionStore)
+          HomeView(
+            sessionStore: sessionStore,
+            onNewPlanTap: {
+              pendingPlansLaunchAction = .createPlan
+              selectedTab = .plans
+            }
+          )
         case .plans:
-          PlansView(sessionStore: sessionStore)
+          PlansView(
+            sessionStore: sessionStore,
+            launchAction: $pendingPlansLaunchAction
+          )
         case .workouts:
           WorkoutsView(sessionStore: sessionStore)
         case .progress:

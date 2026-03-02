@@ -7,9 +7,14 @@
 
 import SwiftUI
 
+enum PlansLaunchAction: Equatable {
+  case createPlan
+}
+
 struct PlansView: View {
   @EnvironmentObject var sessionStore: SessionStore
   @StateObject private var viewModel: WorkoutPlanViewModel
+  @Binding private var launchAction: PlansLaunchAction?
 
   @State private var showCreatePlan = false
   @State private var planToEdit: PlanSummary?
@@ -18,8 +23,12 @@ struct PlansView: View {
   @State private var pendingCreatedPlan: WorkoutPlanResponse?
   @State private var createdPlanToOpen: WorkoutPlanResponse?
 
-  init(sessionStore: SessionStore) {
+  init(
+    sessionStore: SessionStore,
+    launchAction: Binding<PlansLaunchAction?> = .constant(nil)
+  ) {
     _viewModel = StateObject(wrappedValue: WorkoutPlanViewModel(sessionStore: sessionStore))
+    _launchAction = launchAction
   }
 
   var body: some View {
@@ -231,6 +240,10 @@ struct PlansView: View {
     }
     .task {
       await viewModel.loadPlans()
+      consumeLaunchActionIfNeeded()
+    }
+    .onChange(of: launchAction) { _, _ in
+      consumeLaunchActionIfNeeded()
     }
   }
 
@@ -241,6 +254,20 @@ struct PlansView: View {
 
     pendingCreatedPlan = nil
     createdPlanToOpen = createdPlan
+  }
+
+  @MainActor
+  private func consumeLaunchActionIfNeeded() {
+    guard launchAction == .createPlan else {
+      return
+    }
+
+    guard !viewModel.isLoading else {
+      return
+    }
+
+    showCreatePlan = true
+    launchAction = nil
   }
 }
 
