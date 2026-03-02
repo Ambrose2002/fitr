@@ -32,6 +32,14 @@ struct WorkoutsView: View {
       .safeAreaInset(edge: .top) {
         topBar
       }
+      .navigationDestination(for: Int64.self) { workoutId in
+        WorkoutDetailView(
+          sessionStore: viewModel.sessionStore,
+          workoutId: workoutId,
+          mode: .completed,
+          initialWorkout: viewModel.workoutSession(id: workoutId)
+        )
+      }
     }
     .sheet(isPresented: $viewModel.showFilterSheet, onDismiss: viewModel.resetDraftFiltersAfterDismiss) {
       WorkoutHistoryFilterSheet(
@@ -317,7 +325,11 @@ private struct WorkoutHistorySectionView: View {
 
       VStack(spacing: 0) {
         ForEach(Array(section.rows.enumerated()), id: \.element.id) { index, row in
-          WorkoutHistoryRowView(row: row)
+          NavigationLink(value: row.id) {
+            WorkoutHistoryRowView(row: row)
+              .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
 
           if index != section.rows.count - 1 {
             Divider()
