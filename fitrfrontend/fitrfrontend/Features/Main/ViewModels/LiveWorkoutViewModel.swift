@@ -89,7 +89,7 @@ struct LiveWorkoutExerciseState: Identifiable {
   }
 
   var canRemove: Bool {
-    source == .adHoc && !hasLoggedSets
+    !hasLoggedSets
   }
 }
 
@@ -123,7 +123,9 @@ final class LiveWorkoutViewModel: ObservableObject {
   @Published var activeSetEditor: LiveWorkoutSetEditorContext?
   @Published var isLoading = true
   @Published var isSubmitting = false
+  @Published var isDeletingSetLog = false
   @Published var errorMessage: String?
+  @Published var setEditorMutationErrorMessage: String?
   @Published var showEditSessionSheet = false
   @Published var sessionEditDraft = WorkoutSessionEditDraft()
   @Published var sessionEditBaselineDraft = WorkoutSessionEditDraft()
@@ -151,6 +153,7 @@ final class LiveWorkoutViewModel: ObservableObject {
   private var pausedAt: Date?
   private var pausedDurationSeconds: Double
   private var preserveErrorOnNextSetEditorDismiss = false
+  private var removedPlaceholderExerciseIds = Set<Int64>()
 
   init(context: ActiveWorkoutContext, sessionStore: SessionStore) {
     self.context = context
@@ -344,6 +347,7 @@ final class LiveWorkoutViewModel: ObservableObject {
     }
 
     clearScreenErrorMessage()
+    clearSetEditorMutationError()
     activeSetEditor = LiveWorkoutSetEditorContext(
       id: "\(exerciseState.id)-\(row.setNumber)-\(row.setLogId ?? -1)",
       exerciseStateId: exerciseState.id,
@@ -376,6 +380,7 @@ final class LiveWorkoutViewModel: ObservableObject {
       ?? LiveWorkoutMetricSnapshot(template: exerciseState.targetTemplate)
 
     clearScreenErrorMessage()
+    clearSetEditorMutationError()
     activeSetEditor = LiveWorkoutSetEditorContext(
       id: "\(exerciseState.id)-extra-\(nextSetNumber)",
       exerciseStateId: exerciseState.id,
@@ -390,7 +395,7 @@ final class LiveWorkoutViewModel: ObservableObject {
   }
 
   func saveSet(editorId: String, draft: LiveWorkoutSetDraft) async {
-    guard !isSubmitting else {
+    guard !isSubmitting, !isDeletingSetLog else {
       return
     }
 
@@ -441,6 +446,7 @@ final class LiveWorkoutViewModel: ObservableObject {
 
     isSubmitting = true
     clearScreenErrorMessage()
+    clearSetEditorMutationError()
 
     var workoutExerciseId = editorContext.workoutExerciseId
     var createdWorkoutExerciseId: Int64?
@@ -474,6 +480,7 @@ final class LiveWorkoutViewModel: ObservableObject {
 
       restTimerEndsAt = Date().addingTimeInterval(90)
       clearScreenErrorMessage()
+      clearSetEditorMutationError()
       self.activeSetEditor = nil
       await reloadSession()
       requestedScrollToExerciseId = editorContext.exerciseStateId
@@ -484,8 +491,8 @@ final class LiveWorkoutViewModel: ObservableObject {
           workoutExerciseId: createdWorkoutExerciseId
         )
       }
-      errorMessage = apiError.message
-      preserveErrorOnNextSetEditorDismiss = true
+      setEditorMutationErrorMessage = apiError.message
+      preserveErrorOnNextSetEditorDismiss = false
     } catch {
       if let createdWorkoutExerciseId {
         await preserveCreatedWorkoutExerciseOnFailedSave(
@@ -493,15 +500,104 @@ final class LiveWorkoutViewModel: ObservableObject {
           workoutExerciseId: createdWorkoutExerciseId
         )
       }
-      errorMessage = "Failed to save that set."
-      preserveErrorOnNextSetEditorDismiss = true
+      setEditorMutationErrorMessage = "Failed to save that set."
+      preserveErrorOnNextSetEditorDismiss = false
     }
 
     isSubmitting = false
   }
 
+  func deleteLoggedSet(editorId: String) async {
+    guard !isSubmitting, !isDeletingSetLog else {
+      return
+    }
+
+    guard let editorContext = activeSetEditor else {
+      await recoverFromEditorOutOfSync()
+      return
+    }
+
+    guard editorContext.id == editorId else {
+      #if DEBUG
+        assertionFailure("Live workout editor/delete mismatch")
+      #endif
+      await recoverFromEditorOutOfSync()
+      return
+    }
+
+    guard exerciseStates.contains(where: { $0.id == editorContext.exerciseStateId }) else {
+      await recoverFromEditorOutOfSync()
+      return
+    }
+
+    guard
+      let workoutExerciseId = editorContext.workoutExerciseId,
+      let setLogId = editorContext.setLogId
+    else {
+      await recoverFromEditorOutOfSync()
+      return
+    }
+
+    isDeletingSetLog = true
+    clearSetEditorMutationError()
+
+    do {
+      try await workoutsService.deleteSetLog(
+        workoutExerciseId: workoutExerciseId,
+        setLogId: setLogId
+      )
+      clearSetEditorMutationError()
+      activeSetEditor = nil
+      await reloadSession()
+      requestedScrollToExerciseId = editorContext.exerciseStateId
+    } catch let apiError as APIErrorResponse {
+      setEditorMutationErrorMessage = apiError.message
+    } catch {
+      setEditorMutationErrorMessage = "Failed to remove that log."
+    }
+
+    isDeletingSetLog = false
+  }
+
+  func pruneIncompleteExercisesBeforeFinish() async throws {
+    let incompleteExercises = exerciseStates.filter { !$0.hasLoggedSets }
+    guard !incompleteExercises.isEmpty else {
+      return
+    }
+
+    var deletedAnyServerExercises = false
+
+    for exerciseState in incompleteExercises {
+      if exerciseState.source == .planned {
+        removedPlaceholderExerciseIds.insert(exerciseState.exercise.id)
+      }
+
+      if activeSetEditor?.exerciseStateId == exerciseState.id {
+        activeSetEditor = nil
+      }
+
+      if let workoutExerciseId = exerciseState.workoutExerciseId {
+        try await workoutsService.deleteWorkoutExercise(
+          workoutId: context.workoutId,
+          exerciseId: workoutExerciseId
+        )
+        deletedAnyServerExercises = true
+      }
+    }
+
+    if deletedAnyServerExercises {
+      workout = try await workoutsService.fetchWorkoutSession(id: context.workoutId)
+      let ignoredInvalidSetLogs = rebuildExerciseStates()
+      applySuccessfulReloadMessage(ignoredInvalidSetLogs: ignoredInvalidSetLogs)
+    } else {
+      let ignoredInvalidSetLogs = rebuildExerciseStates()
+      applySuccessfulReloadMessage(ignoredInvalidSetLogs: ignoredInvalidSetLogs)
+    }
+  }
+
   func presentAddExercisePicker() {
     clearScreenErrorMessage()
+    clearSetEditorMutationError()
     showAddExerciseSheet = true
   }
 
@@ -598,9 +694,11 @@ final class LiveWorkoutViewModel: ObservableObject {
   }
 
   func handleSetEditorDismissed() {
-    guard !isSubmitting else {
+    guard !isSubmitting, !isDeletingSetLog else {
       return
     }
+
+    clearSetEditorMutationError()
 
     if !preserveErrorOnNextSetEditorDismiss {
       errorMessage = nil
@@ -623,6 +721,7 @@ final class LiveWorkoutViewModel: ObservableObject {
         workoutId: context.workoutId,
         request: CreateWorkoutExerciseRequest(exerciseId: exercise.id)
       )
+      removedPlaceholderExerciseIds.remove(exercise.id)
       showAddExerciseSheet = false
       await reloadSession()
       requestedScrollToExerciseId = exerciseStateIdentifier(for: exercise.id)
@@ -634,7 +733,22 @@ final class LiveWorkoutViewModel: ObservableObject {
   }
 
   func removeExercise(_ exerciseState: LiveWorkoutExerciseState) async {
-    guard exerciseState.canRemove, let workoutExerciseId = exerciseState.workoutExerciseId else {
+    guard exerciseState.canRemove else {
+      return
+    }
+
+    if exerciseState.source == .planned {
+      removedPlaceholderExerciseIds.insert(exerciseState.exercise.id)
+    }
+
+    if activeSetEditor?.exerciseStateId == exerciseState.id {
+      activeSetEditor = nil
+    }
+
+    guard let workoutExerciseId = exerciseState.workoutExerciseId else {
+      clearScreenErrorMessage()
+      let ignoredInvalidSetLogs = rebuildExerciseStates()
+      applySuccessfulReloadMessage(ignoredInvalidSetLogs: ignoredInvalidSetLogs)
       return
     }
 
@@ -643,10 +757,17 @@ final class LiveWorkoutViewModel: ObservableObject {
         workoutId: context.workoutId,
         exerciseId: workoutExerciseId
       )
+      clearScreenErrorMessage()
       await reloadSession()
     } catch let apiError as APIErrorResponse {
+      if exerciseState.source == .planned {
+        removedPlaceholderExerciseIds.remove(exerciseState.exercise.id)
+      }
       errorMessage = apiError.message
     } catch {
+      if exerciseState.source == .planned {
+        removedPlaceholderExerciseIds.remove(exerciseState.exercise.id)
+      }
       errorMessage = "Failed to remove the exercise."
     }
   }
@@ -681,12 +802,17 @@ final class LiveWorkoutViewModel: ObservableObject {
       suggestedValues: editorContext.suggestedValues,
       isExtra: editorContext.isExtra
     )
+    removedPlaceholderExerciseIds.remove(editorContext.exercise.id)
     await reloadSession()
   }
 
   private func clearScreenErrorMessage() {
     errorMessage = nil
     preserveErrorOnNextSetEditorDismiss = false
+  }
+
+  private func clearSetEditorMutationError() {
+    setEditorMutationErrorMessage = nil
   }
 
   private func applySuccessfulReloadMessage(ignoredInvalidSetLogs: Bool) {
@@ -703,6 +829,7 @@ final class LiveWorkoutViewModel: ObservableObject {
   private func recoverFromEditorOutOfSync(
     message: String = "Workout state was out of sync. The session was reloaded."
   ) async {
+    clearSetEditorMutationError()
     activeSetEditor = nil
     preserveErrorOnNextSetEditorDismiss = false
     await reloadSession()
@@ -713,7 +840,9 @@ final class LiveWorkoutViewModel: ObservableObject {
     var ignoredInvalidSetLogs = false
 
     guard let workout else {
-      exerciseStates = context.plannedExercises.map { plannedExercise in
+      exerciseStates = context.plannedExercises
+        .filter { !removedPlaceholderExerciseIds.contains($0.exerciseId) }
+        .map { plannedExercise in
         let builtRows = buildRows(for: nil, plannedExercise: plannedExercise)
         return LiveWorkoutExerciseState(
           id: exerciseStateIdentifier(for: plannedExercise.exerciseId),
@@ -739,6 +868,12 @@ final class LiveWorkoutViewModel: ObservableObject {
     var orderedStates: [LiveWorkoutExerciseState] = []
 
     for plannedExercise in context.plannedExercises {
+      if removedPlaceholderExerciseIds.contains(plannedExercise.exerciseId),
+        workoutExercisesByExerciseId[plannedExercise.exerciseId] == nil
+      {
+        continue
+      }
+
       let workoutExercise = workoutExercisesByExerciseId[plannedExercise.exerciseId]
       let builtRows = buildRows(for: workoutExercise, plannedExercise: plannedExercise)
       ignoredInvalidSetLogs = ignoredInvalidSetLogs || builtRows.ignoredInvalidSetLogs

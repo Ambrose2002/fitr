@@ -217,10 +217,13 @@ final class WorkoutDetailViewModel: ObservableObject {
       return []
     }
 
+    let workoutExercises = mode.isCompleted
+      ? workout.includedExercisesForCompletedDisplay
+      : workout.workoutExercises
     let plannedByExerciseId = Dictionary(
       uniqueKeysWithValues: (mode.seed?.plannedExercises ?? []).map { ($0.exerciseId, $0) }
     )
-    let loggedCards = workout.workoutExercises.map { workoutExercise in
+    let loggedCards = workoutExercises.map { workoutExercise in
       buildExerciseCard(
         workoutExercise: workoutExercise,
         plannedExercise: plannedByExerciseId[workoutExercise.exercise.id]

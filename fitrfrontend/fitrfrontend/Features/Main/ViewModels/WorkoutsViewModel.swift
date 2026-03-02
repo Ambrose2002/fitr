@@ -402,7 +402,7 @@ final class WorkoutsViewModel: ObservableObject {
         type: WorkoutSessionClassifier.workoutType(for: workout),
         hasPersonalRecord: sessionsWithPersonalRecords.contains(workout.id),
         durationText: formattedDuration(for: workout),
-        exerciseCountText: "\(workout.workoutExercises.count)",
+        exerciseCountText: "\(workout.includedExercisesCount)",
         volumeText: formattedVolume(for: workout),
         monthKey: Self.monthKey(for: workout.startTime)
       )
