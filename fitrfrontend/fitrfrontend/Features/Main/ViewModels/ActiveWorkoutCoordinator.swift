@@ -246,6 +246,25 @@ final class ActiveWorkoutCoordinator: ObservableObject {
     setActiveContext(updatedContext, shouldPresent: false)
   }
 
+  func applyEditedSession(_ workout: WorkoutSessionResponse) {
+    guard let activeContext, activeContext.workoutId == workout.id else {
+      return
+    }
+
+    let updatedContext = ActiveWorkoutContext(
+      workoutId: activeContext.workoutId,
+      origin: activeContext.origin,
+      sessionTitle: normalizedTitle(from: workout.title, fallback: activeContext.sessionTitle),
+      locationId: workout.workoutLocationId,
+      locationName: workout.locationName,
+      startedAt: activeContext.startedAt,
+      isPaused: activeContext.isPaused,
+      restTimerEndsAt: activeContext.restTimerEndsAt,
+      plannedExercises: activeContext.plannedExercises
+    )
+    setActiveContext(updatedContext, shouldPresent: false)
+  }
+
   func finishActiveWorkout(notes: String?, title: String?) async throws -> WorkoutSessionResponse {
     guard let activeContext else {
       throw URLError(.badURL)

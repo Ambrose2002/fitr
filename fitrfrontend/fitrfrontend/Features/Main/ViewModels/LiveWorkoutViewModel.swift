@@ -124,6 +124,14 @@ final class LiveWorkoutViewModel: ObservableObject {
   @Published var isLoading = true
   @Published var isSubmitting = false
   @Published var errorMessage: String?
+  @Published var showEditSessionSheet = false
+  @Published var sessionEditDraft = WorkoutSessionEditDraft()
+  @Published var sessionEditBaselineDraft = WorkoutSessionEditDraft()
+  @Published var availableLocations: [LocationResponse] = []
+  @Published var isLoadingLocations = false
+  @Published var isSavingSessionEdits = false
+  @Published var locationLoadErrorMessage: String?
+  @Published var sessionEditErrorMessage: String?
   @Published var showAddExerciseSheet = false
   @Published var showFinishSheet = false
   @Published var requestedScrollToExerciseId: String?
@@ -134,8 +142,10 @@ final class LiveWorkoutViewModel: ObservableObject {
 
   private let sessionStore: SessionStore
   private let workoutsService = WorkoutsService()
+  private let locationsService = LocationsService()
   private let workoutPlanService = WorkoutPlanService()
   private var timerCancellable: AnyCancellable?
+  private var hasLoadedLocationsForEditing = false
   private var preserveErrorOnNextSetEditorDismiss = false
 
   init(context: ActiveWorkoutContext, sessionStore: SessionStore) {
@@ -155,10 +165,7 @@ final class LiveWorkoutViewModel: ObservableObject {
   }
 
   var planSummaryTitle: String {
-    if context.origin.isPlanned {
-      return context.origin.planDayName ?? titleText
-    }
-    return "Quick Start Workout"
+    titleText
   }
 
   var planSummarySubtitle: String {
@@ -456,6 +463,98 @@ final class LiveWorkoutViewModel: ObservableObject {
   func presentAddExercisePicker() {
     clearScreenErrorMessage()
     showAddExerciseSheet = true
+  }
+
+  func presentEditSession() {
+    guard let workout else {
+      return
+    }
+
+    let draft = WorkoutSessionEditDraft(workout: workout)
+    sessionEditDraft = draft
+    sessionEditBaselineDraft = draft
+    sessionEditErrorMessage = nil
+    showEditSessionSheet = true
+
+    Task {
+      await loadLocationsForEditingIfNeeded()
+    }
+  }
+
+  func dismissEditSession() {
+    showEditSessionSheet = false
+    sessionEditErrorMessage = nil
+  }
+
+  func loadLocationsForEditingIfNeeded() async {
+    guard !isLoadingLocations, !hasLoadedLocationsForEditing else {
+      return
+    }
+
+    isLoadingLocations = true
+    locationLoadErrorMessage = nil
+
+    defer {
+      isLoadingLocations = false
+    }
+
+    do {
+      availableLocations = try await locationsService.fetchLocations()
+      hasLoadedLocationsForEditing = true
+    } catch {
+      locationLoadErrorMessage = "Couldn't load saved locations. You can still update title and notes."
+    }
+  }
+
+  func saveSessionEdits() async -> WorkoutSessionResponse? {
+    guard !isSavingSessionEdits, let workout else {
+      return nil
+    }
+
+    let trimmedTitle = sessionEditDraft.trimmedTitle
+    guard !trimmedTitle.isEmpty else {
+      sessionEditErrorMessage = "Enter a workout title."
+      return nil
+    }
+
+    guard sessionEditDraft.hasChanges(comparedTo: sessionEditBaselineDraft) else {
+      return nil
+    }
+
+    isSavingSessionEdits = true
+    sessionEditErrorMessage = nil
+
+    defer {
+      isSavingSessionEdits = false
+    }
+
+    let trimmedNotes = sessionEditDraft.trimmedNotes
+
+    do {
+      let updatedWorkout = try await workoutsService.updateWorkoutSession(
+        id: workout.id,
+        request: CreateWorkoutSessionRequest(
+          locationId: sessionEditDraft.selectedLocationId,
+          notes: trimmedNotes.isEmpty ? "" : trimmedNotes,
+          endTime: nil,
+          title: trimmedTitle
+        )
+      )
+
+      self.workout = updatedWorkout
+      let updatedDraft = WorkoutSessionEditDraft(workout: updatedWorkout)
+      sessionEditDraft = updatedDraft
+      sessionEditBaselineDraft = updatedDraft
+      sessionEditErrorMessage = nil
+      showEditSessionSheet = false
+      return updatedWorkout
+    } catch let apiError as APIErrorResponse {
+      sessionEditErrorMessage = apiError.message
+      return nil
+    } catch {
+      sessionEditErrorMessage = "Failed to save your changes."
+      return nil
+    }
   }
 
   func handleSetEditorDismissed() {

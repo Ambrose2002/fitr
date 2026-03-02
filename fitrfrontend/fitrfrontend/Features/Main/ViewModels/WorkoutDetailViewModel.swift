@@ -91,6 +91,14 @@ final class WorkoutDetailViewModel: ObservableObject {
   @Published var workout: WorkoutSessionResponse?
   @Published var isLoading: Bool
   @Published var errorMessage: String?
+  @Published var showEditSessionSheet = false
+  @Published var editDraft = WorkoutSessionEditDraft()
+  @Published var editBaselineDraft = WorkoutSessionEditDraft()
+  @Published var availableLocations: [LocationResponse] = []
+  @Published var isLoadingLocations = false
+  @Published var isSavingSessionEdits = false
+  @Published var locationLoadErrorMessage: String?
+  @Published var sessionEditErrorMessage: String?
   @Published private var currentDate = Date()
 
   let workoutId: Int64
@@ -98,7 +106,9 @@ final class WorkoutDetailViewModel: ObservableObject {
 
   private let sessionStore: SessionStore
   private let workoutsService: WorkoutsService
+  private let locationsService: LocationsService
   private var hasLoaded = false
+  private var hasLoadedLocationsForEditing = false
   private var elapsedTimer: AnyCancellable?
 
   init(
@@ -113,6 +123,7 @@ final class WorkoutDetailViewModel: ObservableObject {
     self.workout = initialWorkout
     self.isLoading = initialWorkout == nil
     self.workoutsService = WorkoutsService()
+    self.locationsService = LocationsService()
     configureElapsedTimerIfNeeded()
   }
 
@@ -266,6 +277,98 @@ final class WorkoutDetailViewModel: ObservableObject {
       errorMessage = apiError.message
     } catch {
       errorMessage = error.localizedDescription
+    }
+  }
+
+  func presentEditSession() {
+    guard let workout else {
+      return
+    }
+
+    let draft = WorkoutSessionEditDraft(workout: workout)
+    editDraft = draft
+    editBaselineDraft = draft
+    sessionEditErrorMessage = nil
+    showEditSessionSheet = true
+
+    Task {
+      await loadLocationsForEditingIfNeeded()
+    }
+  }
+
+  func dismissEditSession() {
+    showEditSessionSheet = false
+    sessionEditErrorMessage = nil
+  }
+
+  func loadLocationsForEditingIfNeeded() async {
+    guard !isLoadingLocations, !hasLoadedLocationsForEditing else {
+      return
+    }
+
+    isLoadingLocations = true
+    locationLoadErrorMessage = nil
+
+    defer {
+      isLoadingLocations = false
+    }
+
+    do {
+      availableLocations = try await locationsService.fetchLocations()
+      hasLoadedLocationsForEditing = true
+    } catch {
+      locationLoadErrorMessage = "Couldn't load saved locations. You can still update title and notes."
+    }
+  }
+
+  func saveSessionEdits() async -> WorkoutSessionResponse? {
+    guard !isSavingSessionEdits, let workout else {
+      return nil
+    }
+
+    let trimmedTitle = editDraft.trimmedTitle
+    guard !trimmedTitle.isEmpty else {
+      sessionEditErrorMessage = "Enter a workout title."
+      return nil
+    }
+
+    guard editDraft.hasChanges(comparedTo: editBaselineDraft) else {
+      return nil
+    }
+
+    isSavingSessionEdits = true
+    sessionEditErrorMessage = nil
+
+    defer {
+      isSavingSessionEdits = false
+    }
+
+    let trimmedNotes = editDraft.trimmedNotes
+
+    do {
+      let updatedWorkout = try await workoutsService.updateWorkoutSession(
+        id: workout.id,
+        request: CreateWorkoutSessionRequest(
+          locationId: editDraft.selectedLocationId,
+          notes: trimmedNotes.isEmpty ? "" : trimmedNotes,
+          endTime: nil,
+          title: trimmedTitle
+        )
+      )
+
+      self.workout = updatedWorkout
+      let updatedDraft = WorkoutSessionEditDraft(workout: updatedWorkout)
+      editDraft = updatedDraft
+      editBaselineDraft = updatedDraft
+      sessionEditErrorMessage = nil
+      showEditSessionSheet = false
+      return updatedWorkout
+    } catch let apiError as APIErrorResponse {
+      sessionEditErrorMessage = apiError.message
+      return nil
+    } catch {
+      sessionEditErrorMessage = "Failed to save your changes."
+      return nil
     }
   }
 

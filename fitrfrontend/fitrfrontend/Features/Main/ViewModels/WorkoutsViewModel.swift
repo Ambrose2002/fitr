@@ -206,14 +206,9 @@ final class WorkoutsViewModel: ObservableObject {
 
     do {
       let workouts = try await workoutsService.fetchWorkoutHistory()
-      let completedWorkouts = workouts
-        .filter { $0.endTime != nil }
-        .sorted {
-          if $0.startTime == $1.startTime {
-            return $0.id > $1.id
-          }
-          return $0.startTime > $1.startTime
-        }
+      let completedWorkouts = Self.sortedCompletedWorkouts(
+        workouts.filter { $0.endTime != nil }
+      )
 
       allCompletedWorkouts = completedWorkouts
       let sanitizedFilters = sanitize(filters: appliedFilters)
@@ -258,6 +253,19 @@ final class WorkoutsViewModel: ObservableObject {
     allCompletedWorkouts.first { $0.id == id }
   }
 
+  func applyUpdatedWorkout(_ updated: WorkoutSessionResponse) {
+    guard let existingIndex = allCompletedWorkouts.firstIndex(where: { $0.id == updated.id }) else {
+      return
+    }
+
+    allCompletedWorkouts[existingIndex] = updated
+    allCompletedWorkouts = Self.sortedCompletedWorkouts(
+      allCompletedWorkouts.filter { $0.endTime != nil }
+    )
+    appliedFilters = sanitize(filters: appliedFilters)
+    draftFilters = sanitize(filters: draftFilters)
+  }
+
   private static let noLocationLabel = "No location"
 
   private static let monthKeyFormatter: Foundation.DateFormatter = {
@@ -294,6 +302,17 @@ final class WorkoutsViewModel: ObservableObject {
     formatter.dateFormat = "yyyy-MM"
     return formatter
   }()
+
+  private static func sortedCompletedWorkouts(
+    _ workouts: [WorkoutSessionResponse]
+  ) -> [WorkoutSessionResponse] {
+    workouts.sorted {
+      if $0.startTime == $1.startTime {
+        return $0.id > $1.id
+      }
+      return $0.startTime > $1.startTime
+    }
+  }
 
   private var filteredRows: [WorkoutHistoryRow] {
     allHistoryRows.filter { row in
