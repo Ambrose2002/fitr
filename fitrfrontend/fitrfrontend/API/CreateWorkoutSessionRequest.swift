@@ -11,4 +11,5 @@ struct CreateWorkoutSessionRequest: Codable {
     let locationId: Int64?
     let notes: String?
     let endTime: String?
+    let title: String?
 }
