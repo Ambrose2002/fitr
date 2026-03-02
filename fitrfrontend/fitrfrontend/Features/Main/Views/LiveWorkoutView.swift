@@ -62,10 +62,17 @@ struct LiveWorkoutView: View {
     .sheet(item: $viewModel.activeSetEditor) { editor in
       LiveWorkoutSetEditorSheet(
         editor: editor,
-        isSubmitting: viewModel.isSubmitting
+        isSubmitting: viewModel.isSubmitting,
+        canDeleteLog: editor.setLogId != nil,
+        isDeletingLog: viewModel.isDeletingSetLog,
+        deleteErrorMessage: viewModel.setEditorMutationErrorMessage
       ) { editorId, draft in
         Task {
           await viewModel.saveSet(editorId: editorId, draft: draft)
+        }
+      } onDelete: { editorId in
+        Task {
+          await viewModel.deleteLoggedSet(editorId: editorId)
         }
       }
       .presentationDetents([.medium])
@@ -116,6 +123,18 @@ struct LiveWorkoutView: View {
         isFinishingWorkout = true
 
         Task {
+          do {
+            try await viewModel.pruneIncompleteExercisesBeforeFinish()
+          } catch let apiError as APIErrorResponse {
+            isFinishingWorkout = false
+            viewModel.errorMessage = "Failed to clean up incomplete exercises: \(apiError.message)"
+            return
+          } catch {
+            isFinishingWorkout = false
+            viewModel.errorMessage = "Failed to clean up incomplete exercises before finishing."
+            return
+          }
+
           do {
             _ = try await activeWorkoutCoordinator.finishActiveWorkout(
               notes: submittedNotes,
@@ -838,7 +857,11 @@ private struct LiveWorkoutSetEditorSheet: View {
 
   let editor: LiveWorkoutSetEditorContext
   let isSubmitting: Bool
+  let canDeleteLog: Bool
+  let isDeletingLog: Bool
+  let deleteErrorMessage: String?
   let onSave: (String, LiveWorkoutSetDraft) -> Void
+  let onDelete: (String) -> Void
 
   @State private var reps = ""
   @State private var weight = ""
@@ -851,11 +874,19 @@ private struct LiveWorkoutSetEditorSheet: View {
   init(
     editor: LiveWorkoutSetEditorContext,
     isSubmitting: Bool,
-    onSave: @escaping (String, LiveWorkoutSetDraft) -> Void
+    canDeleteLog: Bool,
+    isDeletingLog: Bool,
+    deleteErrorMessage: String?,
+    onSave: @escaping (String, LiveWorkoutSetDraft) -> Void,
+    onDelete: @escaping (String) -> Void
   ) {
     self.editor = editor
     self.isSubmitting = isSubmitting
+    self.canDeleteLog = canDeleteLog
+    self.isDeletingLog = isDeletingLog
+    self.deleteErrorMessage = deleteErrorMessage
     self.onSave = onSave
+    self.onDelete = onDelete
     _reps = State(initialValue: editor.suggestedValues.reps.map(String.init) ?? "")
     _weight = State(initialValue: "")
     _duration = State(
@@ -904,7 +935,39 @@ private struct LiveWorkoutSetEditorSheet: View {
               .cornerRadius(12)
           }
 
+          if let deleteErrorMessage {
+            Text(deleteErrorMessage)
+              .font(.system(size: 12, weight: .semibold))
+              .foregroundColor(AppColors.errorRed)
+              .padding(.horizontal, 12)
+              .padding(.vertical, 10)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .background(AppColors.errorRed.opacity(0.08))
+              .cornerRadius(12)
+          }
+
           form
+
+          if canDeleteLog {
+            Button(role: .destructive) {
+              guard !isSubmitting, !isDeletingLog else {
+                return
+              }
+
+              localErrorMessage = nil
+              onDelete(editor.id)
+            } label: {
+              HStack(spacing: 8) {
+                Image(systemName: "trash")
+                  .font(.system(size: 13, weight: .bold))
+                Text("Delete Log")
+                  .font(.system(size: 15, weight: .bold))
+              }
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 12)
+            }
+            .disabled(isSubmitting || isDeletingLog)
+          }
         }
         .padding(16)
       }
@@ -913,7 +976,7 @@ private struct LiveWorkoutSetEditorSheet: View {
       .toolbar {
         ToolbarItem(placement: .confirmationAction) {
           Button(editor.setLogId == nil ? "Log" : "Save") {
-            guard !isSubmitting else {
+            guard !isSubmitting, !isDeletingLog else {
               return
             }
 
@@ -925,7 +988,7 @@ private struct LiveWorkoutSetEditorSheet: View {
             localErrorMessage = nil
             onSave(editor.id, draft)
           }
-          .disabled(isSubmitting)
+          .disabled(isSubmitting || isDeletingLog)
         }
       }
       .onAppear {
@@ -944,6 +1007,9 @@ private struct LiveWorkoutSetEditorSheet: View {
         localErrorMessage = nil
       }
       .onChange(of: calories) { _, _ in
+        localErrorMessage = nil
+      }
+      .onChange(of: deleteErrorMessage) { _, _ in
         localErrorMessage = nil
       }
     }

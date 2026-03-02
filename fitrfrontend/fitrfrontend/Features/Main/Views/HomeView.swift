@@ -126,7 +126,7 @@ struct HomeView: View {
                           Text("Exercises")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
-                          Text("\(lastWorkout.workoutExercises.count)")
+                          Text("\(lastWorkout.includedExercisesCount)")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(AppColors.textPrimary)
                         }
