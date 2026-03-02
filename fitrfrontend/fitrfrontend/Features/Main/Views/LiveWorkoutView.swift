@@ -39,6 +39,13 @@ struct LiveWorkoutView: View {
     .onChange(of: viewModel.restTimerEndsAt) { _, newValue in
       activeWorkoutCoordinator.updateRestTimer(endDate: newValue)
     }
+    .onChange(of: viewModel.activeSetEditor?.id) { oldValue, newValue in
+      guard oldValue != nil, newValue == nil else {
+        return
+      }
+
+      viewModel.handleSetEditorDismissed()
+    }
     .onChange(of: viewModel.showFinishSheet) { _, isPresented in
       guard !isPresented, shouldDismissLiveWorkoutAfterFinish else {
         return
@@ -52,8 +59,13 @@ struct LiveWorkoutView: View {
       }
     }
     .sheet(item: $viewModel.activeSetEditor) { editor in
-      LiveWorkoutSetEditorSheet(editor: editor) { request in
-        await viewModel.saveSet(request)
+      LiveWorkoutSetEditorSheet(
+        editor: editor,
+        isSubmitting: viewModel.isSubmitting
+      ) { editorId, draft in
+        Task {
+          await viewModel.saveSet(editorId: editorId, draft: draft)
+        }
       }
       .presentationDetents([.medium])
       .presentationDragIndicator(.visible)
@@ -308,7 +320,7 @@ struct LiveWorkoutView: View {
   private var footer: some View {
     VStack(spacing: 12) {
       Button {
-        viewModel.showAddExerciseSheet = true
+        viewModel.presentAddExercisePicker()
       } label: {
         HStack(spacing: 8) {
           Image(systemName: "plus")
@@ -778,20 +790,24 @@ private struct LiveWorkoutSetEditorSheet: View {
   @EnvironmentObject private var sessionStore: SessionStore
 
   let editor: LiveWorkoutSetEditorContext
-  let onSave: (CreateSingleSetLogRequest) async -> Void
+  let isSubmitting: Bool
+  let onSave: (String, LiveWorkoutSetDraft) -> Void
 
   @State private var reps = ""
   @State private var weight = ""
   @State private var duration = ""
   @State private var distance = ""
   @State private var calories = ""
+  @State private var localErrorMessage: String?
   @State private var didHydrateDisplayInputs = false
 
   init(
     editor: LiveWorkoutSetEditorContext,
-    onSave: @escaping (CreateSingleSetLogRequest) async -> Void
+    isSubmitting: Bool,
+    onSave: @escaping (String, LiveWorkoutSetDraft) -> Void
   ) {
     self.editor = editor
+    self.isSubmitting = isSubmitting
     self.onSave = onSave
     _reps = State(initialValue: editor.suggestedValues.reps.map(String.init) ?? "")
     _weight = State(initialValue: "")
@@ -812,10 +828,6 @@ private struct LiveWorkoutSetEditorSheet: View {
     sessionStore.userProfile?.preferredDistanceUnit ?? .km
   }
 
-  private var isValid: Bool {
-    buildRequest() != nil
-  }
-
   var body: some View {
     NavigationStack {
       ScrollView {
@@ -834,6 +846,17 @@ private struct LiveWorkoutSetEditorSheet: View {
               .foregroundColor(AppColors.textSecondary)
           }
 
+          if let localErrorMessage {
+            Text(localErrorMessage)
+              .font(.system(size: 12, weight: .semibold))
+              .foregroundColor(AppColors.errorRed)
+              .padding(.horizontal, 12)
+              .padding(.vertical, 10)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .background(AppColors.errorRed.opacity(0.08))
+              .cornerRadius(12)
+          }
+
           form
         }
         .padding(16)
@@ -843,18 +866,38 @@ private struct LiveWorkoutSetEditorSheet: View {
       .toolbar {
         ToolbarItem(placement: .confirmationAction) {
           Button(editor.setLogId == nil ? "Log" : "Save") {
-            guard let request = buildRequest() else {
+            guard !isSubmitting else {
               return
             }
-            Task {
-              await onSave(request)
+
+            guard let draft = buildDraft() else {
+              localErrorMessage = "Enter valid values for this set before logging."
+              return
             }
+
+            localErrorMessage = nil
+            onSave(editor.id, draft)
           }
-          .disabled(!isValid)
+          .disabled(isSubmitting)
         }
       }
       .onAppear {
         hydrateDisplayInputsIfNeeded()
+      }
+      .onChange(of: reps) { _, _ in
+        localErrorMessage = nil
+      }
+      .onChange(of: weight) { _, _ in
+        localErrorMessage = nil
+      }
+      .onChange(of: duration) { _, _ in
+        localErrorMessage = nil
+      }
+      .onChange(of: distance) { _, _ in
+        localErrorMessage = nil
+      }
+      .onChange(of: calories) { _, _ in
+        localErrorMessage = nil
       }
     }
   }
@@ -920,17 +963,12 @@ private struct LiveWorkoutSetEditorSheet: View {
     }
   }
 
-  private func buildRequest() -> CreateSingleSetLogRequest? {
-    let maxSetNumber = 100
+  private func buildDraft() -> LiveWorkoutSetDraft? {
     let maxReps = 1000
     let maxDurationSeconds = 21_600
     let maxWeight: Float = 10_000
     let maxDistance: Float = 1_000
     let maxCalories: Float = 50_000
-
-    guard (1...maxSetNumber).contains(editor.setNumber) else {
-      return nil
-    }
 
     let repsValue = intValue(reps)
     let weightValue = backendWeight(from: floatValue(weight))
@@ -941,8 +979,7 @@ private struct LiveWorkoutSetEditorSheet: View {
     switch editor.exercise.measurementType {
     case .reps:
       guard let repsValue, (1...maxReps).contains(repsValue) else { return nil }
-      return CreateSingleSetLogRequest(
-        setNumber: editor.setNumber,
+      return LiveWorkoutSetDraft(
         reps: repsValue,
         weight: nil,
         durationSeconds: nil,
@@ -951,8 +988,7 @@ private struct LiveWorkoutSetEditorSheet: View {
       )
     case .time:
       guard let durationValue, (1...maxDurationSeconds).contains(durationValue) else { return nil }
-      return CreateSingleSetLogRequest(
-        setNumber: editor.setNumber,
+      return LiveWorkoutSetDraft(
         reps: nil,
         weight: nil,
         durationSeconds: Int64(durationValue),
@@ -964,8 +1000,7 @@ private struct LiveWorkoutSetEditorSheet: View {
         let repsValue, (1...maxReps).contains(repsValue),
         let durationValue, (1...maxDurationSeconds).contains(durationValue)
       else { return nil }
-      return CreateSingleSetLogRequest(
-        setNumber: editor.setNumber,
+      return LiveWorkoutSetDraft(
         reps: repsValue,
         weight: nil,
         durationSeconds: Int64(durationValue),
@@ -977,8 +1012,7 @@ private struct LiveWorkoutSetEditorSheet: View {
         let repsValue, (1...maxReps).contains(repsValue),
         let weightValue, weightValue > 0, weightValue <= maxWeight
       else { return nil }
-      return CreateSingleSetLogRequest(
-        setNumber: editor.setNumber,
+      return LiveWorkoutSetDraft(
         reps: repsValue,
         weight: weightValue,
         durationSeconds: nil,
@@ -992,8 +1026,7 @@ private struct LiveWorkoutSetEditorSheet: View {
       else {
         return nil
       }
-      return CreateSingleSetLogRequest(
-        setNumber: editor.setNumber,
+      return LiveWorkoutSetDraft(
         reps: nil,
         weight: weightValue,
         durationSeconds: Int64(durationValue),
@@ -1007,8 +1040,7 @@ private struct LiveWorkoutSetEditorSheet: View {
       else {
         return nil
       }
-      return CreateSingleSetLogRequest(
-        setNumber: editor.setNumber,
+      return LiveWorkoutSetDraft(
         reps: nil,
         weight: nil,
         durationSeconds: Int64(durationValue),
@@ -1022,8 +1054,7 @@ private struct LiveWorkoutSetEditorSheet: View {
       else {
         return nil
       }
-      return CreateSingleSetLogRequest(
-        setNumber: editor.setNumber,
+      return LiveWorkoutSetDraft(
         reps: nil,
         weight: nil,
         durationSeconds: Int64(durationValue),

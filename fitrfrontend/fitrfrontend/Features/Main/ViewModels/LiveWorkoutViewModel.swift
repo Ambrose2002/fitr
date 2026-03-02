@@ -105,6 +105,14 @@ struct LiveWorkoutSetEditorContext: Identifiable {
   let isExtra: Bool
 }
 
+struct LiveWorkoutSetDraft {
+  let reps: Int?
+  let weight: Float?
+  let durationSeconds: Int64?
+  let distance: Float?
+  let calories: Float?
+}
+
 @MainActor
 final class LiveWorkoutViewModel: ObservableObject {
   private let maxSetNumber = 100
@@ -128,6 +136,7 @@ final class LiveWorkoutViewModel: ObservableObject {
   private let workoutsService = WorkoutsService()
   private let workoutPlanService = WorkoutPlanService()
   private var timerCancellable: AnyCancellable?
+  private var preserveErrorOnNextSetEditorDismiss = false
 
   init(context: ActiveWorkoutContext, sessionStore: SessionStore) {
     self.context = context
@@ -237,7 +246,8 @@ final class LiveWorkoutViewModel: ObservableObject {
       let (fetchedWorkout, fetchedCatalog) = try await (workoutRequest, catalogRequest)
       workout = fetchedWorkout
       availableExercises = fetchedCatalog
-      rebuildExerciseStates()
+      let ignoredInvalidSetLogs = rebuildExerciseStates()
+      applySuccessfulReloadMessage(ignoredInvalidSetLogs: ignoredInvalidSetLogs)
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
     } catch {
@@ -250,7 +260,8 @@ final class LiveWorkoutViewModel: ObservableObject {
   func reloadSession() async {
     do {
       workout = try await workoutsService.fetchWorkoutSession(id: context.workoutId)
-      rebuildExerciseStates()
+      let ignoredInvalidSetLogs = rebuildExerciseStates()
+      applySuccessfulReloadMessage(ignoredInvalidSetLogs: ignoredInvalidSetLogs)
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
     } catch {
@@ -277,10 +288,15 @@ final class LiveWorkoutViewModel: ObservableObject {
       ?? LiveWorkoutMetricSnapshot(template: exerciseState.targetTemplate)
 
     guard (1...maxSetNumber).contains(row.setNumber) else {
-      errorMessage = "You can't log a set number above \(maxSetNumber)."
+      Task {
+        await recoverFromEditorOutOfSync(
+          message: "This workout had an invalid set entry and was reloaded."
+        )
+      }
       return
     }
 
+    clearScreenErrorMessage()
     activeSetEditor = LiveWorkoutSetEditorContext(
       id: "\(exerciseState.id)-\(row.setNumber)-\(row.setLogId ?? -1)",
       exerciseStateId: exerciseState.id,
@@ -301,7 +317,8 @@ final class LiveWorkoutViewModel: ObservableObject {
 
     let nextSetNumber = (exerciseState.rows.map(\.setNumber).max() ?? 0) + 1
     guard (1...maxSetNumber).contains(nextSetNumber) else {
-      errorMessage = "You can't log more than \(maxSetNumber) sets for one exercise."
+      errorMessage = "This exercise already has the maximum supported set count."
+      preserveErrorOnNextSetEditorDismiss = false
       return
     }
 
@@ -311,6 +328,7 @@ final class LiveWorkoutViewModel: ObservableObject {
       .last?.actualValues
       ?? LiveWorkoutMetricSnapshot(template: exerciseState.targetTemplate)
 
+    clearScreenErrorMessage()
     activeSetEditor = LiveWorkoutSetEditorContext(
       id: "\(exerciseState.id)-extra-\(nextSetNumber)",
       exerciseStateId: exerciseState.id,
@@ -324,18 +342,58 @@ final class LiveWorkoutViewModel: ObservableObject {
     )
   }
 
-  func saveSet(_ request: CreateSingleSetLogRequest) async {
-    guard let editorContext = activeSetEditor, !isSubmitting else {
+  func saveSet(editorId: String, draft: LiveWorkoutSetDraft) async {
+    guard !isSubmitting else {
       return
     }
 
-    guard (1...maxSetNumber).contains(request.setNumber) else {
-      errorMessage = "You can't log a set number above \(maxSetNumber)."
+    guard let editorContext = activeSetEditor else {
+      await recoverFromEditorOutOfSync()
       return
     }
+
+    #if DEBUG
+      debugPrint(
+        "LiveWorkout saveSet",
+        "submittedEditorId:", editorId,
+        "activeEditorId:", editorContext.id,
+        "activeSetNumber:", editorContext.setNumber,
+        "resolvedSetNumber:", editorContext.setNumber
+      )
+    #endif
+
+    guard editorContext.id == editorId else {
+      #if DEBUG
+        assertionFailure("Live workout editor/save mismatch")
+      #endif
+      await recoverFromEditorOutOfSync()
+      return
+    }
+
+    guard exerciseStates.contains(where: { $0.id == editorContext.exerciseStateId }) else {
+      await recoverFromEditorOutOfSync()
+      return
+    }
+
+    guard (1...maxSetNumber).contains(editorContext.setNumber) else {
+      #if DEBUG
+        assertionFailure("Live workout editor had invalid set number")
+      #endif
+      await recoverFromEditorOutOfSync()
+      return
+    }
+
+    let request = CreateSingleSetLogRequest(
+      setNumber: editorContext.setNumber,
+      reps: draft.reps,
+      weight: draft.weight,
+      durationSeconds: draft.durationSeconds,
+      distance: draft.distance,
+      calories: draft.calories
+    )
 
     isSubmitting = true
-    errorMessage = nil
+    clearScreenErrorMessage()
 
     var workoutExerciseId = editorContext.workoutExerciseId
     var createdWorkoutExerciseId: Int64?
@@ -368,6 +426,7 @@ final class LiveWorkoutViewModel: ObservableObject {
       }
 
       restTimerEndsAt = Date().addingTimeInterval(90)
+      clearScreenErrorMessage()
       self.activeSetEditor = nil
       await reloadSession()
       requestedScrollToExerciseId = editorContext.exerciseStateId
@@ -379,6 +438,7 @@ final class LiveWorkoutViewModel: ObservableObject {
         )
       }
       errorMessage = apiError.message
+      preserveErrorOnNextSetEditorDismiss = true
     } catch {
       if let createdWorkoutExerciseId {
         await preserveCreatedWorkoutExerciseOnFailedSave(
@@ -387,15 +447,34 @@ final class LiveWorkoutViewModel: ObservableObject {
         )
       }
       errorMessage = "Failed to save that set."
+      preserveErrorOnNextSetEditorDismiss = true
     }
 
     isSubmitting = false
+  }
+
+  func presentAddExercisePicker() {
+    clearScreenErrorMessage()
+    showAddExerciseSheet = true
+  }
+
+  func handleSetEditorDismissed() {
+    guard !isSubmitting else {
+      return
+    }
+
+    if !preserveErrorOnNextSetEditorDismiss {
+      errorMessage = nil
+    }
+
+    preserveErrorOnNextSetEditorDismiss = false
   }
 
   func addExercise(_ exercise: ExerciseResponse) async {
     if let existingExercise = exerciseStates.first(where: { $0.exercise.id == exercise.id }) {
       requestedScrollToExerciseId = existingExercise.id
       errorMessage = "That exercise is already in this workout. Add another set instead."
+      preserveErrorOnNextSetEditorDismiss = false
       showAddExerciseSheet = false
       return
     }
@@ -466,10 +545,38 @@ final class LiveWorkoutViewModel: ObservableObject {
     await reloadSession()
   }
 
-  private func rebuildExerciseStates() {
+  private func clearScreenErrorMessage() {
+    errorMessage = nil
+    preserveErrorOnNextSetEditorDismiss = false
+  }
+
+  private func applySuccessfulReloadMessage(ignoredInvalidSetLogs: Bool) {
+    guard activeSetEditor == nil else {
+      return
+    }
+
+    errorMessage = ignoredInvalidSetLogs
+      ? "Some invalid set history was ignored so you can keep logging."
+      : nil
+    preserveErrorOnNextSetEditorDismiss = false
+  }
+
+  private func recoverFromEditorOutOfSync(
+    message: String = "Workout state was out of sync. The session was reloaded."
+  ) async {
+    activeSetEditor = nil
+    preserveErrorOnNextSetEditorDismiss = false
+    await reloadSession()
+    errorMessage = message
+  }
+
+  private func rebuildExerciseStates() -> Bool {
+    var ignoredInvalidSetLogs = false
+
     guard let workout else {
       exerciseStates = context.plannedExercises.map { plannedExercise in
-        LiveWorkoutExerciseState(
+        let builtRows = buildRows(for: nil, plannedExercise: plannedExercise)
+        return LiveWorkoutExerciseState(
           id: exerciseStateIdentifier(for: plannedExercise.exerciseId),
           workoutExerciseId: nil,
           exercise: ExerciseResponse(
@@ -479,10 +586,10 @@ final class LiveWorkoutViewModel: ObservableObject {
           ),
           source: plannedExercise.source,
           targetTemplate: plannedExercise.targetTemplate,
-          rows: buildRows(for: nil, plannedExercise: plannedExercise)
+          rows: builtRows.rows
         )
       }
-      return
+      return ignoredInvalidSetLogs
     }
 
     let workoutExercisesByExerciseId = workout.workoutExercises.reduce(into: [Int64: WorkoutExerciseResponse]())
@@ -494,6 +601,8 @@ final class LiveWorkoutViewModel: ObservableObject {
 
     for plannedExercise in context.plannedExercises {
       let workoutExercise = workoutExercisesByExerciseId[plannedExercise.exerciseId]
+      let builtRows = buildRows(for: workoutExercise, plannedExercise: plannedExercise)
+      ignoredInvalidSetLogs = ignoredInvalidSetLogs || builtRows.ignoredInvalidSetLogs
       orderedStates.append(
         LiveWorkoutExerciseState(
           id: exerciseStateIdentifier(for: plannedExercise.exerciseId),
@@ -506,39 +615,42 @@ final class LiveWorkoutViewModel: ObservableObject {
             ),
           source: .planned,
           targetTemplate: plannedExercise.targetTemplate,
-          rows: buildRows(for: workoutExercise, plannedExercise: plannedExercise)
+          rows: builtRows.rows
         )
       )
     }
 
     let plannedExerciseIds = Set(context.plannedExercises.map(\.exerciseId))
-    let adHocStates = workout.workoutExercises
+    let adHocExercises = workout.workoutExercises
       .filter { !plannedExerciseIds.contains($0.exercise.id) }
       .sorted { $0.id < $1.id }
-      .map { workoutExercise in
+    var adHocStates: [LiveWorkoutExerciseState] = []
+
+    for workoutExercise in adHocExercises {
+      let builtRows = buildRows(for: workoutExercise, plannedExercise: nil)
+      ignoredInvalidSetLogs = ignoredInvalidSetLogs || builtRows.ignoredInvalidSetLogs
+      adHocStates.append(
         LiveWorkoutExerciseState(
           id: exerciseStateIdentifier(for: workoutExercise.exercise.id),
           workoutExerciseId: workoutExercise.id,
           exercise: workoutExercise.exercise,
           source: .adHoc,
           targetTemplate: nil,
-          rows: buildRows(for: workoutExercise, plannedExercise: nil)
+          rows: builtRows.rows
         )
-      }
+      )
+    }
 
     exerciseStates = orderedStates + adHocStates
+    return ignoredInvalidSetLogs
   }
 
   private func buildRows(
     for workoutExercise: WorkoutExerciseResponse?,
     plannedExercise: ActiveWorkoutPlannedExercise?
-  ) -> [LiveWorkoutSetState] {
-    let sortedLogs = (workoutExercise?.setLogs ?? []).sorted {
-      if $0.setNumber == $1.setNumber {
-        return $0.id < $1.id
-      }
-      return $0.setNumber < $1.setNumber
-    }
+  ) -> (rows: [LiveWorkoutSetState], ignoredInvalidSetLogs: Bool) {
+    let sanitizedLogs = sanitizedSetLogs(from: workoutExercise?.setLogs ?? [])
+    let sortedLogs = sanitizedLogs.logs
 
     if let plannedExercise {
       let targetSetCount = min(max(plannedExercise.targetTemplate?.sets ?? 0, 1), maxSetNumber)
@@ -573,11 +685,11 @@ final class LiveWorkoutViewModel: ObservableObject {
         }
       )
 
-      return rows
+      return (rows, sanitizedLogs.ignoredInvalidSetLogs)
     }
 
     if sortedLogs.isEmpty, let workoutExercise {
-      return [
+      return ([
         LiveWorkoutSetState(
           id: "\(exerciseStateIdentifier(for: workoutExercise.exercise.id))-1",
           setNumber: 1,
@@ -586,22 +698,58 @@ final class LiveWorkoutViewModel: ObservableObject {
           status: .planned,
           setLogId: nil
         )
-      ]
+      ], sanitizedLogs.ignoredInvalidSetLogs)
     }
 
-    return sortedLogs.map { setLog in
-      LiveWorkoutSetState(
-        id: "\(exerciseStateIdentifier(for: workoutExercise?.exercise.id ?? -1))-\(setLog.setNumber)",
-        setNumber: setLog.setNumber,
-        targetValues: nil,
-        actualValues: LiveWorkoutMetricSnapshot(setLog: setLog),
-        status: .logged,
-        setLogId: setLog.id
-      )
-    }
+    return (
+      sortedLogs.map { setLog in
+        LiveWorkoutSetState(
+          id: "\(exerciseStateIdentifier(for: workoutExercise?.exercise.id ?? -1))-\(setLog.setNumber)",
+          setNumber: setLog.setNumber,
+          targetValues: nil,
+          actualValues: LiveWorkoutMetricSnapshot(setLog: setLog),
+          status: .logged,
+          setLogId: setLog.id
+        )
+      },
+      sanitizedLogs.ignoredInvalidSetLogs
+    )
   }
 
   private func exerciseStateIdentifier(for exerciseId: Int64) -> String {
     "exercise-\(exerciseId)"
+  }
+
+  private func sanitizedSetLogs(from setLogs: [SetLogResponse]) -> (
+    logs: [SetLogResponse],
+    ignoredInvalidSetLogs: Bool
+  ) {
+    let sortedLogs = setLogs.sorted {
+      if $0.setNumber == $1.setNumber {
+        return $0.id < $1.id
+      }
+      return $0.setNumber < $1.setNumber
+    }
+
+    var latestLogBySetNumber: [Int: SetLogResponse] = [:]
+    var ignoredInvalidSetLogs = false
+
+    for setLog in sortedLogs {
+      guard (1...maxSetNumber).contains(setLog.setNumber) else {
+        ignoredInvalidSetLogs = true
+        continue
+      }
+
+      latestLogBySetNumber[setLog.setNumber] = setLog
+    }
+
+    let logs = latestLogBySetNumber.values.sorted {
+      if $0.setNumber == $1.setNumber {
+        return $0.id < $1.id
+      }
+      return $0.setNumber < $1.setNumber
+    }
+
+    return (logs, ignoredInvalidSetLogs)
   }
 }
