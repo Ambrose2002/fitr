@@ -1,6 +1,7 @@
 package com.example.fitrbackend.service;
 
 import com.example.fitrbackend.dto.CreateSetLogRequest;
+import com.example.fitrbackend.dto.CreateSingleSetLogRequest;
 import com.example.fitrbackend.dto.CreateWorkoutExerciseReqeust;
 import com.example.fitrbackend.dto.ExerciseResponse;
 import com.example.fitrbackend.dto.SetLogResponse;
@@ -58,8 +59,11 @@ public class WorkoutSessionService {
         if (user == null) {
             throw new DataNotFoundException(email);
         }
-        Location location = locationRepo.findById(req.getLocationId())
-                .orElseThrow(() -> new DataNotFoundException("location not found"));
+        Location location = null;
+        if (req.getLocationId() != null) {
+            location = locationRepo.findById(req.getLocationId())
+                    .orElseThrow(() -> new DataNotFoundException("location not found"));
+        }
         WorkoutSession workoutSession = new WorkoutSession(user, Instant.now(), null, req.getNotes(), location);
         if (req.getEndTime() != null && !req.getEndTime().isEmpty()) {
             workoutSession.setEndTime(parseDate(req.getEndTime()));
@@ -113,6 +117,24 @@ public class WorkoutSessionService {
         }).toList();
     }
 
+    public WorkoutSessionResponse getActiveWorkoutSession(String email) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+
+        List<WorkoutSession> activeWorkouts = workoutSessionRepo.findActiveByUserEmail(email);
+        if (activeWorkouts.isEmpty()) {
+            return null;
+        }
+
+        WorkoutSession workoutSession = activeWorkouts.get(0);
+        List<WorkoutExercise> workoutExercises = workoutExerciseRepo.findByWorkoutSessionId(workoutSession.getId());
+        List<WorkoutExerciseResponse> workoutExerciseResponses = workoutExercises.stream()
+                .map(we -> toWorkoutExerciseResponse(we, setLogRepo.findByWorkoutExerciseId(we.getId()))).toList();
+        return toWorkoutSessionResponse(workoutSession, workoutExerciseResponses);
+    }
+
     public WorkoutSessionResponse getWorkoutSession(String email, Long id) {
         User user = userRepo.findByEmail(email);
         if (user == null) {
@@ -140,12 +162,20 @@ public class WorkoutSessionService {
         if (!workoutSession.getUser().getEmail().equals(email)) {
             throw new DataNotFoundException(id, "WorkoutSession");
         }
-        if (req.getNotes() != null && !req.getNotes().isEmpty()) {
+        if (req.getNotes() != null) {
             workoutSession.setNotes(req.getNotes());
         }
 
         if (req.getEndTime() != null && !req.getEndTime().isEmpty()) {
             workoutSession.setEndTime(parseDate(req.getEndTime()));
+        }
+        if (req.getTitle() != null) {
+            workoutSession.setTitle(req.getTitle());
+        }
+        if (req.getLocationId() != null) {
+            Location location = locationRepo.findById(req.getLocationId())
+                    .orElseThrow(() -> new DataNotFoundException("location not found"));
+            workoutSession.setWorkoutLocation(location);
         }
         WorkoutSession savedSession = workoutSessionRepo.save(workoutSession);
         List<WorkoutExercise> workoutExercises = workoutExerciseRepo.findByWorkoutSessionId(savedSession.getId());
@@ -350,6 +380,28 @@ public class WorkoutSessionService {
         return response;
     }
 
+    public SetLogResponse createSingleSetLog(String email, Long workoutExerciseId, CreateSingleSetLogRequest req) {
+        WorkoutExercise workoutExercise = requireOwnedWorkoutExercise(email, workoutExerciseId);
+
+        if (req.getSetNumber() == null || req.getSetNumber() <= 0) {
+            throw new DataCreationFailedException("setNumber is required");
+        }
+
+        boolean hasExistingSetNumber = setLogRepo.findByWorkoutExerciseId(workoutExerciseId).stream()
+                .anyMatch(existingLog -> existingLog.getSetNumber() == req.getSetNumber());
+        if (hasExistingSetNumber) {
+            throw new DataCreationFailedException("set number already exists");
+        }
+
+        SetLog setLog = new SetLog();
+        setLog.setWorkoutExercise(workoutExercise);
+        setLog.setSetNumber(req.getSetNumber());
+        applySingleSetMetrics(setLog, workoutExercise.getExercise().getMeasurementType(), req);
+        setLog.setCompletedAt(Instant.now());
+
+        return toSetLogResponse(setLogRepo.save(setLog));
+    }
+
     public SetLogResponse updateSetLog(String email, Long workoutExerciseId, Long setLogId, CreateSetLogRequest req) {
         User user = userRepo.findByEmail(email);
         if (user == null) {
@@ -439,6 +491,29 @@ public class WorkoutSessionService {
         return toSetLogResponse(setLogRepo.save(setLog));
     }
 
+    public SetLogResponse updateSingleSetLog(String email, Long workoutExerciseId, Long setLogId, CreateSingleSetLogRequest req) {
+        WorkoutExercise workoutExercise = requireOwnedWorkoutExercise(email, workoutExerciseId);
+        SetLog setLog = requireOwnedSetLog(workoutExerciseId, setLogId);
+
+        if (req.getSetNumber() == null || req.getSetNumber() <= 0) {
+            throw new DataCreationFailedException("setNumber is required");
+        }
+
+        boolean hasConflictingSetNumber = setLogRepo.findByWorkoutExerciseId(workoutExerciseId).stream()
+                .anyMatch(existingLog -> existingLog.getId() != setLogId && existingLog.getSetNumber() == req.getSetNumber());
+        if (hasConflictingSetNumber) {
+            throw new DataCreationFailedException("set number already exists");
+        }
+
+        setLog.setSetNumber(req.getSetNumber());
+        applySingleSetMetrics(setLog, workoutExercise.getExercise().getMeasurementType(), req);
+        if (setLog.getCompletedAt() == null) {
+            setLog.setCompletedAt(Instant.now());
+        }
+
+        return toSetLogResponse(setLogRepo.save(setLog));
+    }
+
     public void deleteSetLog(String email, Long workoutExerciseId, Long setLogId) {
         User user = userRepo.findByEmail(email);
         if (user == null) {
@@ -468,6 +543,96 @@ public class WorkoutSessionService {
         }
         List<SetLog> setLogs = setLogRepo.findByWorkoutExerciseId(workoutExerciseId);
         return setLogs.stream().map(this::toSetLogResponse).toList();
+    }
+
+    private WorkoutExercise requireOwnedWorkoutExercise(String email, Long workoutExerciseId) {
+        User user = userRepo.findByEmail(email);
+        if (user == null) {
+            throw new DataNotFoundException(email);
+        }
+        WorkoutExercise workoutExercise = workoutExerciseRepo.findById(workoutExerciseId)
+                .orElseThrow(() -> new DataNotFoundException(workoutExerciseId, "WorkoutExercise"));
+        if (!workoutExercise.getWorkoutSession().getUser().getEmail().equals(email)) {
+            throw new DataNotFoundException(workoutExerciseId, "WorkoutExercise");
+        }
+        return workoutExercise;
+    }
+
+    private SetLog requireOwnedSetLog(Long workoutExerciseId, Long setLogId) {
+        SetLog setLog = setLogRepo.findById(setLogId).orElseThrow(() -> new DataNotFoundException(setLogId, "SetLog"));
+        if (setLog.getWorkoutExercise().getId() != workoutExerciseId) {
+            throw new DataNotFoundException(setLogId, "SetLog");
+        }
+        return setLog;
+    }
+
+    private void applySingleSetMetrics(SetLog setLog, MeasurementType measurementType, CreateSingleSetLogRequest req) {
+        switch (measurementType) {
+            case REPS:
+                if (req.getReps() == null || req.getReps() <= 0) {
+                    throw new DataCreationFailedException("reps is required");
+                }
+                setLog.setReps(req.getReps());
+                break;
+            case TIME:
+                if (req.getDurationSeconds() == null || req.getDurationSeconds() <= 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                setLog.setDurationSeconds(req.getDurationSeconds());
+                break;
+            case REPS_AND_TIME:
+                if (req.getReps() == null || req.getReps() <= 0) {
+                    throw new DataCreationFailedException("reps is required");
+                }
+                if (req.getDurationSeconds() == null || req.getDurationSeconds() <= 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                setLog.setReps(req.getReps());
+                setLog.setDurationSeconds(req.getDurationSeconds());
+                break;
+            case REPS_AND_WEIGHT:
+                if (req.getReps() == null || req.getReps() <= 0) {
+                    throw new DataCreationFailedException("reps is required");
+                }
+                if (req.getWeight() == null || req.getWeight() <= 0) {
+                    throw new DataCreationFailedException("weight is required");
+                }
+                setLog.setReps(req.getReps());
+                setLog.setWeight(req.getWeight());
+                break;
+            case DISTANCE_AND_TIME:
+                if (req.getDistance() == null || req.getDistance() <= 0) {
+                    throw new DataCreationFailedException("distance is required");
+                }
+                if (req.getDurationSeconds() == null || req.getDurationSeconds() <= 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                setLog.setDistance(req.getDistance());
+                setLog.setDurationSeconds(req.getDurationSeconds());
+                break;
+            case CALORIES_AND_TIME:
+                if (req.getCalories() == null || req.getCalories() <= 0) {
+                    throw new DataCreationFailedException("calories is required");
+                }
+                if (req.getDurationSeconds() == null || req.getDurationSeconds() <= 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                setLog.setCalories(req.getCalories());
+                setLog.setDurationSeconds(req.getDurationSeconds());
+                break;
+            case TIME_AND_WEIGHT:
+                if (req.getDurationSeconds() == null || req.getDurationSeconds() <= 0) {
+                    throw new DataCreationFailedException("duration is required");
+                }
+                if (req.getWeight() == null || req.getWeight() <= 0) {
+                    throw new DataCreationFailedException("weight is required");
+                }
+                setLog.setDurationSeconds(req.getDurationSeconds());
+                setLog.setWeight(req.getWeight());
+                break;
+            default:
+                throw new DataCreationFailedException("invalid measurement type");
+        }
     }
 
     private Instant parseDate(String dateStr) {
@@ -516,11 +681,17 @@ public class WorkoutSessionService {
 
     private WorkoutSessionResponse toWorkoutSessionResponse(WorkoutSession workoutSession,
             List<WorkoutExerciseResponse> workoutExerciseResponses) {
+        Long workoutLocationId = workoutSession.getWorkoutLocation() == null
+                ? null
+                : workoutSession.getWorkoutLocation().getId();
+        String locationName = workoutSession.getWorkoutLocation() == null
+                ? null
+                : workoutSession.getWorkoutLocation().getName();
         return new WorkoutSessionResponse(
                 workoutSession.getId(),
                 workoutSession.getUser().getId(),
-                workoutSession.getWorkoutLocation().getId(),
-                workoutSession.getWorkoutLocation().getName(),
+                workoutLocationId,
+                locationName,
                 workoutSession.getStartTime(),
                 workoutSession.getEndTime(),
                 workoutSession.getNotes(),

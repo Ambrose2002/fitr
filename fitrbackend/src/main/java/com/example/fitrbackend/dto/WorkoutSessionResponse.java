@@ -9,7 +9,7 @@ public class WorkoutSessionResponse {
 
     private final long id;
     private final long user_id;
-    private final long workout_location_id;
+    private final Long workout_location_id;
     private final String locationName;
     private final Instant startTime;
     private final Instant endTime;
@@ -17,7 +17,7 @@ public class WorkoutSessionResponse {
     private final String title;
     private final List<WorkoutExerciseResponse> workoutExercises;
 
-    public WorkoutSessionResponse(long id, long user_id, long workout_location_id, String locationName,
+    public WorkoutSessionResponse(long id, long user_id, Long workout_location_id, String locationName,
             Instant startTime, Instant endTime,
             String notes, String title, List<WorkoutExerciseResponse> exercises) {
         this.id = id;

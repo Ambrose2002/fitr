@@ -1,5 +1,6 @@
 package com.example.fitrbackend.controller;
 
+import com.example.fitrbackend.dto.CreateSingleSetLogRequest;
 import com.example.fitrbackend.dto.CreateSetLogRequest;
 import com.example.fitrbackend.dto.SetLogResponse;
 import com.example.fitrbackend.exception.AuthenticationFailedException;
@@ -17,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/workout-exercises/{workoutExerciseId}/sets")
+@RequestMapping("/api/workout-exercises/{workoutExerciseId}")
 public class SetLogController {
 
     private final WorkoutSessionService workoutSessionService;
@@ -26,7 +27,7 @@ public class SetLogController {
         this.workoutSessionService = workoutSessionService;
     }
 
-    @PostMapping
+    @PostMapping("/sets")
     public List<SetLogResponse> createSetLog(@PathVariable Long workoutExerciseId, @RequestBody CreateSetLogRequest req) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) {
@@ -36,7 +37,17 @@ public class SetLogController {
         return workoutSessionService.createSetLog( email, workoutExerciseId, req);
     }
 
-    @PutMapping("/{setLogId}")
+    @PostMapping("/set-logs")
+    public SetLogResponse createSingleSetLog(@PathVariable Long workoutExerciseId, @RequestBody CreateSingleSetLogRequest req) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        return workoutSessionService.createSingleSetLog(email, workoutExerciseId, req);
+    }
+
+    @PutMapping("/sets/{setLogId}")
     public SetLogResponse updateSetLog(@PathVariable Long workoutExerciseId, @PathVariable Long setLogId, @RequestBody CreateSetLogRequest req) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) {
@@ -46,7 +57,17 @@ public class SetLogController {
         return workoutSessionService.updateSetLog(email, workoutExerciseId, setLogId, req);
     }
 
-    @DeleteMapping("/{setLogId}")
+    @PutMapping("/set-logs/{setLogId}")
+    public SetLogResponse updateSingleSetLog(@PathVariable Long workoutExerciseId, @PathVariable Long setLogId, @RequestBody CreateSingleSetLogRequest req) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        return workoutSessionService.updateSingleSetLog(email, workoutExerciseId, setLogId, req);
+    }
+
+    @DeleteMapping({"/sets/{setLogId}", "/set-logs/{setLogId}"})
     public void deleteSetLog(@PathVariable Long workoutExerciseId, @PathVariable Long setLogId) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) {
@@ -56,7 +77,7 @@ public class SetLogController {
         workoutSessionService.deleteSetLog(email, workoutExerciseId, setLogId);
     }
 
-    @GetMapping
+    @GetMapping({"/sets", "/set-logs"})
     public List<SetLogResponse> getSetLogs(@PathVariable Long workoutExerciseId) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) {

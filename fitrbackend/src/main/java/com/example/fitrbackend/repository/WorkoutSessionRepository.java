@@ -9,4 +9,7 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
 
     @Query("SELECT w FROM WorkoutSession w WHERE w.user.email = ?1")
     List<WorkoutSession> findByUserEmail(String email);
+
+    @Query("SELECT w FROM WorkoutSession w WHERE w.user.email = ?1 AND w.endTime IS NULL ORDER BY w.startTime DESC")
+    List<WorkoutSession> findActiveByUserEmail(String email);
 }

@@ -8,6 +8,7 @@ import com.example.fitrbackend.exception.AuthenticationFailedException;
 import com.example.fitrbackend.exception.DataNotFoundException;
 import com.example.fitrbackend.service.WorkoutSessionService;
 import java.util.List;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -53,6 +54,20 @@ public class WorkoutSessionController {
         } catch (Exception e) {
             throw new DataNotFoundException("Could not find workouts within the constraints");
         }
+    }
+
+    @GetMapping("/active")
+    public ResponseEntity<WorkoutSessionResponse> getActiveWorkoutSession() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        WorkoutSessionResponse activeWorkout = workoutSessionService.getActiveWorkoutSession(email);
+        if (activeWorkout == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(activeWorkout);
     }
 
     @GetMapping("/{id}")
