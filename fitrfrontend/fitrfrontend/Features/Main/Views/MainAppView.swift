@@ -41,7 +41,7 @@ struct MainAppView: View {
         case .plans:
           PlansView(sessionStore: sessionStore)
         case .workouts:
-          WorkoutsView()
+          WorkoutsView(sessionStore: sessionStore)
         case .progress:
           ProgressMainView()
         case .profile:
