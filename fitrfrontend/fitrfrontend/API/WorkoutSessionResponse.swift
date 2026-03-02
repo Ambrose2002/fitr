@@ -74,3 +74,13 @@ struct WorkoutSessionResponse: Codable, Identifiable {
     try container.encode(workoutExercises, forKey: .workoutExercises)
   }
 }
+
+extension WorkoutSessionResponse {
+  var includedExercisesForCompletedDisplay: [WorkoutExerciseResponse] {
+    workoutExercises.filter { !$0.setLogs.isEmpty }
+  }
+
+  var includedExercisesCount: Int {
+    includedExercisesForCompletedDisplay.count
+  }
+}
