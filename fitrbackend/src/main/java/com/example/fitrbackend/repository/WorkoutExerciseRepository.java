@@ -9,4 +9,9 @@ public interface WorkoutExerciseRepository extends JpaRepository<WorkoutExercise
 
     @Query("SELECT we FROM WorkoutExercise we WHERE we.workoutSession.id = ?1")
     List<WorkoutExercise> findByWorkoutSessionId(Long workoutSessionId);
+
+    @Query("SELECT we FROM WorkoutExercise we WHERE we.workoutSession.id = ?1 AND we.exercise.id = ?2 ORDER BY we.id ASC")
+    List<WorkoutExercise> findByWorkoutSessionIdAndExerciseId(Long workoutSessionId, Long exerciseId);
+
+    void deleteByWorkoutSessionId(Long workoutSessionId);
 }

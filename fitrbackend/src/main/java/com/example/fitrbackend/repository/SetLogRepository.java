@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.Query;
 public interface SetLogRepository extends JpaRepository<SetLog, Long> {
     @Query("SELECT s FROM SetLog s WHERE s.workoutExercise.id = ?1")
     List<SetLog> findByWorkoutExerciseId(Long id);
+
+    void deleteByWorkoutExerciseId(Long workoutExerciseId);
 }

@@ -1,11 +1,13 @@
 package com.example.fitrbackend.dto;
 
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
+@Setter
 public class CreateSingleSetLogRequest {
-    private Integer setNumber;
-    private Integer reps;
+    private Long setNumber;
+    private Long reps;
     private Float weight;
     private Long durationSeconds;
     private Float distance;
