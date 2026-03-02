@@ -331,11 +331,11 @@ class HomeService {
   {
     guard let workout = workout else { return [] }
 
-    return workout.workoutExercises.map { exercise in
+    return workout.includedExercisesForCompletedDisplay.map { exercise in
       let setLogs = exercise.setLogs
       let setCount = setLogs.count
-      let avgReps = setCount > 0 ? Float(setLogs.map { $0.reps }.reduce(0, +)) / Float(setCount) : 0
-      let avgWeight = setCount > 0 ? setLogs.map { $0.weight }.reduce(0, +) / Float(setCount) : 0
+      let avgReps = Float(setLogs.map { $0.reps }.reduce(0, +)) / Float(setCount)
+      let avgWeight = setLogs.map { $0.weight }.reduce(0, +) / Float(setCount)
       let maxWeight = setLogs.map { $0.weight }.max() ?? 0
       let totalVolume = setLogs.reduce(0) { $0 + (Float($1.reps) * $1.weight) }
       let totalCalories = setLogs.map { $0.calories }.reduce(0, +)
