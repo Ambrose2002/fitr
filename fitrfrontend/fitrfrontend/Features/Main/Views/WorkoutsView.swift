@@ -119,29 +119,29 @@ struct WorkoutsView: View {
 
     switch launchAction {
     case .openWorkout(let workoutId):
-      navigationPath.append(workoutId)
+      openWorkout(workoutId)
     }
 
     self.launchAction = nil
   }
 
-  private var content: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 24) {
-        WorkoutHistorySummaryCard(
-          label: viewModel.summaryLabel,
-          countText: viewModel.summaryCountText
-        )
-        .padding(.horizontal, 16)
+  private func openWorkout(_ workoutId: Int64) {
+    navigationPath.append(workoutId)
+  }
 
-        if !viewModel.hasWorkouts {
+  private var content: some View {
+    Group {
+      if !viewModel.hasWorkouts {
+        contentScrollView {
           emptyState(
             iconName: "figure.strengthtraining.traditional",
             title: "No workout history yet",
             message: "Finish your first session and it will show up here."
           )
           .padding(.horizontal, 16)
-        } else if !viewModel.hasFilteredResults {
+        }
+      } else if !viewModel.hasFilteredResults {
+        contentScrollView {
           emptyState(
             iconName: "line.3.horizontal.decrease.circle",
             title: "No workouts match your filters",
@@ -150,27 +150,80 @@ struct WorkoutsView: View {
             action: viewModel.clearAppliedFilters
           )
           .padding(.horizontal, 16)
-        } else {
-          VStack(alignment: .leading, spacing: 20) {
-            ForEach(viewModel.sections) { section in
-              WorkoutHistorySectionView(
-                section: section,
-                onRequestDelete: { row in
-                  pendingDeleteRow = row
-                }
-              )
-            }
-          }
-          .padding(.horizontal, 16)
-
-          if let footerText = viewModel.historyFooterText {
-            Text(footerText)
-              .font(.system(size: 14, weight: .medium))
-              .foregroundColor(AppColors.textSecondary)
-              .italic()
-              .padding(.horizontal, 16)
-          }
         }
+      } else {
+        historyListContent
+      }
+    }
+  }
+
+  private var historyListContent: some View {
+    List {
+      WorkoutHistorySummaryCard(
+        label: viewModel.summaryLabel,
+        countText: viewModel.summaryCountText
+      )
+      .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16))
+      .listRowSeparator(.hidden)
+      .listRowBackground(Color.clear)
+
+      ForEach(viewModel.sections) { section in
+        Section {
+          ForEach(section.rows) { row in
+            WorkoutHistoryListRowView(
+              row: row,
+              onOpenWorkout: openWorkout,
+              onRequestDelete: { selectedRow in
+                pendingDeleteRow = selectedRow
+              }
+            )
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 12, trailing: 16))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+          }
+        } header: {
+          WorkoutHistorySectionHeaderView(title: section.title)
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
+        }
+      }
+
+      if let footerText = viewModel.historyFooterText {
+        Text(footerText)
+          .font(.system(size: 14, weight: .medium))
+          .foregroundColor(AppColors.textSecondary)
+          .italic()
+          .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 8, trailing: 16))
+          .listRowSeparator(.hidden)
+          .listRowBackground(Color.clear)
+      }
+
+      Color.clear
+        .frame(height: 92)
+        .listRowInsets(EdgeInsets())
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+    .listStyle(.plain)
+    .scrollContentBackground(.hidden)
+    .background(Color(.systemBackground))
+    .refreshable {
+      await viewModel.loadWorkoutHistory()
+    }
+  }
+
+  private func contentScrollView<Content: View>(
+    @ViewBuilder content: () -> Content
+  ) -> some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 24) {
+        WorkoutHistorySummaryCard(
+          label: viewModel.summaryLabel,
+          countText: viewModel.summaryCountText
+        )
+        .padding(.horizontal, 16)
+
+        content()
 
         Spacer(minLength: 92)
       }
@@ -386,50 +439,46 @@ private struct WorkoutHistorySummaryCard: View {
   }
 }
 
-private struct WorkoutHistorySectionView: View {
-  let section: WorkoutHistorySection
+private struct WorkoutHistorySectionHeaderView: View {
+  let title: String
+
+  var body: some View {
+    Text(title)
+      .font(.system(size: 12, weight: .black))
+      .kerning(1.4)
+      .foregroundColor(AppColors.textSecondary)
+  }
+}
+
+private struct WorkoutHistoryListRowView: View {
+  let row: WorkoutHistoryRow
+  let onOpenWorkout: (Int64) -> Void
   let onRequestDelete: (WorkoutHistoryRow) -> Void
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text(section.title)
-        .font(.system(size: 12, weight: .black))
-        .kerning(1.4)
-        .foregroundColor(AppColors.textSecondary)
-
-      VStack(spacing: 0) {
-        ForEach(Array(section.rows.enumerated()), id: \.element.id) { index, row in
-          NavigationLink(value: row.id) {
-            WorkoutHistoryRowView(row: row)
-              .contentShape(Rectangle())
-          }
-          .buttonStyle(.plain)
-          .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive) {
-              onRequestDelete(row)
-            } label: {
-              Label("Delete", systemImage: "trash")
-            }
-          }
-
-          if index != section.rows.count - 1 {
-            Divider()
-              .padding(.leading, 16)
-          }
-        }
+    WorkoutHistoryRowView(
+      row: row,
+      onRequestDelete: {
+        onRequestDelete(row)
       }
-      .background(Color(.systemBackground))
-      .overlay(
-        RoundedRectangle(cornerRadius: 18)
-          .stroke(AppColors.borderGray, lineWidth: 1)
-      )
-      .cornerRadius(18)
+    )
+    .contentShape(RoundedRectangle(cornerRadius: 18))
+    .onTapGesture {
+      onOpenWorkout(row.id)
+    }
+    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+      Button(role: .destructive) {
+        onRequestDelete(row)
+      } label: {
+        Label("Delete", systemImage: "trash")
+      }
     }
   }
 }
 
 private struct WorkoutHistoryRowView: View {
   let row: WorkoutHistoryRow
+  let onRequestDelete: () -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -449,6 +498,22 @@ private struct WorkoutHistoryRowView: View {
           }
           .foregroundColor(AppColors.textPrimary)
         }
+
+        Menu {
+          Button(role: .destructive) {
+            onRequestDelete()
+          } label: {
+            Label("Delete Workout", systemImage: "trash")
+          }
+        } label: {
+          Image(systemName: "ellipsis")
+            .font(.system(size: 16, weight: .bold))
+            .foregroundColor(AppColors.textSecondary)
+            .frame(width: 28, height: 28)
+            .background(AppColors.borderGray.opacity(0.22))
+            .clipShape(Circle())
+        }
+        .buttonStyle(.borderless)
       }
 
       Text(row.title)
@@ -484,6 +549,12 @@ private struct WorkoutHistoryRowView: View {
       .padding(.top, 4)
     }
     .padding(16)
+    .background(Color(.systemBackground))
+    .overlay(
+      RoundedRectangle(cornerRadius: 18)
+        .stroke(AppColors.borderGray, lineWidth: 1)
+    )
+    .cornerRadius(18)
   }
 
   private func statColumn(label: String, value: String, icon: String) -> some View {
