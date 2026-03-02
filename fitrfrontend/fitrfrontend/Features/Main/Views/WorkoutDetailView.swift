@@ -10,13 +10,16 @@ import SwiftUI
 struct WorkoutDetailView: View {
   @Environment(\.dismiss) private var dismiss
   @StateObject private var viewModel: WorkoutDetailViewModel
+  private let onWorkoutUpdated: ((WorkoutSessionResponse) -> Void)?
 
   init(
     sessionStore: SessionStore,
     workoutId: Int64,
     mode: WorkoutDetailMode,
-    initialWorkout: WorkoutSessionResponse? = nil
+    initialWorkout: WorkoutSessionResponse? = nil,
+    onWorkoutUpdated: ((WorkoutSessionResponse) -> Void)? = nil
   ) {
+    self.onWorkoutUpdated = onWorkoutUpdated
     _viewModel = StateObject(
       wrappedValue: WorkoutDetailViewModel(
         sessionStore: sessionStore,
@@ -47,6 +50,27 @@ struct WorkoutDetailView: View {
     }
     .task {
       await viewModel.loadIfNeeded()
+    }
+    .sheet(isPresented: $viewModel.showEditSessionSheet) {
+      WorkoutSessionEditSheet(
+        draft: $viewModel.editDraft,
+        initialDraft: viewModel.editBaselineDraft,
+        availableLocations: viewModel.availableLocations,
+        isLoadingLocations: viewModel.isLoadingLocations,
+        isSaving: viewModel.isSavingSessionEdits,
+        locationLoadErrorMessage: viewModel.locationLoadErrorMessage,
+        saveErrorMessage: viewModel.sessionEditErrorMessage,
+        onCancel: {
+          viewModel.dismissEditSession()
+        },
+        onSave: {
+          Task {
+            if let updatedWorkout = await viewModel.saveSessionEdits() {
+              onWorkoutUpdated?(updatedWorkout)
+            }
+          }
+        }
+      )
     }
   }
 
@@ -94,6 +118,7 @@ struct WorkoutDetailView: View {
             .frame(width: 40, height: 40)
         }
         .buttonStyle(.plain)
+        .frame(width: 80, alignment: .leading)
 
         Spacer()
 
@@ -103,25 +128,46 @@ struct WorkoutDetailView: View {
 
         Spacer()
 
-        Group {
-          if let sharePayload = viewModel.sharePayload {
-            ShareLink(item: sharePayload.text) {
-              Image(systemName: "square.and.arrow.up")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(AppColors.textPrimary)
-                .frame(width: 40, height: 40)
-            }
-          } else {
-            Color.clear
-              .frame(width: 40, height: 40)
-          }
-        }
+        topBarTrailingActions
+          .frame(width: 80, alignment: .trailing)
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
       .background(Color(.systemBackground))
 
       Divider()
+    }
+  }
+
+  private var topBarTrailingActions: some View {
+    HStack(spacing: 0) {
+      if viewModel.mode.isCompleted {
+        Button {
+          viewModel.presentEditSession()
+        } label: {
+          Image(systemName: "pencil")
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundColor(AppColors.textPrimary)
+            .frame(width: 40, height: 40)
+        }
+        .buttonStyle(.plain)
+        .disabled(viewModel.workout == nil)
+      } else {
+        Color.clear
+          .frame(width: 40, height: 40)
+      }
+
+      if let sharePayload = viewModel.sharePayload {
+        ShareLink(item: sharePayload.text) {
+          Image(systemName: "square.and.arrow.up")
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundColor(AppColors.textPrimary)
+            .frame(width: 40, height: 40)
+        }
+      } else {
+        Color.clear
+          .frame(width: 40, height: 40)
+      }
     }
   }
 

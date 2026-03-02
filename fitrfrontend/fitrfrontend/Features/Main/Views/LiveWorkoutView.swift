@@ -70,6 +70,27 @@ struct LiveWorkoutView: View {
       .presentationDetents([.medium])
       .presentationDragIndicator(.visible)
     }
+    .sheet(isPresented: $viewModel.showEditSessionSheet) {
+      WorkoutSessionEditSheet(
+        draft: $viewModel.sessionEditDraft,
+        initialDraft: viewModel.sessionEditBaselineDraft,
+        availableLocations: viewModel.availableLocations,
+        isLoadingLocations: viewModel.isLoadingLocations,
+        isSaving: viewModel.isSavingSessionEdits,
+        locationLoadErrorMessage: viewModel.locationLoadErrorMessage,
+        saveErrorMessage: viewModel.sessionEditErrorMessage,
+        onCancel: {
+          viewModel.dismissEditSession()
+        },
+        onSave: {
+          Task {
+            if let updatedWorkout = await viewModel.saveSessionEdits() {
+              activeWorkoutCoordinator.applyEditedSession(updatedWorkout)
+            }
+          }
+        }
+      )
+    }
     .sheet(isPresented: $viewModel.showAddExerciseSheet) {
       LiveWorkoutExercisePickerSheet(
         exercises: viewModel.availableExercises,
@@ -224,6 +245,12 @@ struct LiveWorkoutView: View {
         Spacer()
 
         Menu {
+          Button {
+            viewModel.presentEditSession()
+          } label: {
+            Label("Edit Session Details", systemImage: "pencil")
+          }
+
           Button(role: .destructive) {
             showDiscardConfirmation = true
           } label: {

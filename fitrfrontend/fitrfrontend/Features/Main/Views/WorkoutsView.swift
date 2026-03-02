@@ -37,7 +37,8 @@ struct WorkoutsView: View {
           sessionStore: viewModel.sessionStore,
           workoutId: workoutId,
           mode: .completed,
-          initialWorkout: viewModel.workoutSession(id: workoutId)
+          initialWorkout: viewModel.workoutSession(id: workoutId),
+          onWorkoutUpdated: viewModel.applyUpdatedWorkout
         )
       }
     }
