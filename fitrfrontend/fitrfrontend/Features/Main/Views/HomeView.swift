@@ -10,8 +10,11 @@ import SwiftUI
 // MARK: - HomeView
 struct HomeView: View {
   @EnvironmentObject var sessionStore: SessionStore
+  @EnvironmentObject private var activeWorkoutCoordinator: ActiveWorkoutCoordinator
   @StateObject private var viewModel: HomeViewModel
   private let onNewPlanTap: () -> Void
+  @State private var showActiveWorkoutConflict = false
+  @State private var startWorkoutErrorMessage: String?
 
   init(
     sessionStore: SessionStore,
@@ -144,7 +147,7 @@ struct HomeView: View {
                   }
 
                   Button {
-                    // Start new workout action
+                    handleNewSessionTapped()
                   } label: {
                     HStack {
                       Image(systemName: "plus.circle.fill")
@@ -180,7 +183,7 @@ struct HomeView: View {
                     .foregroundColor(.secondary)
 
                   Button {
-                    // Start new workout action
+                    handleNewSessionTapped()
                   } label: {
                     HStack {
                       Image(systemName: "plus.circle.fill")
@@ -220,7 +223,7 @@ struct HomeView: View {
                     icon: "plus",
                     label: "New Session",
                     color: AppColors.accent,
-                    action: {}
+                    action: handleNewSessionTapped
                   )
 
                   QuickActionButton(
@@ -476,7 +479,60 @@ struct HomeView: View {
       .task {
         await viewModel.loadHomeData()
       }
+      .confirmationDialog(
+        "An active workout is already in progress.",
+        isPresented: $showActiveWorkoutConflict
+      ) {
+        Button("Resume Current Workout") {
+          activeWorkoutCoordinator.presentActiveWorkout()
+        }
+        Button("Discard Current Workout", role: .destructive) {
+          Task {
+            do {
+              try await activeWorkoutCoordinator.discardActiveWorkout()
+              try await activeWorkoutCoordinator.beginAdHocWorkout()
+            } catch let apiError as APIErrorResponse {
+              startWorkoutErrorMessage = apiError.message
+            } catch {
+              startWorkoutErrorMessage = "Failed to start a workout."
+            }
+          }
+        }
+        Button("Cancel", role: .cancel) {}
+      }
+      .alert(
+        "Workout Error",
+        isPresented: Binding(
+          get: { startWorkoutErrorMessage != nil },
+          set: { isPresented in
+            if !isPresented {
+              startWorkoutErrorMessage = nil
+            }
+          }
+        )
+      ) {
+        Button("OK", role: .cancel) {}
+      } message: {
+        Text(startWorkoutErrorMessage ?? "")
+      }
 
+    }
+  }
+
+  private func handleNewSessionTapped() {
+    if activeWorkoutCoordinator.activeContext != nil {
+      showActiveWorkoutConflict = true
+      return
+    }
+
+    Task {
+      do {
+        try await activeWorkoutCoordinator.beginAdHocWorkout()
+      } catch let apiError as APIErrorResponse {
+        startWorkoutErrorMessage = apiError.message
+      } catch {
+        startWorkoutErrorMessage = "Failed to start a workout."
+      }
     }
   }
 }

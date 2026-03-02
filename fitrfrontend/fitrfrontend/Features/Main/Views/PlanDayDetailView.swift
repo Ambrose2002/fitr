@@ -80,6 +80,7 @@ struct PlanDayDetailView: View {
 }
 
 private struct PlanDayDetailPageView: View {
+  @EnvironmentObject private var activeWorkoutCoordinator: ActiveWorkoutCoordinator
   @StateObject private var viewModel: PlanDayDetailViewModel
 
   let planName: String
@@ -92,6 +93,8 @@ private struct PlanDayDetailPageView: View {
 
   @State private var editingExercise: EnrichedPlanExercise?
   @State private var hasLoaded = false
+  @State private var showActiveWorkoutConflict = false
+  @State private var startWorkoutErrorMessage: String?
 
   init(
     planId: Int64,
@@ -299,6 +302,7 @@ private struct PlanDayDetailPageView: View {
     }
     .safeAreaInset(edge: .bottom) {
       Button {
+        handleStartWorkoutTapped()
       } label: {
         HStack {
           Text("Start This Workout")
@@ -326,6 +330,7 @@ private struct PlanDayDetailPageView: View {
         }
       }
       .buttonStyle(.plain)
+      .disabled(viewModel.isLoading)
       .padding(.horizontal, 16)
       .padding(.vertical, 8)
       .padding(.bottom, 56)
@@ -378,6 +383,42 @@ private struct PlanDayDetailPageView: View {
       }
       Button("Cancel", role: .cancel) {}
     }
+    .confirmationDialog(
+      "An active workout is already in progress.",
+      isPresented: $showActiveWorkoutConflict
+    ) {
+      Button("Resume Current Workout") {
+        activeWorkoutCoordinator.presentActiveWorkout()
+      }
+      Button("Discard Current Workout", role: .destructive) {
+        Task {
+          do {
+            try await activeWorkoutCoordinator.discardActiveWorkout()
+            try await startPlannedWorkout()
+          } catch let apiError as APIErrorResponse {
+            startWorkoutErrorMessage = apiError.message
+          } catch {
+            startWorkoutErrorMessage = "Failed to start the workout."
+          }
+        }
+      }
+      Button("Cancel", role: .cancel) {}
+    }
+    .alert(
+      "Workout Error",
+      isPresented: Binding(
+        get: { startWorkoutErrorMessage != nil },
+        set: { isPresented in
+          if !isPresented {
+            startWorkoutErrorMessage = nil
+          }
+        }
+      )
+    ) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text(startWorkoutErrorMessage ?? "")
+    }
     .sheet(isPresented: $viewModel.showAddExerciseSheet) {
       AddPlanDayExerciseSheet(
         exercises: viewModel.availableExercises,
@@ -418,6 +459,51 @@ private struct PlanDayDetailPageView: View {
     Task {
       await viewModel.load()
     }
+  }
+
+  private func handleStartWorkoutTapped() {
+    if activeWorkoutCoordinator.activeContext != nil {
+      showActiveWorkoutConflict = true
+      return
+    }
+
+    Task {
+      do {
+        try await startPlannedWorkout()
+      } catch let apiError as APIErrorResponse {
+        startWorkoutErrorMessage = apiError.message
+      } catch {
+        startWorkoutErrorMessage = "Failed to start the workout."
+      }
+    }
+  }
+
+  private func startPlannedWorkout() async throws {
+    let plannedExercises = viewModel.exercises.map { exercise in
+      ActiveWorkoutPlannedExercise(
+        id: exercise.id,
+        exerciseId: exercise.exerciseId,
+        name: exercise.name,
+        measurementType: exercise.measurementType ?? .reps,
+        source: .planned,
+        targetTemplate: LiveWorkoutTargetTemplate(
+          sets: max(exercise.targetSets, 1),
+          reps: exercise.targetReps,
+          weight: exercise.targetWeight,
+          durationSeconds: exercise.targetDurationSeconds,
+          distance: exercise.targetDistance,
+          calories: exercise.targetCalories
+        )
+      )
+    }
+
+    try await activeWorkoutCoordinator.beginPlannedWorkout(
+      planId: viewModel.planId,
+      planName: planName,
+      planDayId: viewModel.dayId,
+      planDayName: viewModel.dayName,
+      plannedExercises: plannedExercises
+    )
   }
 }
 

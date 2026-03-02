@@ -11,6 +11,7 @@ struct MainAppView: View {
   @State private var selectedTab: AppTab = .home
   @State private var pendingPlansLaunchAction: PlansLaunchAction?
   @EnvironmentObject var sessionStore: SessionStore
+  @EnvironmentObject private var activeWorkoutCoordinator: ActiveWorkoutCoordinator
 
   enum AppTab: String, CaseIterable, Identifiable {
     case home = "Home"
@@ -59,6 +60,34 @@ struct MainAppView: View {
         }
       }
 
+      if
+        activeWorkoutCoordinator.activeContext != nil,
+        activeWorkoutCoordinator.presentedContext == nil
+      {
+        VStack {
+          Spacer()
+
+          Button {
+            activeWorkoutCoordinator.presentActiveWorkout()
+          } label: {
+            HStack(spacing: 8) {
+              Image(systemName: "timer")
+                .font(.system(size: 13, weight: .bold))
+              Text("Resume Active Workout")
+                .font(.system(size: 14, weight: .bold))
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 14)
+            .frame(height: 44)
+            .background(AppColors.accent)
+            .clipShape(Capsule())
+            .shadow(color: AppColors.accent.opacity(0.3), radius: 8, x: 0, y: 4)
+          }
+          .buttonStyle(.plain)
+          .padding(.bottom, 76)
+        }
+      }
+
       // Custom bottom tab bar
       VStack(spacing: 0) {
         Divider()
@@ -86,6 +115,14 @@ struct MainAppView: View {
           Color.clear.frame(height: 0)
         }
       }
+    }
+    .task {
+      await activeWorkoutCoordinator.restoreRemoteActiveWorkoutIfNeeded()
+    }
+    .fullScreenCover(item: $activeWorkoutCoordinator.presentedContext) { context in
+      LiveWorkoutView(context: context, sessionStore: sessionStore)
+        .environmentObject(sessionStore)
+        .environmentObject(activeWorkoutCoordinator)
     }
   }
 }
