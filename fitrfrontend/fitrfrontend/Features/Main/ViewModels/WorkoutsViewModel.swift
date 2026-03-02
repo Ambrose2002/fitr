@@ -113,7 +113,7 @@ final class WorkoutsViewModel: ObservableObject {
   @Published var draftFilters = WorkoutHistoryFilters()
 
   private let workoutsService: WorkoutsService
-  private let sessionStore: SessionStore
+  let sessionStore: SessionStore
 
   init(sessionStore: SessionStore) {
     self.sessionStore = sessionStore
@@ -254,6 +254,10 @@ final class WorkoutsViewModel: ObservableObject {
     draftFilters = appliedFilters
   }
 
+  func workoutSession(id: Int64) -> WorkoutSessionResponse? {
+    allCompletedWorkouts.first { $0.id == id }
+  }
+
   private static let noLocationLabel = "No location"
 
   private static let monthKeyFormatter: Foundation.DateFormatter = {
@@ -342,7 +346,7 @@ final class WorkoutsViewModel: ObservableObject {
         timestampLabel: timestampLabel(for: workout.startTime),
         title: normalizedTitle(from: workout.title),
         locationLabel: normalizedLocationName(from: workout.locationName),
-        type: classifyWorkoutType(for: workout),
+        type: WorkoutSessionClassifier.workoutType(for: workout),
         hasPersonalRecord: sessionsWithPersonalRecords.contains(workout.id),
         durationText: formattedDuration(for: workout),
         exerciseCountText: "\(workout.workoutExercises.count)",
@@ -380,24 +384,6 @@ final class WorkoutsViewModel: ObservableObject {
   private func normalizedLocationName(from locationName: String?) -> String {
     let trimmed = locationName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     return trimmed.isEmpty ? Self.noLocationLabel : trimmed
-  }
-
-  private func classifyWorkoutType(for workout: WorkoutSessionResponse) -> WorkoutHistoryType {
-    guard !workout.workoutExercises.isEmpty else {
-      return .strength
-    }
-
-    let uniqueModalities = Set(
-      workout.workoutExercises.map { workoutExercise in
-        WorkoutHistoryType.modality(for: workoutExercise.exercise.measurementType)
-      }
-    )
-
-    if uniqueModalities.count == 1, let onlyType = uniqueModalities.first {
-      return onlyType
-    }
-
-    return .hybrid
   }
 
   private func timestampLabel(for date: Date) -> String {
