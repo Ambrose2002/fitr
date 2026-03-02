@@ -34,6 +34,7 @@ struct LiveWorkoutView: View {
       }
     }
     .task {
+      viewModel.attachCoordinator(activeWorkoutCoordinator)
       await viewModel.load()
     }
     .onChange(of: viewModel.restTimerEndsAt) { _, newValue in
@@ -284,17 +285,36 @@ struct LiveWorkoutView: View {
         .foregroundColor(.white)
 
       HStack(spacing: 10) {
-        HStack(spacing: 6) {
-          Image(systemName: viewModel.hasActiveRestTimer ? "timer" : "checkmark.circle")
-            .font(.system(size: 12, weight: .semibold))
-          Text(viewModel.hasActiveRestTimer ? "Rest \(viewModel.restCountdownText)" : "Ready")
-            .font(.system(size: 13, weight: .semibold))
+        Button {
+          viewModel.toggleSessionTimerPause()
+        } label: {
+          HStack(spacing: 6) {
+            Image(systemName: viewModel.isTimerPaused ? "play.fill" : "pause.fill")
+              .font(.system(size: 12, weight: .semibold))
+            Text(viewModel.isTimerPaused ? "Resume Timer" : "Pause Timer")
+              .font(.system(size: 13, weight: .semibold))
+          }
+          .foregroundColor(Color.white.opacity(0.9))
+          .padding(.horizontal, 12)
+          .padding(.vertical, 8)
+          .background(Color.white.opacity(0.08))
+          .clipShape(Capsule())
         }
-        .foregroundColor(Color.white.opacity(0.85))
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color.white.opacity(0.08))
-        .clipShape(Capsule())
+        .buttonStyle(.plain)
+
+        if viewModel.hasActiveRestTimer {
+          HStack(spacing: 6) {
+            Image(systemName: "timer")
+              .font(.system(size: 12, weight: .semibold))
+            Text("Rest \(viewModel.restCountdownText)")
+              .font(.system(size: 13, weight: .semibold))
+          }
+          .foregroundColor(Color.white.opacity(0.72))
+          .padding(.horizontal, 12)
+          .padding(.vertical, 8)
+          .background(Color.white.opacity(0.05))
+          .clipShape(Capsule())
+        }
 
         Spacer()
       }

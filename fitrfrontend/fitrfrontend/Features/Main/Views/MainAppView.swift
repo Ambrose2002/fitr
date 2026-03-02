@@ -10,6 +10,7 @@ import SwiftUI
 struct MainAppView: View {
   @State private var selectedTab: AppTab = .home
   @State private var pendingPlansLaunchAction: PlansLaunchAction?
+  @State private var pendingWorkoutsLaunchAction: WorkoutsLaunchAction?
   @EnvironmentObject var sessionStore: SessionStore
   @EnvironmentObject private var activeWorkoutCoordinator: ActiveWorkoutCoordinator
 
@@ -44,6 +45,10 @@ struct MainAppView: View {
             onNewPlanTap: {
               pendingPlansLaunchAction = .createPlan
               selectedTab = .plans
+            },
+            onLastWorkoutTap: { workoutId in
+              pendingWorkoutsLaunchAction = .openWorkout(workoutId)
+              selectedTab = .workouts
             }
           )
         case .plans:
@@ -52,7 +57,10 @@ struct MainAppView: View {
             launchAction: $pendingPlansLaunchAction
           )
         case .workouts:
-          WorkoutsView(sessionStore: sessionStore)
+          WorkoutsView(
+            sessionStore: sessionStore,
+            launchAction: $pendingWorkoutsLaunchAction
+          )
         case .progress:
           ProgressMainView()
         case .profile:

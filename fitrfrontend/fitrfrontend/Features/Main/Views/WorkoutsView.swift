@@ -7,15 +7,26 @@
 
 import SwiftUI
 
-struct WorkoutsView: View {
-  @StateObject private var viewModel: WorkoutsViewModel
+enum WorkoutsLaunchAction: Equatable {
+  case openWorkout(Int64)
+}
 
-  init(sessionStore: SessionStore) {
+struct WorkoutsView: View {
+  @Binding private var launchAction: WorkoutsLaunchAction?
+  @StateObject private var viewModel: WorkoutsViewModel
+  @State private var navigationPath = NavigationPath()
+  @State private var pendingDeleteRow: WorkoutHistoryRow?
+
+  init(
+    sessionStore: SessionStore,
+    launchAction: Binding<WorkoutsLaunchAction?> = .constant(nil)
+  ) {
+    _launchAction = launchAction
     _viewModel = StateObject(wrappedValue: WorkoutsViewModel(sessionStore: sessionStore))
   }
 
   var body: some View {
-    NavigationStack {
+    NavigationStack(path: $navigationPath) {
       ZStack {
         Color(.systemBackground)
           .ignoresSafeArea()
@@ -53,9 +64,65 @@ struct WorkoutsView: View {
       )
       .presentationDetents([.medium, .large])
     }
+    .confirmationDialog(
+      "Delete this workout?",
+      isPresented: Binding(
+        get: { pendingDeleteRow != nil },
+        set: { isPresented in
+          if !isPresented {
+            pendingDeleteRow = nil
+          }
+        }
+      ),
+      presenting: pendingDeleteRow
+    ) { row in
+      Button("Delete Workout", role: .destructive) {
+        pendingDeleteRow = nil
+        Task {
+          await viewModel.deleteWorkoutFromHistory(id: row.id)
+        }
+      }
+      Button("Cancel", role: .cancel) {
+        pendingDeleteRow = nil
+      }
+    } message: { _ in
+      Text("This removes the workout from your history. Exercise logs from that session will also be removed.")
+    }
+    .alert(
+      "Workout Error",
+      isPresented: Binding(
+        get: { viewModel.actionErrorMessage != nil },
+        set: { isPresented in
+          if !isPresented {
+            viewModel.actionErrorMessage = nil
+          }
+        }
+      )
+    ) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text(viewModel.actionErrorMessage ?? "")
+    }
+    .onChange(of: launchAction) { _, _ in
+      consumeLaunchActionIfNeeded()
+    }
     .task {
       await viewModel.loadWorkoutHistory()
+      consumeLaunchActionIfNeeded()
     }
+  }
+
+  private func consumeLaunchActionIfNeeded() {
+    guard let launchAction else {
+      return
+    }
+
+    switch launchAction {
+    case .openWorkout(let workoutId):
+      navigationPath.append(workoutId)
+    }
+
+    self.launchAction = nil
   }
 
   private var content: some View {
@@ -86,7 +153,12 @@ struct WorkoutsView: View {
         } else {
           VStack(alignment: .leading, spacing: 20) {
             ForEach(viewModel.sections) { section in
-              WorkoutHistorySectionView(section: section)
+              WorkoutHistorySectionView(
+                section: section,
+                onRequestDelete: { row in
+                  pendingDeleteRow = row
+                }
+              )
             }
           }
           .padding(.horizontal, 16)
@@ -316,6 +388,7 @@ private struct WorkoutHistorySummaryCard: View {
 
 private struct WorkoutHistorySectionView: View {
   let section: WorkoutHistorySection
+  let onRequestDelete: (WorkoutHistoryRow) -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -331,6 +404,13 @@ private struct WorkoutHistorySectionView: View {
               .contentShape(Rectangle())
           }
           .buttonStyle(.plain)
+          .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+              onRequestDelete(row)
+            } label: {
+              Label("Delete", systemImage: "trash")
+            }
+          }
 
           if index != section.rows.count - 1 {
             Divider()

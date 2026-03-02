@@ -13,15 +13,18 @@ struct HomeView: View {
   @EnvironmentObject private var activeWorkoutCoordinator: ActiveWorkoutCoordinator
   @StateObject private var viewModel: HomeViewModel
   private let onNewPlanTap: () -> Void
+  private let onLastWorkoutTap: (Int64) -> Void
   @State private var showActiveWorkoutConflict = false
   @State private var startWorkoutErrorMessage: String?
 
   init(
     sessionStore: SessionStore,
     onNewPlanTap: @escaping () -> Void = {},
+    onLastWorkoutTap: @escaping (Int64) -> Void = { _ in },
     initialData: HomeScreenData? = nil
   ) {
     self.onNewPlanTap = onNewPlanTap
+    self.onLastWorkoutTap = onLastWorkoutTap
     _viewModel = StateObject(
       wrappedValue: HomeViewModel(sessionStore: sessionStore, initialData: initialData))
   }
@@ -104,47 +107,56 @@ struct HomeView: View {
               // Last Session Card
               if let lastWorkout = data.lastWorkout {
                 VStack(alignment: .leading, spacing: 12) {
-                  VStack(alignment: .leading, spacing: 4) {
-                    Text("LAST SESSION")
-                      .font(.system(size: 12, weight: .semibold))
-                      .foregroundColor(AppColors.accent)
+                  Button {
+                    onLastWorkoutTap(lastWorkout.id)
+                  } label: {
+                    VStack(alignment: .leading, spacing: 12) {
+                      VStack(alignment: .leading, spacing: 4) {
+                        Text("LAST SESSION")
+                          .font(.system(size: 12, weight: .semibold))
+                          .foregroundColor(AppColors.accent)
 
-                    Text(data.lastWorkoutTitle)
-                      .font(.system(size: 24, weight: .bold))
-                      .foregroundColor(AppColors.textPrimary)
+                        Text(data.lastWorkoutTitle)
+                          .font(.system(size: 24, weight: .bold))
+                          .foregroundColor(AppColors.textPrimary)
+                      }
+
+                      HStack(spacing: 24) {
+                        VStack(alignment: .leading, spacing: 2) {
+                          Text("Exercises")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                          Text("\(lastWorkout.workoutExercises.count)")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(AppColors.textPrimary)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                          Text("When")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                          Text(data.lastWorkoutRelativeDate)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(AppColors.textPrimary)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                          Text("Location")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                          Text(lastWorkout.locationName ?? "Current Location")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(AppColors.textPrimary)
+                            .lineLimit(1)
+                        }
+
+                        Spacer()
+                      }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                   }
-
-                  HStack(spacing: 24) {
-                    VStack(alignment: .leading, spacing: 2) {
-                      Text("Exercises")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                      Text("\(lastWorkout.workoutExercises.count)")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(AppColors.textPrimary)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                      Text("When")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                      Text(data.lastWorkoutRelativeDate)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(AppColors.textPrimary)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                      Text("Location")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                      Text(lastWorkout.locationName ?? "Current Location")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(AppColors.textPrimary)
-                        .lineLimit(1)
-                    }
-
-                    Spacer()
-                  }
+                  .buttonStyle(.plain)
 
                   Button {
                     handleNewSessionTapped()
@@ -390,7 +402,7 @@ struct HomeView: View {
                 }
 
                 // Detailed Last Session Card
-                if !data.lastSessionExerciseStats.isEmpty {
+                if let lastWorkout = data.lastWorkout, !data.lastSessionExerciseStats.isEmpty {
                   VStack(alignment: .leading, spacing: 12) {
                     Text("LAST SESSION BREAKDOWN")
                       .font(.system(size: 12, weight: .semibold))
@@ -399,7 +411,12 @@ struct HomeView: View {
 
                     VStack(spacing: 12) {
                       ForEach(data.lastSessionExerciseStats) { exerciseStat in
-                        LastSessionExerciseRow(exerciseStat: exerciseStat)
+                        LastSessionExerciseRow(
+                          exerciseStat: exerciseStat,
+                          onTap: {
+                            onLastWorkoutTap(lastWorkout.id)
+                          }
+                        )
                       }
                     }
                     .padding(.horizontal, 16)
@@ -597,11 +614,32 @@ struct QuickActionButton: View {
 // MARK: - Last Session Exercise Row
 struct LastSessionExerciseRow: View {
   let exerciseStat: WorkoutExerciseStats
+  let onTap: (() -> Void)?
   @EnvironmentObject var sessionStore: SessionStore
 
+  init(
+    exerciseStat: WorkoutExerciseStats,
+    onTap: (() -> Void)? = nil
+  ) {
+    self.exerciseStat = exerciseStat
+    self.onTap = onTap
+  }
+
   var body: some View {
+    Group {
+      if let onTap {
+        Button(action: onTap) {
+          rowContent
+        }
+        .buttonStyle(.plain)
+      } else {
+        rowContent
+      }
+    }
+  }
+
+  private var rowContent: some View {
     VStack(alignment: .leading, spacing: 8) {
-      // Exercise name and set count
       HStack {
         Text(exerciseStat.exerciseName)
           .font(.system(size: 14, weight: .semibold))
@@ -614,7 +652,6 @@ struct LastSessionExerciseRow: View {
           .foregroundColor(.secondary)
       }
 
-      // Stats grid
       HStack(spacing: 12) {
         VStack(alignment: .leading, spacing: 2) {
           Text("Avg Reps")
