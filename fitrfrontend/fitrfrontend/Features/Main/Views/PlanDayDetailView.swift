@@ -770,7 +770,7 @@ struct AddPlanDayExerciseSheet: View {
             .font(.system(size: 16, weight: .semibold))
             .foregroundColor(isUnavailable ? AppColors.textSecondary : AppColors.textPrimary)
 
-          Text(exercise.measurementType.label)
+          Text(exercise.measurementType.workoutDisplayLabel)
             .font(.system(size: 11, weight: .bold))
             .foregroundColor(isUnavailable ? AppColors.textSecondary : AppColors.accent)
             .padding(.horizontal, 8)
@@ -877,7 +877,7 @@ struct AddPlanDayExerciseTargetsSheet: View {
             .font(.system(size: 22, weight: .bold))
             .foregroundColor(AppColors.textPrimary)
 
-          Text(exercise.measurementType.label)
+          Text(exercise.measurementType.workoutDisplayLabel)
             .font(.system(size: 11, weight: .bold))
             .foregroundColor(AppColors.accent)
             .padding(.horizontal, 8)
@@ -1331,27 +1331,6 @@ struct EditPlanDayExerciseTargetsSheet: View {
   }
 }
 
-extension MeasurementType {
-  fileprivate var label: String {
-    switch self {
-    case .reps:
-      return "Strength"
-    case .repsAndTime:
-      return "Paced"
-    case .time:
-      return "Timed"
-    case .timeAndWeight:
-      return "Timed + Weight"
-    case .repsAndWeight:
-      return "Strength + Weight"
-    case .distanceAndTime:
-      return "Distance"
-    case .caloriesAndTime:
-      return "Calories"
-    }
-  }
-}
-
 // MARK: - Column Configuration
 
 private struct ExerciseColumn {
@@ -1363,15 +1342,15 @@ extension EnrichedPlanExercise {
   fileprivate var measurementBadge: String {
     switch measurementType {
     case .reps, .repsAndWeight:
-      return "Strength"
+      return MeasurementType.reps.workoutDisplayLabel
     case .repsAndTime:
-      return "Paced"
+      return MeasurementType.repsAndTime.workoutDisplayLabel
     case .time, .timeAndWeight:
-      return "Timed"
+      return MeasurementType.time.workoutDisplayLabel
     case .distanceAndTime:
-      return "Distance"
+      return MeasurementType.distanceAndTime.workoutDisplayLabel
     case .caloriesAndTime:
-      return "Calories"
+      return MeasurementType.caloriesAndTime.workoutDisplayLabel
     case .none:
       return "Routine"
     }
