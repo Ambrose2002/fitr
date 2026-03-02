@@ -141,6 +141,18 @@ final class ActiveWorkoutCoordinator: ObservableObject {
         title: title
       ))
 
+    do {
+      for plannedExercise in plannedExercises {
+        _ = try await workoutsService.addWorkoutExercise(
+          workoutId: workout.id,
+          request: CreateWorkoutExerciseRequest(exerciseId: plannedExercise.exerciseId)
+        )
+      }
+    } catch {
+      try? await workoutsService.deleteWorkoutSession(id: workout.id)
+      throw error
+    }
+
     let context = ActiveWorkoutContext(
       workoutId: workout.id,
       origin: .planned(
@@ -247,9 +259,11 @@ final class ActiveWorkoutCoordinator: ObservableObject {
         endTime: ISO8601DateFormatter().string(from: Date()),
         title: title
       ))
-
-    clearStoredContext()
     return response
+  }
+
+  func completeFinishedWorkout() {
+    clearStoredContext()
   }
 
   func discardActiveWorkout() async throws {

@@ -195,7 +195,7 @@ final class WorkoutsService {
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     addAuthHeaders(&request)
 
-    let (_, response) = try await URLSession.shared.data(for: request)
+    let (data, response) = try await URLSession.shared.data(for: request)
 
     guard let httpResponse = response as? HTTPURLResponse else {
       throw URLError(.badServerResponse)
@@ -204,8 +204,13 @@ final class WorkoutsService {
     switch httpResponse.statusCode {
     case 200...299:
       return
+    case 400...599:
+      if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
+        throw apiError
+      }
+      throw URLError(.badServerResponse)
     default:
-      throw URLError(.unknown)
+      throw URLError(.badServerResponse)
     }
   }
 
@@ -315,7 +320,7 @@ final class WorkoutsService {
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     addAuthHeaders(&request)
 
-    let (_, response) = try await URLSession.shared.data(for: request)
+    let (data, response) = try await URLSession.shared.data(for: request)
 
     guard let httpResponse = response as? HTTPURLResponse else {
       throw URLError(.badServerResponse)
@@ -324,8 +329,13 @@ final class WorkoutsService {
     switch httpResponse.statusCode {
     case 200...299:
       return
+    case 400...599:
+      if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
+        throw apiError
+      }
+      throw URLError(.badServerResponse)
     default:
-      throw URLError(.unknown)
+      throw URLError(.badServerResponse)
     }
   }
 
@@ -422,7 +432,7 @@ final class WorkoutsService {
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     addAuthHeaders(&request)
 
-    let (_, response) = try await URLSession.shared.data(for: request)
+    let (data, response) = try await URLSession.shared.data(for: request)
 
     guard let httpResponse = response as? HTTPURLResponse else {
       throw URLError(.badServerResponse)
@@ -431,8 +441,13 @@ final class WorkoutsService {
     switch httpResponse.statusCode {
     case 200...299:
       return
+    case 400...599:
+      if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
+        throw apiError
+      }
+      throw URLError(.badServerResponse)
     default:
-      throw URLError(.unknown)
+      throw URLError(.badServerResponse)
     }
   }
 }

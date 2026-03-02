@@ -13,6 +13,8 @@ struct LiveWorkoutView: View {
   @StateObject private var viewModel: LiveWorkoutViewModel
   @State private var showDiscardConfirmation = false
   @State private var showPlanSheet = false
+  @State private var isFinishingWorkout = false
+  @State private var shouldDismissLiveWorkoutAfterFinish = false
 
   init(context: ActiveWorkoutContext, sessionStore: SessionStore) {
     _viewModel = StateObject(
@@ -37,6 +39,18 @@ struct LiveWorkoutView: View {
     .onChange(of: viewModel.restTimerEndsAt) { _, newValue in
       activeWorkoutCoordinator.updateRestTimer(endDate: newValue)
     }
+    .onChange(of: viewModel.showFinishSheet) { _, isPresented in
+      guard !isPresented, shouldDismissLiveWorkoutAfterFinish else {
+        return
+      }
+
+      shouldDismissLiveWorkoutAfterFinish = false
+
+      Task {
+        await Task.yield()
+        activeWorkoutCoordinator.completeFinishedWorkout()
+      }
+    }
     .sheet(item: $viewModel.activeSetEditor) { editor in
       LiveWorkoutSetEditorSheet(editor: editor) { request in
         await viewModel.saveSet(request)
@@ -58,14 +72,31 @@ struct LiveWorkoutView: View {
         title: viewModel.titleText,
         completedExerciseCount: viewModel.completedExerciseCount,
         skippedPlannedSetCount: viewModel.skippedPlannedSetCount,
-        addedExerciseCount: viewModel.addedExerciseCount
-      ) { title, notes in
-        do {
-          _ = try await activeWorkoutCoordinator.finishActiveWorkout(notes: notes, title: title)
-        } catch let apiError as APIErrorResponse {
-          viewModel.errorMessage = apiError.message
-        } catch {
-          viewModel.errorMessage = "Failed to finish the workout."
+        addedExerciseCount: viewModel.addedExerciseCount,
+        isSubmitting: isFinishingWorkout
+      ) { submittedTitle, submittedNotes in
+        guard !isFinishingWorkout else {
+          return
+        }
+
+        isFinishingWorkout = true
+
+        Task {
+          do {
+            _ = try await activeWorkoutCoordinator.finishActiveWorkout(
+              notes: submittedNotes,
+              title: submittedTitle
+            )
+            shouldDismissLiveWorkoutAfterFinish = true
+            isFinishingWorkout = false
+            viewModel.showFinishSheet = false
+          } catch let apiError as APIErrorResponse {
+            isFinishingWorkout = false
+            viewModel.errorMessage = apiError.message
+          } catch {
+            isFinishingWorkout = false
+            viewModel.errorMessage = "Failed to finish the workout."
+          }
         }
       }
       .presentationDetents([.medium, .large])
@@ -405,13 +436,12 @@ private struct LiveWorkoutExerciseCard: View {
                 .foregroundColor(AppColors.textPrimary)
                 .frame(width: 28, alignment: .leading)
 
-              ForEach(
-                metricValues(
-                  for: row.actualValues ?? row.targetValues ?? LiveWorkoutMetricSnapshot(),
-                  measurementType: exerciseState.exercise.measurementType
-                ),
-                id: \.self
-              ) { value in
+              let renderedMetricValues = metricValues(
+                for: row.actualValues ?? row.targetValues ?? LiveWorkoutMetricSnapshot(),
+                measurementType: exerciseState.exercise.measurementType
+              )
+
+              ForEach(Array(renderedMetricValues.enumerated()), id: \.offset) { _, value in
                 Text(value)
                   .font(.system(size: 14, weight: .semibold))
                   .foregroundColor(AppColors.textPrimary)
@@ -648,7 +678,8 @@ private struct LiveWorkoutFinishSheet: View {
   let completedExerciseCount: Int
   let skippedPlannedSetCount: Int
   let addedExerciseCount: Int
-  let onFinish: (String, String?) async -> Void
+  let isSubmitting: Bool
+  let onFinish: (String, String?) -> Void
 
   @State private var editedTitle: String
   @State private var notes: String = ""
@@ -658,12 +689,14 @@ private struct LiveWorkoutFinishSheet: View {
     completedExerciseCount: Int,
     skippedPlannedSetCount: Int,
     addedExerciseCount: Int,
-    onFinish: @escaping (String, String?) async -> Void
+    isSubmitting: Bool,
+    onFinish: @escaping (String, String?) -> Void
   ) {
     self.title = title
     self.completedExerciseCount = completedExerciseCount
     self.skippedPlannedSetCount = skippedPlannedSetCount
     self.addedExerciseCount = addedExerciseCount
+    self.isSubmitting = isSubmitting
     self.onFinish = onFinish
     _editedTitle = State(initialValue: title)
   }
@@ -710,16 +743,16 @@ private struct LiveWorkoutFinishSheet: View {
           Button("Cancel") {
             dismiss()
           }
+          .disabled(isSubmitting)
         }
         ToolbarItem(placement: .confirmationAction) {
           Button("Finish") {
-            Task {
-              await onFinish(
-                editedTitle.trimmingCharacters(in: .whitespacesAndNewlines),
-                notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes
-              )
-            }
+            onFinish(
+              editedTitle.trimmingCharacters(in: .whitespacesAndNewlines),
+              notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes
+            )
           }
+          .disabled(isSubmitting)
         }
       }
     }
@@ -888,6 +921,17 @@ private struct LiveWorkoutSetEditorSheet: View {
   }
 
   private func buildRequest() -> CreateSingleSetLogRequest? {
+    let maxSetNumber = 100
+    let maxReps = 1000
+    let maxDurationSeconds = 21_600
+    let maxWeight: Float = 10_000
+    let maxDistance: Float = 1_000
+    let maxCalories: Float = 50_000
+
+    guard (1...maxSetNumber).contains(editor.setNumber) else {
+      return nil
+    }
+
     let repsValue = intValue(reps)
     let weightValue = backendWeight(from: floatValue(weight))
     let durationValue = DurationFormatter.seconds(fromMinutesText: duration)
@@ -896,7 +940,7 @@ private struct LiveWorkoutSetEditorSheet: View {
 
     switch editor.exercise.measurementType {
     case .reps:
-      guard let repsValue, repsValue > 0 else { return nil }
+      guard let repsValue, (1...maxReps).contains(repsValue) else { return nil }
       return CreateSingleSetLogRequest(
         setNumber: editor.setNumber,
         reps: repsValue,
@@ -906,7 +950,7 @@ private struct LiveWorkoutSetEditorSheet: View {
         calories: nil
       )
     case .time:
-      guard let durationValue, durationValue > 0 else { return nil }
+      guard let durationValue, (1...maxDurationSeconds).contains(durationValue) else { return nil }
       return CreateSingleSetLogRequest(
         setNumber: editor.setNumber,
         reps: nil,
@@ -916,7 +960,10 @@ private struct LiveWorkoutSetEditorSheet: View {
         calories: nil
       )
     case .repsAndTime:
-      guard let repsValue, repsValue > 0, let durationValue, durationValue > 0 else { return nil }
+      guard
+        let repsValue, (1...maxReps).contains(repsValue),
+        let durationValue, (1...maxDurationSeconds).contains(durationValue)
+      else { return nil }
       return CreateSingleSetLogRequest(
         setNumber: editor.setNumber,
         reps: repsValue,
@@ -926,7 +973,10 @@ private struct LiveWorkoutSetEditorSheet: View {
         calories: nil
       )
     case .repsAndWeight:
-      guard let repsValue, repsValue > 0, let weightValue, weightValue > 0 else { return nil }
+      guard
+        let repsValue, (1...maxReps).contains(repsValue),
+        let weightValue, weightValue > 0, weightValue <= maxWeight
+      else { return nil }
       return CreateSingleSetLogRequest(
         setNumber: editor.setNumber,
         reps: repsValue,
@@ -936,7 +986,10 @@ private struct LiveWorkoutSetEditorSheet: View {
         calories: nil
       )
     case .timeAndWeight:
-      guard let durationValue, durationValue > 0, let weightValue, weightValue > 0 else {
+      guard
+        let durationValue, (1...maxDurationSeconds).contains(durationValue),
+        let weightValue, weightValue > 0, weightValue <= maxWeight
+      else {
         return nil
       }
       return CreateSingleSetLogRequest(
@@ -948,7 +1001,10 @@ private struct LiveWorkoutSetEditorSheet: View {
         calories: nil
       )
     case .distanceAndTime:
-      guard let durationValue, durationValue > 0, let distanceValue, distanceValue > 0 else {
+      guard
+        let durationValue, (1...maxDurationSeconds).contains(durationValue),
+        let distanceValue, distanceValue > 0, distanceValue <= maxDistance
+      else {
         return nil
       }
       return CreateSingleSetLogRequest(
@@ -960,7 +1016,10 @@ private struct LiveWorkoutSetEditorSheet: View {
         calories: nil
       )
     case .caloriesAndTime:
-      guard let durationValue, durationValue > 0, let caloriesValue, caloriesValue > 0 else {
+      guard
+        let durationValue, (1...maxDurationSeconds).contains(durationValue),
+        let caloriesValue, caloriesValue > 0, caloriesValue <= maxCalories
+      else {
         return nil
       }
       return CreateSingleSetLogRequest(
