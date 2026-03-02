@@ -639,7 +639,14 @@ struct LastSessionExerciseRow: View {
   }
 
   private var rowContent: some View {
-    VStack(alignment: .leading, spacing: 8) {
+    let preferredWeightUnit = sessionStore.userProfile?.preferredWeightUnit ?? .kg
+    let preferredDistanceUnit = sessionStore.userProfile?.preferredDistanceUnit ?? .km
+    let metricSummaries = exerciseStat.averageMetricSummaries(
+      preferredWeightUnit: preferredWeightUnit,
+      preferredDistanceUnit: preferredDistanceUnit
+    )
+
+    return VStack(alignment: .leading, spacing: 8) {
       HStack {
         Text(exerciseStat.exerciseName)
           .font(.system(size: 14, weight: .semibold))
@@ -653,39 +660,15 @@ struct LastSessionExerciseRow: View {
       }
 
       HStack(spacing: 12) {
-        VStack(alignment: .leading, spacing: 2) {
-          Text("Avg Reps")
-            .font(.system(size: 10))
-            .foregroundColor(.secondary)
-          Text(String(format: "%.1f", exerciseStat.avgReps))
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundColor(AppColors.textPrimary)
-        }
-
-        VStack(alignment: .leading, spacing: 2) {
-          Text("Avg Weight")
-            .font(.system(size: 10))
-            .foregroundColor(.secondary)
-          let preferredUnit = sessionStore.userProfile?.preferredWeightUnit ?? .kg
-          Text(
-            WorkoutExerciseStats.formatWeight(exerciseStat.avgWeight, preferredUnit: preferredUnit)
-              + " " + preferredUnit.abbreviation
-          )
-          .font(.system(size: 12, weight: .semibold))
-          .foregroundColor(AppColors.textPrimary)
-        }
-
-        VStack(alignment: .leading, spacing: 2) {
-          Text("Max Weight")
-            .font(.system(size: 10))
-            .foregroundColor(.secondary)
-          let preferredUnit = sessionStore.userProfile?.preferredWeightUnit ?? .kg
-          Text(
-            WorkoutExerciseStats.formatWeight(exerciseStat.maxWeight, preferredUnit: preferredUnit)
-              + " " + preferredUnit.abbreviation
-          )
-          .font(.system(size: 12, weight: .semibold))
-          .foregroundColor(AppColors.textPrimary)
+        ForEach(metricSummaries) { metricSummary in
+          VStack(alignment: .leading, spacing: 2) {
+            Text(metricSummary.label)
+              .font(.system(size: 10))
+              .foregroundColor(.secondary)
+            Text(metricSummary.value)
+              .font(.system(size: 12, weight: .semibold))
+              .foregroundColor(AppColors.textPrimary)
+          }
         }
 
         Spacer()

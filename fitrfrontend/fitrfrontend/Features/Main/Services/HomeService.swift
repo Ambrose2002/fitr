@@ -334,22 +334,51 @@ class HomeService {
     return workout.includedExercisesForCompletedDisplay.map { exercise in
       let setLogs = exercise.setLogs
       let setCount = setLogs.count
-      let avgReps = Float(setLogs.map { $0.reps }.reduce(0, +)) / Float(setCount)
-      let avgWeight = setLogs.map { $0.weight }.reduce(0, +) / Float(setCount)
-      let maxWeight = setLogs.map { $0.weight }.max() ?? 0
-      let totalVolume = setLogs.reduce(0) { $0 + (Float($1.reps) * $1.weight) }
-      let totalCalories = setLogs.map { $0.calories }.reduce(0, +)
+      let averageReps = averageValue(for: setLogs.map { Float($0.reps) }, requiresPositiveValue: true)
+      let averageWeight = averageValue(for: setLogs.map(\.weight), requiresPositiveValue: true)
+      let averageDuration = averageDurationSeconds(for: setLogs)
+      let averageDistance = averageValue(
+        for: setLogs.map(\.distance),
+        requiresPositiveValue: true
+      )
+      let averageCalories = averageValue(
+        for: setLogs.map(\.calories),
+        requiresPositiveValue: true
+      )
 
       return WorkoutExerciseStats(
         id: exercise.id,
         exerciseName: exercise.exercise.name,
+        measurementType: exercise.exercise.measurementType,
         setCount: setCount,
-        avgReps: avgReps,
-        avgWeight: avgWeight,
-        maxWeight: maxWeight,
-        totalVolume: totalVolume,
-        totalCalories: totalCalories
+        avgReps: averageReps,
+        avgWeight: averageWeight,
+        avgDurationSeconds: averageDuration,
+        avgDistance: averageDistance,
+        avgCalories: averageCalories
       )
     }
+  }
+
+  private func averageValue(
+    for values: [Float],
+    requiresPositiveValue: Bool
+  ) -> Float? {
+    let filteredValues = requiresPositiveValue ? values.filter { $0 > 0 } : values
+    guard !filteredValues.isEmpty else {
+      return nil
+    }
+
+    return filteredValues.reduce(0, +) / Float(filteredValues.count)
+  }
+
+  private func averageDurationSeconds(for setLogs: [SetLogResponse]) -> Int? {
+    let durations = setLogs.compactMap(\.durationSeconds).filter { $0 > 0 }
+    guard !durations.isEmpty else {
+      return nil
+    }
+
+    let totalDuration = durations.reduce(0, +)
+    return Int((Double(totalDuration) / Double(durations.count)).rounded())
   }
 }
