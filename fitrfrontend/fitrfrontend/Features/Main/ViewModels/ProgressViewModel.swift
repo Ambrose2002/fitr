@@ -27,8 +27,13 @@ struct ProgressMonthlyTrendPoint: Identifiable, Hashable {
   let sessionCount: Int
   let totalVolume: Double
   let totalVolumeText: String
+  let totalDurationMinutes: Int
+  let totalDurationText: String
   let averageDurationMinutes: Int
   let averageDurationText: String
+  let totalCalories: Double
+  let totalCaloriesText: String
+  let distinctExerciseIDs: [Int64]
   let normalizedVolume: Double
 
   init(
@@ -37,8 +42,13 @@ struct ProgressMonthlyTrendPoint: Identifiable, Hashable {
     sessionCount: Int,
     totalVolume: Double,
     totalVolumeText: String,
+    totalDurationMinutes: Int,
+    totalDurationText: String,
     averageDurationMinutes: Int,
     averageDurationText: String,
+    totalCalories: Double,
+    totalCaloriesText: String,
+    distinctExerciseIDs: [Int64],
     normalizedVolume: Double
   ) {
     self.id = monthStart
@@ -47,8 +57,13 @@ struct ProgressMonthlyTrendPoint: Identifiable, Hashable {
     self.sessionCount = sessionCount
     self.totalVolume = totalVolume
     self.totalVolumeText = totalVolumeText
+    self.totalDurationMinutes = totalDurationMinutes
+    self.totalDurationText = totalDurationText
     self.averageDurationMinutes = averageDurationMinutes
     self.averageDurationText = averageDurationText
+    self.totalCalories = totalCalories
+    self.totalCaloriesText = totalCaloriesText
+    self.distinctExerciseIDs = distinctExerciseIDs
     self.normalizedVolume = normalizedVolume
   }
 }
@@ -84,7 +99,6 @@ struct ProgressDashboardData {
   let bodyComposition: BodyCompositionData
   let workoutSummary: [ProgressSummaryStat]
   let monthlyTrendPoints: [ProgressMonthlyTrendPoint]
-  let monthlyKpis: [ProgressSummaryStat]
   let monthlyInsight: String
   let hasMonthlyTrendData: Bool
 }
@@ -186,13 +200,11 @@ final class ProgressViewModel: ObservableObject {
     let recentWorkouts = recentCompletedWorkouts(from: completedWorkouts, days: 30)
     let workoutSummary = buildWorkoutSummary(from: recentWorkouts, allCompletedWorkouts: completedWorkouts)
     let monthlyTrendPoints = buildMonthlyTrendPoints(from: completedWorkouts)
-    let monthlyKpis = buildMonthlyKpis(from: monthlyTrendPoints)
 
     return ProgressDashboardData(
       bodyComposition: bodyComposition,
       workoutSummary: workoutSummary,
       monthlyTrendPoints: monthlyTrendPoints,
-      monthlyKpis: monthlyKpis,
       monthlyInsight: buildMonthlyInsight(from: monthlyTrendPoints),
       hasMonthlyTrendData: monthlyTrendPoints.contains { $0.sessionCount > 0 || $0.totalVolume > 0 }
     )
@@ -441,8 +453,13 @@ final class ProgressViewModel: ObservableObject {
       let sessionCount: Int
       let totalVolume: Double
       let totalVolumeText: String
+      let totalDurationMinutes: Int
+      let totalDurationText: String
       let averageDurationMinutes: Int
       let averageDurationText: String
+      let totalCalories: Double
+      let totalCaloriesText: String
+      let distinctExerciseIDs: [Int64]
     }
 
     let aggregates = monthStarts.map { monthStart -> MonthlyAggregate in
@@ -452,7 +469,22 @@ final class ProgressViewModel: ObservableObject {
       }
 
       let totalVolume = displayVolumeValue(fromKgReps: totalVolumeKgReps(for: monthWorkouts))
+      let totalDurationMinutes = monthWorkouts.compactMap(durationMinutes(for:)).reduce(0, +)
       let averageMinutes = averageDurationMinutes(for: monthWorkouts)
+      let totalCalories = monthWorkouts.reduce(0.0) { partialResult, workout in
+        partialResult + workout.workoutExercises.reduce(0.0) { workoutTotal, workoutExercise in
+          workoutTotal + workoutExercise.setLogs.reduce(0.0) { setTotal, setLog in
+            setTotal + Double(setLog.calories)
+          }
+        }
+      }
+      let distinctExerciseIDs = Array(
+        Set(
+          monthWorkouts.flatMap { workout in
+            workout.workoutExercises.map { $0.exercise.id }
+          }
+        )
+      ).sorted()
 
       return MonthlyAggregate(
         monthStart: monthStart,
@@ -460,8 +492,13 @@ final class ProgressViewModel: ObservableObject {
         sessionCount: monthWorkouts.count,
         totalVolume: totalVolume,
         totalVolumeText: formattedVolume(fromDisplayValue: totalVolume),
+        totalDurationMinutes: totalDurationMinutes,
+        totalDurationText: Self.formattedDurationText(minutes: totalDurationMinutes),
         averageDurationMinutes: averageMinutes,
-        averageDurationText: "\(averageMinutes)m"
+        averageDurationText: Self.formattedDurationText(minutes: averageMinutes),
+        totalCalories: totalCalories,
+        totalCaloriesText: Self.formattedCaloriesText(totalCalories),
+        distinctExerciseIDs: distinctExerciseIDs
       )
     }
 
@@ -482,81 +519,44 @@ final class ProgressViewModel: ObservableObject {
         sessionCount: aggregate.sessionCount,
         totalVolume: aggregate.totalVolume,
         totalVolumeText: aggregate.totalVolumeText,
+        totalDurationMinutes: aggregate.totalDurationMinutes,
+        totalDurationText: aggregate.totalDurationText,
         averageDurationMinutes: aggregate.averageDurationMinutes,
         averageDurationText: aggregate.averageDurationText,
+        totalCalories: aggregate.totalCalories,
+        totalCaloriesText: aggregate.totalCaloriesText,
+        distinctExerciseIDs: aggregate.distinctExerciseIDs,
         normalizedVolume: normalizedVolume
       )
     }
   }
 
-  private func buildMonthlyKpis(
-    from points: [ProgressMonthlyTrendPoint]
-  ) -> [ProgressSummaryStat] {
-    guard let currentMonth = points.last else {
-      return []
-    }
-
-    return [
-      ProgressSummaryStat(
-        id: "kpi-sessions",
-        title: "Sessions",
-        subtitle: nil,
-        valueText: "\(currentMonth.sessionCount)",
-        systemImage: "calendar",
-        isValueAccent: false
-      ),
-      ProgressSummaryStat(
-        id: "kpi-volume",
-        title: "Volume",
-        subtitle: nil,
-        valueText: currentMonth.totalVolumeText,
-        systemImage: "bolt.fill",
-        isValueAccent: false
-      ),
-      ProgressSummaryStat(
-        id: "kpi-duration",
-        title: "Avg Duration",
-        subtitle: nil,
-        valueText: currentMonth.averageDurationText,
-        systemImage: "clock",
-        isValueAccent: false
-      ),
-    ]
-  }
-
   private func buildMonthlyInsight(from points: [ProgressMonthlyTrendPoint]) -> String {
-    guard let currentMonth = points.last else {
-      return "Steady month-over-month progress."
+    guard !points.isEmpty else {
+      return "Your workload has been steady across the last 6 months."
     }
 
     if points.allSatisfy({ $0.sessionCount == 0 && $0.totalVolume == 0 }) {
       return "Complete your first workout to start tracking monthly trends."
     }
 
-    guard points.count >= 2 else {
-      return "Steady month-over-month progress."
+    let firstHalf = Array(points.prefix(3))
+    let secondHalf = Array(points.suffix(3))
+
+    let firstHalfSessions = firstHalf.reduce(0) { $0 + $1.sessionCount }
+    let secondHalfSessions = secondHalf.reduce(0) { $0 + $1.sessionCount }
+    let firstHalfVolume = firstHalf.reduce(0.0) { $0 + $1.totalVolume }
+    let secondHalfVolume = secondHalf.reduce(0.0) { $0 + $1.totalVolume }
+
+    if secondHalfSessions > firstHalfSessions {
+      return "Your training cadence is trending up across the last 6 months."
     }
 
-    let previousMonth = points[points.count - 2]
-
-    if previousMonth.totalVolume > 0 {
-      let volumeChange = ((currentMonth.totalVolume - previousMonth.totalVolume) / previousMonth.totalVolume) * 100
-      if volumeChange >= 10 {
-        return "Volume up \(Int(volumeChange.rounded()))% vs last month."
-      }
+    if secondHalfSessions < firstHalfSessions && secondHalfVolume < firstHalfVolume {
+      return "Your recent momentum is below your earlier 6-month average."
     }
 
-    if currentMonth.sessionCount > previousMonth.sessionCount {
-      return "You trained more often this month."
-    }
-
-    if currentMonth.sessionCount < previousMonth.sessionCount
-      && currentMonth.totalVolume < previousMonth.totalVolume
-    {
-      return "Momentum dipped vs last month. One more session this week would help."
-    }
-
-    return "Steady month-over-month progress."
+    return "Your workload has been steady across the last 6 months."
   }
 
   private func recentCompletedWorkouts(
@@ -676,6 +676,30 @@ final class ProgressViewModel: ObservableObject {
     }
 
     return String(format: "%.\(maximumFractionDigits)f", value)
+  }
+
+  private static func formattedDurationText(minutes: Int) -> String {
+    guard minutes > 0 else {
+      return "0m"
+    }
+
+    let hours = minutes / 60
+    let remainingMinutes = minutes % 60
+
+    if hours == 0 {
+      return "\(minutes)m"
+    }
+
+    if remainingMinutes == 0 {
+      return "\(hours)h"
+    }
+
+    return "\(hours)h \(remainingMinutes)m"
+  }
+
+  private static func formattedCaloriesText(_ calories: Double) -> String {
+    let formattedValue = formattedNumberString(max(calories, 0), maximumFractionDigits: 0)
+    return "\(formattedValue) cal"
   }
 
   private static let monthFormatter: Foundation.DateFormatter = {
