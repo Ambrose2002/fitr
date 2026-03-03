@@ -668,4 +668,266 @@ struct MockData {
         ]
       ))
   )
+
+  // MARK: - Progress Screen Data
+
+  static let progressDashboardFull: ProgressDashboardData = {
+    let calendar = Calendar.current
+    let now = Date()
+    let currentMonthStart = calendar.date(
+      from: calendar.dateComponents([.year, .month], from: now)
+    ) ?? now
+    let monthStarts = (0..<6).compactMap { offset in
+      calendar.date(byAdding: .month, value: offset - 5, to: currentMonthStart)
+    }
+
+    let monthValues: [(Int, Double, Int)] = [
+      (9, 9_500, 58),
+      (11, 11_800, 61),
+      (12, 12_400, 63),
+      (10, 10_700, 57),
+      (13, 13_900, 65),
+      (15, 15_600, 68),
+    ]
+    let maxSessionCount = monthValues.map(\.0).max() ?? 1
+    let maxVolume = monthValues.map(\.1).max() ?? 1
+
+    let monthlyPoints = zip(monthStarts, monthValues).map { monthStart, values in
+      ProgressMonthlyTrendPoint(
+        monthStart: monthStart,
+        monthLabel: {
+          let formatter = Foundation.DateFormatter()
+          formatter.locale = Locale(identifier: "en_US_POSIX")
+          formatter.dateFormat = "MMM"
+          return formatter.string(from: monthStart)
+        }(),
+        sessionCount: values.0,
+        totalVolume: values.1,
+        totalVolumeText: values.1 >= 1_000
+          ? String(format: "%.1f K kg", values.1 / 1_000)
+          : String(format: "%.0f kg", values.1),
+        averageDurationMinutes: values.2,
+        averageDurationText: "\(values.2)m",
+        normalizedVolume: (values.1 / maxVolume) * Double(maxSessionCount)
+      )
+    }
+
+    return ProgressDashboardData(
+      bodyComposition: ProgressDashboardData.BodyCompositionData(
+        weightDisplayText: "81.2 kg",
+        weightBadgeText: "Weekly Low",
+        weightDeltaText: "1.3 kg",
+        weightDeltaDirection: .down,
+        weightDeltaDescription: "since last week",
+        weightPoints: [
+          ProgressWeightPoint(date: now.addingTimeInterval(-29 * 86_400), value: 84.0),
+          ProgressWeightPoint(date: now.addingTimeInterval(-24 * 86_400), value: 83.6),
+          ProgressWeightPoint(date: now.addingTimeInterval(-18 * 86_400), value: 83.0),
+          ProgressWeightPoint(date: now.addingTimeInterval(-13 * 86_400), value: 82.7),
+          ProgressWeightPoint(date: now.addingTimeInterval(-8 * 86_400), value: 82.5),
+          ProgressWeightPoint(date: now.addingTimeInterval(-4 * 86_400), value: 81.9),
+          ProgressWeightPoint(date: now.addingTimeInterval(-1 * 86_400), value: 81.2),
+        ],
+        heightDisplayText: "184 cm",
+        volumeDisplayText: "42.5 K kg",
+        bodyEmptyMessage: nil
+      ),
+      workoutSummary: [
+        ProgressSummaryStat(
+          id: "total-sessions",
+          title: "Total Sessions",
+          subtitle: "Last 30 days",
+          valueText: "18",
+          systemImage: "link",
+          isValueAccent: false
+        ),
+        ProgressSummaryStat(
+          id: "average-duration",
+          title: "Average Duration",
+          subtitle: "Active minutes",
+          valueText: "64m",
+          systemImage: "clock",
+          isValueAccent: false
+        ),
+        ProgressSummaryStat(
+          id: "consistency",
+          title: "Consistency",
+          subtitle: "Current streak",
+          valueText: "4 days",
+          systemImage: "calendar",
+          isValueAccent: true
+        ),
+      ],
+      monthlyTrendPoints: monthlyPoints,
+      monthlyKpis: [
+        ProgressSummaryStat(
+          id: "kpi-sessions",
+          title: "Sessions",
+          subtitle: nil,
+          valueText: "15",
+          systemImage: "calendar",
+          isValueAccent: false
+        ),
+        ProgressSummaryStat(
+          id: "kpi-volume",
+          title: "Volume",
+          subtitle: nil,
+          valueText: "15.6 K kg",
+          systemImage: "bolt.fill",
+          isValueAccent: false
+        ),
+        ProgressSummaryStat(
+          id: "kpi-duration",
+          title: "Avg Duration",
+          subtitle: nil,
+          valueText: "68m",
+          systemImage: "clock",
+          isValueAccent: false
+        ),
+      ],
+      monthlyInsight: "Volume up 12% vs last month.",
+      hasMonthlyTrendData: true
+    )
+  }()
+
+  static let progressDashboardNoWorkouts = ProgressDashboardData(
+    bodyComposition: ProgressDashboardData.BodyCompositionData(
+      weightDisplayText: "82.4 kg",
+      weightBadgeText: "Current",
+      weightDeltaText: nil,
+      weightDeltaDirection: nil,
+      weightDeltaDescription: "Add another weigh-in to see weekly change",
+      weightPoints: [
+        ProgressWeightPoint(date: Date(), value: 82.4)
+      ],
+      heightDisplayText: "180 cm",
+      volumeDisplayText: "0 kg",
+      bodyEmptyMessage: nil
+    ),
+    workoutSummary: [
+      ProgressSummaryStat(
+        id: "total-sessions",
+        title: "Total Sessions",
+        subtitle: "Last 30 days",
+        valueText: "0",
+        systemImage: "link",
+        isValueAccent: false
+      ),
+      ProgressSummaryStat(
+        id: "average-duration",
+        title: "Average Duration",
+        subtitle: "Active minutes",
+        valueText: "0m",
+        systemImage: "clock",
+        isValueAccent: false
+      ),
+      ProgressSummaryStat(
+        id: "consistency",
+        title: "Consistency",
+        subtitle: "Current streak",
+        valueText: "0 days",
+        systemImage: "calendar",
+        isValueAccent: true
+      ),
+    ],
+    monthlyTrendPoints: {
+      let calendar = Calendar.current
+      let now = Date()
+      let currentMonthStart = calendar.date(
+        from: calendar.dateComponents([.year, .month], from: now)
+      ) ?? now
+
+      return (0..<6).compactMap { offset in
+        calendar.date(byAdding: .month, value: offset - 5, to: currentMonthStart)
+      }.map { monthStart in
+        ProgressMonthlyTrendPoint(
+          monthStart: monthStart,
+          monthLabel: {
+            let formatter = Foundation.DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.dateFormat = "MMM"
+            return formatter.string(from: monthStart)
+          }(),
+          sessionCount: 0,
+          totalVolume: 0,
+          totalVolumeText: "0 kg",
+          averageDurationMinutes: 0,
+          averageDurationText: "0m",
+          normalizedVolume: 0
+        )
+      }
+    }(),
+    monthlyKpis: [
+      ProgressSummaryStat(
+        id: "kpi-sessions",
+        title: "Sessions",
+        subtitle: nil,
+        valueText: "0",
+        systemImage: "calendar",
+        isValueAccent: false
+      ),
+      ProgressSummaryStat(
+        id: "kpi-volume",
+        title: "Volume",
+        subtitle: nil,
+        valueText: "0 kg",
+        systemImage: "bolt.fill",
+        isValueAccent: false
+      ),
+      ProgressSummaryStat(
+        id: "kpi-duration",
+        title: "Avg Duration",
+        subtitle: nil,
+        valueText: "0m",
+        systemImage: "clock",
+        isValueAccent: false
+      ),
+    ],
+    monthlyInsight: "Complete your first workout to start tracking monthly trends.",
+    hasMonthlyTrendData: false
+  )
+
+  static let progressDashboardNoMetrics = ProgressDashboardData(
+    bodyComposition: ProgressDashboardData.BodyCompositionData(
+      weightDisplayText: nil,
+      weightBadgeText: "Current",
+      weightDeltaText: nil,
+      weightDeltaDirection: nil,
+      weightDeltaDescription: "Add another weigh-in to see weekly change",
+      weightPoints: [],
+      heightDisplayText: "--",
+      volumeDisplayText: "12.8 K kg",
+      bodyEmptyMessage: "Log your first weigh-in to start tracking body composition."
+    ),
+    workoutSummary: [
+      ProgressSummaryStat(
+        id: "total-sessions",
+        title: "Total Sessions",
+        subtitle: "Last 30 days",
+        valueText: "7",
+        systemImage: "link",
+        isValueAccent: false
+      ),
+      ProgressSummaryStat(
+        id: "average-duration",
+        title: "Average Duration",
+        subtitle: "Active minutes",
+        valueText: "52m",
+        systemImage: "clock",
+        isValueAccent: false
+      ),
+      ProgressSummaryStat(
+        id: "consistency",
+        title: "Consistency",
+        subtitle: "Current streak",
+        valueText: "2 days",
+        systemImage: "calendar",
+        isValueAccent: true
+      ),
+    ],
+    monthlyTrendPoints: progressDashboardFull.monthlyTrendPoints,
+    monthlyKpis: progressDashboardFull.monthlyKpis,
+    monthlyInsight: "You trained more often this month.",
+    hasMonthlyTrendData: true
+  )
 }
