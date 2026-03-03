@@ -66,8 +66,36 @@ final class WorkoutsService {
     return url
   }
 
-  func fetchWorkoutHistory() async throws -> [WorkoutSessionResponse] {
-    let url = try makeURL(path: APIEndpoints.workouts)
+  func fetchWorkoutHistory(
+    limit: Int? = nil,
+    startDate: Date? = nil,
+    endDate: Date? = nil
+  ) async throws -> [WorkoutSessionResponse] {
+    var queryItems: [URLQueryItem] = []
+
+    if let limit {
+      queryItems.append(URLQueryItem(name: "limit", value: "\(limit)"))
+    }
+
+    if let startDate {
+      queryItems.append(
+        URLQueryItem(
+          name: "startDate",
+          value: Self.standardDateFormatter.string(from: startDate)
+        )
+      )
+    }
+
+    if let endDate {
+      queryItems.append(
+        URLQueryItem(
+          name: "endDate",
+          value: Self.standardDateFormatter.string(from: endDate)
+        )
+      )
+    }
+
+    let url = try makeURL(path: APIEndpoints.workouts, queryItems: queryItems)
     var request = URLRequest(url: url)
     request.httpMethod = "GET"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
