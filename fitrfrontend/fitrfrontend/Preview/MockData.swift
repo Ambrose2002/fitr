@@ -680,20 +680,42 @@ struct MockData {
     let monthStarts = (0..<6).compactMap { offset in
       calendar.date(byAdding: .month, value: offset - 5, to: currentMonthStart)
     }
+    let formatDuration: (Int) -> String = { minutes in
+      guard minutes > 0 else { return "0m" }
+      let hours = minutes / 60
+      let remainingMinutes = minutes % 60
 
-    let monthValues: [(Int, Double, Int)] = [
-      (9, 9_500, 58),
-      (11, 11_800, 61),
-      (12, 12_400, 63),
-      (10, 10_700, 57),
-      (13, 13_900, 65),
-      (15, 15_600, 68),
+      if hours == 0 {
+        return "\(minutes)m"
+      }
+
+      if remainingMinutes == 0 {
+        return "\(hours)h"
+      }
+
+      return "\(hours)h \(remainingMinutes)m"
+    }
+    let formatCalories: (Double) -> String = { calories in
+      "\(Int(calories.rounded())) cal"
+    }
+
+    let monthValues: [(Int, Double, Int, Double, [Int64])] = [
+      (9, 9_500, 522, 3_450, [1, 2, 3, 4, 5]),
+      (11, 11_800, 671, 4_080, [2, 3, 4, 6, 7, 8]),
+      (12, 12_400, 756, 4_420, [1, 4, 6, 7, 9, 10]),
+      (10, 10_700, 570, 3_860, [3, 5, 8, 9, 11]),
+      (13, 13_900, 845, 4_930, [1, 2, 6, 9, 10, 12]),
+      (15, 15_600, 1_020, 5_480, [2, 4, 6, 8, 10, 12, 14]),
     ]
     let maxSessionCount = monthValues.map(\.0).max() ?? 1
     let maxVolume = monthValues.map(\.1).max() ?? 1
 
     let monthlyPoints = zip(monthStarts, monthValues).map { monthStart, values in
-      ProgressMonthlyTrendPoint(
+      let averageDuration = values.0 > 0
+        ? Int((Double(values.2) / Double(values.0)).rounded())
+        : 0
+
+      return ProgressMonthlyTrendPoint(
         monthStart: monthStart,
         monthLabel: {
           let formatter = Foundation.DateFormatter()
@@ -706,8 +728,13 @@ struct MockData {
         totalVolumeText: values.1 >= 1_000
           ? String(format: "%.1f K kg", values.1 / 1_000)
           : String(format: "%.0f kg", values.1),
-        averageDurationMinutes: values.2,
-        averageDurationText: "\(values.2)m",
+        totalDurationMinutes: values.2,
+        totalDurationText: formatDuration(values.2),
+        averageDurationMinutes: averageDuration,
+        averageDurationText: formatDuration(averageDuration),
+        totalCalories: values.3,
+        totalCaloriesText: formatCalories(values.3),
+        distinctExerciseIDs: values.4,
         normalizedVolume: (values.1 / maxVolume) * Double(maxSessionCount)
       )
     }
@@ -759,33 +786,7 @@ struct MockData {
         ),
       ],
       monthlyTrendPoints: monthlyPoints,
-      monthlyKpis: [
-        ProgressSummaryStat(
-          id: "kpi-sessions",
-          title: "Sessions",
-          subtitle: nil,
-          valueText: "15",
-          systemImage: "calendar",
-          isValueAccent: false
-        ),
-        ProgressSummaryStat(
-          id: "kpi-volume",
-          title: "Volume",
-          subtitle: nil,
-          valueText: "15.6 K kg",
-          systemImage: "bolt.fill",
-          isValueAccent: false
-        ),
-        ProgressSummaryStat(
-          id: "kpi-duration",
-          title: "Avg Duration",
-          subtitle: nil,
-          valueText: "68m",
-          systemImage: "clock",
-          isValueAccent: false
-        ),
-      ],
-      monthlyInsight: "Volume up 12% vs last month.",
+      monthlyInsight: "Your training cadence is trending up across the last 6 months.",
       hasMonthlyTrendData: true
     )
   }()
@@ -851,38 +852,17 @@ struct MockData {
           sessionCount: 0,
           totalVolume: 0,
           totalVolumeText: "0 kg",
+          totalDurationMinutes: 0,
+          totalDurationText: "0m",
           averageDurationMinutes: 0,
           averageDurationText: "0m",
+          totalCalories: 0,
+          totalCaloriesText: "0 cal",
+          distinctExerciseIDs: [],
           normalizedVolume: 0
         )
       }
     }(),
-    monthlyKpis: [
-      ProgressSummaryStat(
-        id: "kpi-sessions",
-        title: "Sessions",
-        subtitle: nil,
-        valueText: "0",
-        systemImage: "calendar",
-        isValueAccent: false
-      ),
-      ProgressSummaryStat(
-        id: "kpi-volume",
-        title: "Volume",
-        subtitle: nil,
-        valueText: "0 kg",
-        systemImage: "bolt.fill",
-        isValueAccent: false
-      ),
-      ProgressSummaryStat(
-        id: "kpi-duration",
-        title: "Avg Duration",
-        subtitle: nil,
-        valueText: "0m",
-        systemImage: "clock",
-        isValueAccent: false
-      ),
-    ],
     monthlyInsight: "Complete your first workout to start tracking monthly trends.",
     hasMonthlyTrendData: false
   )
@@ -926,8 +906,7 @@ struct MockData {
       ),
     ],
     monthlyTrendPoints: progressDashboardFull.monthlyTrendPoints,
-    monthlyKpis: progressDashboardFull.monthlyKpis,
-    monthlyInsight: "You trained more often this month.",
+    monthlyInsight: "Your workload has been steady across the last 6 months.",
     hasMonthlyTrendData: true
   )
 }

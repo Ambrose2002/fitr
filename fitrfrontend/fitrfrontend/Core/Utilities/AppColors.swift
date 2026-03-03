@@ -18,6 +18,9 @@ struct AppColors {
     /// RGB: (31, 213, 249)
     /// Usage: Primary buttons, highlights, selected states, active elements
     static let primaryTeal = Color(red: 31/255, green: 213/255, blue: 249/255)
+
+    /// Stronger teal used for selected states over the standard accent.
+    static let primaryTealStrong = Color(red: 0/255, green: 173/255, blue: 214/255)
     
     // MARK: - Semantic State Colors
     
@@ -85,6 +88,9 @@ struct AppColors {
     
     /// Semantic color for primary actions (same as primaryTeal)
     static let accent = primaryTeal
+
+    /// Stronger semantic accent for emphasized selections
+    static let accentStrong = primaryTealStrong
     
     /// Background for the entire app
     static let background = backgroundLight
