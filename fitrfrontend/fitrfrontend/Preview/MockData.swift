@@ -671,15 +671,47 @@ struct MockData {
 
   // MARK: - Progress Screen Data
 
-  static let progressDashboardFull: ProgressDashboardData = {
+  private static func progressMonthStarts(referenceDate: Date = Date()) -> [Date] {
     let calendar = Calendar.current
-    let now = Date()
     let currentMonthStart = calendar.date(
-      from: calendar.dateComponents([.year, .month], from: now)
-    ) ?? now
-    let monthStarts = (0..<6).compactMap { offset in
+      from: calendar.dateComponents([.year, .month], from: referenceDate)
+    ) ?? referenceDate
+
+    return (0..<6).compactMap { offset in
       calendar.date(byAdding: .month, value: offset - 5, to: currentMonthStart)
     }
+  }
+
+  private static func progressMonthLabel(for monthStart: Date) -> String {
+    let formatter = Foundation.DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "MMM"
+    return formatter.string(from: monthStart)
+  }
+
+  private static func progressWeightPoint(
+    monthStart: Date,
+    value: Double?,
+    representativeDayOffset: Int? = nil,
+    weighInCount: Int = 0
+  ) -> ProgressWeightPoint {
+    let calendar = Calendar.current
+    let representativeDate = representativeDayOffset.flatMap { dayOffset in
+      calendar.date(byAdding: .day, value: dayOffset, to: monthStart)
+    }
+
+    return ProgressWeightPoint(
+      monthStart: monthStart,
+      monthLabel: progressMonthLabel(for: monthStart),
+      representativeDate: representativeDate,
+      value: value,
+      weighInCount: weighInCount
+    )
+  }
+
+  static let progressDashboardFull: ProgressDashboardData = {
+    let now = Date()
+    let monthStarts = progressMonthStarts(referenceDate: now)
     let formatDuration: (Int) -> String = { minutes in
       guard minutes > 0 else { return "0m" }
       let hours = minutes / 60
@@ -717,12 +749,7 @@ struct MockData {
 
       return ProgressMonthlyTrendPoint(
         monthStart: monthStart,
-        monthLabel: {
-          let formatter = Foundation.DateFormatter()
-          formatter.locale = Locale(identifier: "en_US_POSIX")
-          formatter.dateFormat = "MMM"
-          return formatter.string(from: monthStart)
-        }(),
+        monthLabel: progressMonthLabel(for: monthStart),
         sessionCount: values.0,
         totalVolume: values.1,
         totalVolumeText: values.1 >= 1_000
@@ -747,16 +774,15 @@ struct MockData {
         weightDeltaDirection: .down,
         weightDeltaDescription: "since last week",
         weightPoints: [
-          ProgressWeightPoint(date: now.addingTimeInterval(-29 * 86_400), value: 84.0),
-          ProgressWeightPoint(date: now.addingTimeInterval(-24 * 86_400), value: 83.6),
-          ProgressWeightPoint(date: now.addingTimeInterval(-18 * 86_400), value: 83.0),
-          ProgressWeightPoint(date: now.addingTimeInterval(-13 * 86_400), value: 82.7),
-          ProgressWeightPoint(date: now.addingTimeInterval(-8 * 86_400), value: 82.5),
-          ProgressWeightPoint(date: now.addingTimeInterval(-4 * 86_400), value: 81.9),
-          ProgressWeightPoint(date: now.addingTimeInterval(-1 * 86_400), value: 81.2),
+          progressWeightPoint(monthStart: monthStarts[0], value: 84.4, representativeDayOffset: 24, weighInCount: 1),
+          progressWeightPoint(monthStart: monthStarts[1], value: 84.0, representativeDayOffset: 26, weighInCount: 2),
+          progressWeightPoint(monthStart: monthStarts[2], value: nil),
+          progressWeightPoint(monthStart: monthStarts[3], value: 83.5, representativeDayOffset: 21, weighInCount: 1),
+          progressWeightPoint(monthStart: monthStarts[4], value: 82.8, representativeDayOffset: 27, weighInCount: 3),
+          progressWeightPoint(monthStart: monthStarts[5], value: 81.2, representativeDayOffset: 25, weighInCount: 2),
         ],
-        heightDisplayText: "184 cm",
-        volumeDisplayText: "42.5 K kg",
+        currentHeightDisplayText: "184 cm",
+        currentWeightStatDisplayText: "81.2 kg",
         bodyEmptyMessage: nil
       ),
       workoutSummary: [
@@ -798,11 +824,17 @@ struct MockData {
       weightDeltaText: nil,
       weightDeltaDirection: nil,
       weightDeltaDescription: "Add another weigh-in to see weekly change",
-      weightPoints: [
-        ProgressWeightPoint(date: Date(), value: 82.4)
-      ],
-      heightDisplayText: "180 cm",
-      volumeDisplayText: "0 kg",
+      weightPoints: {
+        let monthStarts = progressMonthStarts()
+        return monthStarts.enumerated().map { index, monthStart in
+          progressWeightPoint(
+            monthStart: monthStart,
+            value: index == monthStarts.count - 1 ? 82.4 : nil
+          )
+        }
+      }(),
+      currentHeightDisplayText: "180 cm",
+      currentWeightStatDisplayText: "82.4 kg",
       bodyEmptyMessage: nil
     ),
     workoutSummary: [
@@ -832,23 +864,10 @@ struct MockData {
       ),
     ],
     monthlyTrendPoints: {
-      let calendar = Calendar.current
-      let now = Date()
-      let currentMonthStart = calendar.date(
-        from: calendar.dateComponents([.year, .month], from: now)
-      ) ?? now
-
-      return (0..<6).compactMap { offset in
-        calendar.date(byAdding: .month, value: offset - 5, to: currentMonthStart)
-      }.map { monthStart in
+      progressMonthStarts().map { monthStart in
         ProgressMonthlyTrendPoint(
           monthStart: monthStart,
-          monthLabel: {
-            let formatter = Foundation.DateFormatter()
-            formatter.locale = Locale(identifier: "en_US_POSIX")
-            formatter.dateFormat = "MMM"
-            return formatter.string(from: monthStart)
-          }(),
+          monthLabel: progressMonthLabel(for: monthStart),
           sessionCount: 0,
           totalVolume: 0,
           totalVolumeText: "0 kg",
@@ -874,9 +893,11 @@ struct MockData {
       weightDeltaText: nil,
       weightDeltaDirection: nil,
       weightDeltaDescription: "Add another weigh-in to see weekly change",
-      weightPoints: [],
-      heightDisplayText: "--",
-      volumeDisplayText: "12.8 K kg",
+      weightPoints: progressMonthStarts().map { monthStart in
+        progressWeightPoint(monthStart: monthStart, value: nil)
+      },
+      currentHeightDisplayText: "--",
+      currentWeightStatDisplayText: "--",
       bodyEmptyMessage: "Log your first weigh-in to start tracking body composition."
     ),
     workoutSummary: [
