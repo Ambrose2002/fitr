@@ -57,6 +57,11 @@ struct ProgressMainView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 20)
       }
+      .safeAreaInset(edge: .bottom) {
+        Color.clear
+          .frame(height: 100)
+          .allowsHitTesting(false)
+      }
       .background(AppColors.background.ignoresSafeArea())
       .navigationTitle("PROGRESS")
       .navigationBarTitleDisplayMode(.inline)
@@ -203,16 +208,16 @@ private struct BodyCompositionSection: View {
 
       HStack(spacing: 12) {
         ProgressMetricCard(
-          title: "HEIGHT",
-          valueText: data.heightDisplayText,
+          title: "CURRENT HEIGHT",
+          valueText: data.currentHeightDisplayText,
           iconName: "ruler.fill",
           iconTint: AppColors.infoBlue
         )
 
         ProgressMetricCard(
-          title: "VOLUME",
-          valueText: data.volumeDisplayText,
-          iconName: "bolt.fill",
+          title: "CURRENT WEIGHT",
+          valueText: data.currentWeightStatDisplayText,
+          iconName: "scalemass.fill",
           iconTint: AppColors.accent
         )
       }
@@ -245,53 +250,80 @@ private struct BodyCompositionSection: View {
 private struct WeightTrendChart: View {
   let points: [ProgressWeightPoint]
 
+  private var orderedPoints: [ProgressWeightPoint] {
+    points.sorted { $0.monthStart < $1.monthStart }
+  }
+
+  private var yDomain: ClosedRange<Double> {
+    let values = orderedPoints.compactMap(\.value)
+
+    guard let minimumValue = values.min(), let maximumValue = values.max() else {
+      return 0...1
+    }
+
+    if abs(maximumValue - minimumValue) < 0.01 {
+      let padding = max(maximumValue * 0.02, 1)
+      return (minimumValue - padding)...(maximumValue + padding)
+    }
+
+    let padding = max((maximumValue - minimumValue) * 0.14, 0.5)
+    return (minimumValue - padding)...(maximumValue + padding)
+  }
+
+  private var xDomain: ClosedRange<Date>? {
+    guard let firstMonth = orderedPoints.first?.monthStart,
+      let lastMonth = orderedPoints.last?.monthStart
+    else {
+      return nil
+    }
+
+    return firstMonth...lastMonth
+  }
+
   var body: some View {
-    Chart {
-      if points.count == 1, let point = points.first {
-        RuleMark(y: .value("Baseline", point.value))
-          .foregroundStyle(AppColors.accent.opacity(0.14))
-          .lineStyle(StrokeStyle(lineWidth: 1))
-
-        PointMark(
-          x: .value("Date", point.date),
-          y: .value("Weight", point.value)
-        )
-        .symbolSize(60)
-        .foregroundStyle(AppColors.accent)
+    Group {
+      if let xDomain {
+        chartContent
+          .chartXScale(domain: xDomain)
       } else {
-        ForEach(points) { point in
-          AreaMark(
-            x: .value("Date", point.date),
-            y: .value("Weight", point.value)
-          )
-          .interpolationMethod(.catmullRom)
-          .foregroundStyle(
-            LinearGradient(
-              colors: [
-                AppColors.accent.opacity(0.22),
-                AppColors.accent.opacity(0.02),
-              ],
-              startPoint: .top,
-              endPoint: .bottom
-            )
-          )
-
-          LineMark(
-            x: .value("Date", point.date),
-            y: .value("Weight", point.value)
-          )
-          .interpolationMethod(.catmullRom)
-          .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-          .foregroundStyle(AppColors.accent)
+        chartContent
+      }
+    }
+    .chartYScale(domain: yDomain)
+    .chartXAxis {
+      AxisMarks(values: orderedPoints.map(\.monthStart)) { value in
+        AxisValueLabel {
+          if let monthStart = value.as(Date.self) {
+            Text(monthStart, format: .dateTime.month(.abbreviated))
+              .font(.system(size: 11, weight: .semibold))
+              .foregroundStyle(AppColors.textSecondary)
+          }
         }
       }
     }
-    .chartXAxis(.hidden)
     .chartYAxis(.hidden)
     .chartLegend(.hidden)
     .chartPlotStyle { plotArea in
       plotArea
         .background(Color.clear)
+    }
+  }
+
+  private var chartContent: some View {
+    Chart {
+      ForEach(orderedPoints) { point in
+        RuleMark(x: .value("Month", point.monthStart))
+          .foregroundStyle(Color.clear)
+
+        if let value = point.value {
+          PointMark(
+            x: .value("Month", point.monthStart),
+            y: .value("Weight", value)
+          )
+          .symbolSize(70)
+          .foregroundStyle(AppColors.accent)
+        }
+      }
     }
   }
 }
@@ -616,20 +648,28 @@ private struct MonthlyTrendsSection: View {
     proxy: ChartProxy,
     geometry: GeometryProxy
   ) {
-    let plotAreaFrame = geometry[proxy.plotAreaFrame]
+    guard let plotFrame = proxy.plotFrame else {
+      return
+    }
+
+    let plotAreaFrame = geometry[plotFrame]
     guard plotAreaFrame.contains(location) else {
       return
     }
 
-    let plotAreaX = location.x - plotAreaFrame.origin.x
-    guard let tappedDate = proxy.value(atX: plotAreaX, as: Date.self) else {
-      return
-    }
-
     guard
-      let nearestMonth = orderedPoints.min(by: { lhs, rhs in
-        abs(lhs.monthStart.timeIntervalSince(tappedDate)) < abs(rhs.monthStart.timeIntervalSince(tappedDate))
-      })?.monthStart
+      let nearestMonth = orderedPoints
+        .compactMap({ point -> (Date, CGFloat)? in
+          guard let xPosition = proxy.position(forX: point.monthStart) else {
+            return nil
+          }
+
+          return (point.monthStart, plotAreaFrame.origin.x + xPosition)
+        })
+        .min(by: { lhs, rhs in
+          abs(lhs.1 - location.x) < abs(rhs.1 - location.x)
+        })?
+        .0
     else {
       return
     }

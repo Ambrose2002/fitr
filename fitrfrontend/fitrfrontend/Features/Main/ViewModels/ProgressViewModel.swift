@@ -9,15 +9,13 @@ import Foundation
 internal import Combine
 
 struct ProgressWeightPoint: Identifiable, Hashable {
-  let id: Date
-  let date: Date
-  let value: Double
+  let monthStart: Date
+  let monthLabel: String
+  let representativeDate: Date?
+  let value: Double?
+  let weighInCount: Int
 
-  init(date: Date, value: Double) {
-    self.id = date
-    self.date = date
-    self.value = value
-  }
+  var id: Date { monthStart }
 }
 
 struct ProgressMonthlyTrendPoint: Identifiable, Hashable {
@@ -91,8 +89,8 @@ struct ProgressDashboardData {
     let weightDeltaDirection: ProgressDeltaDirection?
     let weightDeltaDescription: String
     let weightPoints: [ProgressWeightPoint]
-    let heightDisplayText: String
-    let volumeDisplayText: String
+    let currentHeightDisplayText: String
+    let currentWeightStatDisplayText: String
     let bodyEmptyMessage: String?
   }
 
@@ -144,6 +142,11 @@ final class ProgressViewModel: ObservableObject {
     let now = Date()
     let workoutsStartDate =
       calendar.date(byAdding: .day, value: -180, to: now) ?? now.addingTimeInterval(-180 * 86_400)
+    let currentMonthStart = calendar.date(
+      from: calendar.dateComponents([.year, .month], from: now)
+    ) ?? now
+    let weightChartStartDate =
+      calendar.date(byAdding: .month, value: -5, to: currentMonthStart) ?? currentMonthStart
 
     do {
       async let workoutsResponse = workoutsService.fetchWorkoutHistory(
@@ -152,7 +155,8 @@ final class ProgressViewModel: ObservableObject {
       )
       async let weightMetricsResponse = bodyMetricsService.fetchBodyMetrics(
         metricType: .weight,
-        limit: 30
+        fromDate: weightChartStartDate,
+        toDate: now
       )
       async let latestMetricsResponse = bodyMetricsService.fetchLatestBodyMetrics()
 
@@ -193,7 +197,6 @@ final class ProgressViewModel: ObservableObject {
   ) -> ProgressDashboardData {
     let latestMetricsByType = latestMetricLookup(from: latestMetrics)
     let bodyComposition = buildBodyComposition(
-      completedWorkouts: completedWorkouts,
       weightMetrics: weightMetrics,
       latestMetricsByType: latestMetricsByType
     )
@@ -227,7 +230,6 @@ final class ProgressViewModel: ObservableObject {
   }
 
   private func buildBodyComposition(
-    completedWorkouts: [WorkoutSessionResponse],
     weightMetrics: [BodyMetricResponse],
     latestMetricsByType: [MetricType: BodyMetricResponse]
   ) -> ProgressDashboardData.BodyCompositionData {
@@ -236,6 +238,7 @@ final class ProgressViewModel: ObservableObject {
     let weightDisplayText = latestWeightValue.map {
       UnitFormatter.formatWeight($0, preferredUnit: preferredWeightUnit, decimalPlaces: 1)
     }
+    let currentWeightStatDisplayText = weightDisplayText ?? "--"
 
     let weightPoints = buildWeightPoints(
       from: weightMetrics,
@@ -244,12 +247,9 @@ final class ProgressViewModel: ObservableObject {
     let weightDelta = weightDeltaDetails(from: weightMetrics)
 
     let heightValue = latestMetricsByType[.height]?.value ?? sessionStore.userProfile?.height
-    let heightDisplayText = heightValue.map {
+    let currentHeightDisplayText = heightValue.map {
       UnitFormatter.formatHeight($0)
     } ?? "--"
-
-    let trailingMonthWorkouts = recentCompletedWorkouts(from: completedWorkouts, days: 30)
-    let volumeKgReps = totalVolumeKgReps(for: trailingMonthWorkouts)
 
     return ProgressDashboardData.BodyCompositionData(
       weightDisplayText: weightDisplayText,
@@ -258,8 +258,8 @@ final class ProgressViewModel: ObservableObject {
       weightDeltaDirection: weightDelta.direction,
       weightDeltaDescription: weightDelta.description,
       weightPoints: weightPoints,
-      heightDisplayText: heightDisplayText,
-      volumeDisplayText: formattedVolume(fromKgReps: volumeKgReps),
+      currentHeightDisplayText: currentHeightDisplayText,
+      currentWeightStatDisplayText: currentWeightStatDisplayText,
       bodyEmptyMessage: weightDisplayText == nil
         ? "Log your first weigh-in to start tracking body composition."
         : nil
@@ -272,30 +272,64 @@ final class ProgressViewModel: ObservableObject {
   ) -> [ProgressWeightPoint] {
     let calendar = Calendar.current
     let now = Date()
-    let thirtyDaysAgo =
-      calendar.date(byAdding: .day, value: -30, to: now) ?? now.addingTimeInterval(-30 * 86_400)
-
-    var chartMetrics = metrics
-      .filter { $0.updatedAt >= thirtyDaysAgo }
-      .sorted { $0.updatedAt < $1.updatedAt }
-
-    if chartMetrics.isEmpty, let latestMetric = metrics.first {
-      chartMetrics = [latestMetric]
+    let currentMonthStart = calendar.date(
+      from: calendar.dateComponents([.year, .month], from: now)
+    ) ?? now
+    let monthStarts = (0..<6).compactMap { offset in
+      calendar.date(byAdding: .month, value: offset - 5, to: currentMonthStart)
     }
 
-    if chartMetrics.isEmpty, let fallbackWeight {
-      return [
-        ProgressWeightPoint(
-          date: now,
-          value: displayWeightValue(fromKg: fallbackWeight)
+    let visibleMonthStarts = Set(monthStarts)
+    var metricsByMonth: [Date: BodyMetricResponse] = [:]
+    var weighInCounts: [Date: Int] = [:]
+
+    for metric in metrics {
+      let monthStart = calendar.date(
+        from: calendar.dateComponents([.year, .month], from: metric.updatedAt)
+      ) ?? currentMonthStart
+
+      guard visibleMonthStarts.contains(monthStart) else {
+        continue
+      }
+
+      weighInCounts[monthStart, default: 0] += 1
+
+      if let currentMetric = metricsByMonth[monthStart] {
+        if metric.updatedAt > currentMetric.updatedAt {
+          metricsByMonth[monthStart] = metric
+        }
+      } else {
+        metricsByMonth[monthStart] = metric
+      }
+    }
+
+    return monthStarts.map { monthStart in
+      if let metric = metricsByMonth[monthStart] {
+        return ProgressWeightPoint(
+          monthStart: monthStart,
+          monthLabel: Self.monthFormatter.string(from: monthStart),
+          representativeDate: metric.updatedAt,
+          value: displayWeightValue(fromKg: Double(metric.value)),
+          weighInCount: weighInCounts[monthStart, default: 0]
         )
-      ]
-    }
+      }
 
-    return chartMetrics.map { metric in
-      ProgressWeightPoint(
-        date: metric.updatedAt,
-        value: displayWeightValue(fromKg: Double(metric.value))
+      if metrics.isEmpty, let fallbackWeight, monthStart == currentMonthStart {
+        return ProgressWeightPoint(
+          monthStart: monthStart,
+          monthLabel: Self.monthFormatter.string(from: monthStart),
+          representativeDate: nil,
+          value: displayWeightValue(fromKg: fallbackWeight),
+          weighInCount: 0
+        )
+      }
+
+      return ProgressWeightPoint(
+        monthStart: monthStart,
+        monthLabel: Self.monthFormatter.string(from: monthStart),
+        representativeDate: nil,
+        value: nil,
+        weighInCount: 0
       )
     }
   }
