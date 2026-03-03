@@ -101,9 +101,7 @@ private struct ProgressDashboardContent: View {
       WorkoutSummarySection(stats: dashboard.workoutSummary)
       MonthlyTrendsSection(
         points: dashboard.monthlyTrendPoints,
-        kpis: dashboard.monthlyKpis,
-        insight: dashboard.monthlyInsight,
-        hasData: dashboard.hasMonthlyTrendData
+        insight: dashboard.monthlyInsight
       )
 
       Button {
@@ -400,13 +398,127 @@ private struct WorkoutSummaryRow: View {
   }
 }
 
+private struct MonthlyTrendSelectionSummaryData {
+  let title: String
+  let subtitle: String
+  let metrics: [ProgressSummaryStat]
+  let footerMessage: String
+  let hasSessions: Bool
+}
+
 private struct MonthlyTrendsSection: View {
+
   let points: [ProgressMonthlyTrendPoint]
-  let kpis: [ProgressSummaryStat]
   let insight: String
-  let hasData: Bool
+  @State private var selectedMonthStarts: Set<Date> = []
+
+  private var orderedPoints: [ProgressMonthlyTrendPoint] {
+    points.sorted { $0.monthStart < $1.monthStart }
+  }
+
+  private var visibleMonthStarts: Set<Date> {
+    Set(orderedPoints.map(\.monthStart))
+  }
+
+  private var activePoints: [ProgressMonthlyTrendPoint] {
+    guard !selectedMonthStarts.isEmpty else {
+      return orderedPoints
+    }
+
+    return orderedPoints.filter { selectedMonthStarts.contains($0.monthStart) }
+  }
+
+  private var selectionSummary: MonthlyTrendSelectionSummaryData {
+    let scopedPoints = activePoints
+    let totalSessions = scopedPoints.reduce(0) { $0 + $1.sessionCount }
+    let totalDurationMinutes = scopedPoints.reduce(0) { $0 + $1.totalDurationMinutes }
+    let averageSessionMinutes =
+      totalSessions > 0
+      ? Int((Double(totalDurationMinutes) / Double(totalSessions)).rounded())
+      : 0
+    let totalVolume = scopedPoints.reduce(0.0) { $0 + $1.totalVolume }
+    let totalCalories = scopedPoints.reduce(0.0) { $0 + $1.totalCalories }
+    let distinctExercises = Set(scopedPoints.flatMap(\.distinctExerciseIDs)).count
+
+    let title: String
+    let subtitle: String
+    let footerMessage: String
+
+    if selectedMonthStarts.isEmpty {
+      title = "Last 6 Months"
+      subtitle = "Combined summary for all visible months"
+      footerMessage = insight
+    } else if scopedPoints.count == 1, let point = scopedPoints.first {
+      title = point.monthStart.formatted(.dateTime.month(.wide).year())
+      subtitle = "Tap the highlighted bar again to clear"
+      footerMessage = "Tap a highlighted bar again to deselect."
+    } else {
+      title = "\(scopedPoints.count) Months Selected"
+      subtitle = scopedPoints.map(\.monthLabel).joined(separator: ", ")
+      footerMessage = "Tap a highlighted bar again to deselect."
+    }
+
+    return MonthlyTrendSelectionSummaryData(
+      title: title,
+      subtitle: subtitle,
+      metrics: [
+        ProgressSummaryStat(
+          id: "selected-sessions",
+          title: "Sessions",
+          subtitle: nil,
+          valueText: "\(totalSessions)",
+          systemImage: "calendar",
+          isValueAccent: false
+        ),
+        ProgressSummaryStat(
+          id: "selected-total-time",
+          title: "Total Time",
+          subtitle: nil,
+          valueText: Self.formattedDuration(totalDurationMinutes),
+          systemImage: "timer",
+          isValueAccent: false
+        ),
+        ProgressSummaryStat(
+          id: "selected-average-session",
+          title: "Avg Session",
+          subtitle: nil,
+          valueText: Self.formattedDuration(averageSessionMinutes),
+          systemImage: "clock",
+          isValueAccent: false
+        ),
+        ProgressSummaryStat(
+          id: "selected-volume",
+          title: "Volume",
+          subtitle: nil,
+          valueText: formattedVolume(totalVolume),
+          systemImage: "bolt.fill",
+          isValueAccent: false
+        ),
+        ProgressSummaryStat(
+          id: "selected-calories",
+          title: "Calories",
+          subtitle: nil,
+          valueText: Self.formattedCalories(totalCalories),
+          systemImage: "flame.fill",
+          isValueAccent: false
+        ),
+        ProgressSummaryStat(
+          id: "selected-exercises",
+          title: "Exercises",
+          subtitle: nil,
+          valueText: "\(distinctExercises)",
+          systemImage: "figure.strengthtraining.traditional",
+          isValueAccent: false
+        ),
+      ],
+      footerMessage: footerMessage,
+      hasSessions: totalSessions > 0
+    )
+  }
 
   var body: some View {
+    let summary = selectionSummary
+
     VStack(alignment: .leading, spacing: 14) {
       Text("Monthly Trends")
         .font(.system(size: 28, weight: .bold))
@@ -414,15 +526,19 @@ private struct MonthlyTrendsSection: View {
 
       VStack(alignment: .leading, spacing: 16) {
         Chart {
-          ForEach(points) { point in
+          ForEach(orderedPoints) { point in
             BarMark(
-              x: .value("Month", point.monthLabel),
+              x: .value("Month", point.monthStart),
               y: .value("Sessions", point.sessionCount)
             )
-            .foregroundStyle(AppColors.accent.opacity(0.22))
+            .foregroundStyle(
+              selectedMonthStarts.contains(point.monthStart)
+                ? AppColors.accentStrong
+                : AppColors.accent.opacity(0.22)
+            )
 
             LineMark(
-              x: .value("Month", point.monthLabel),
+              x: .value("Month", point.monthStart),
               y: .value("Normalized Volume", point.normalizedVolume)
             )
             .interpolationMethod(.catmullRom)
@@ -430,7 +546,7 @@ private struct MonthlyTrendsSection: View {
             .foregroundStyle(AppColors.textPrimary)
 
             PointMark(
-              x: .value("Month", point.monthLabel),
+              x: .value("Month", point.monthStart),
               y: .value("Normalized Volume", point.normalizedVolume)
             )
             .symbolSize(28)
@@ -441,10 +557,10 @@ private struct MonthlyTrendsSection: View {
         .chartYAxis(.hidden)
         .chartLegend(.hidden)
         .chartXAxis {
-          AxisMarks(values: points.map(\.monthLabel)) { value in
+          AxisMarks(values: orderedPoints.map(\.monthStart)) { value in
             AxisValueLabel {
-              if let label = value.as(String.self) {
-                Text(label)
+              if let monthStart = value.as(Date.self) {
+                Text(monthStart, format: .dateTime.month(.abbreviated))
                   .font(.system(size: 11, weight: .semibold))
                   .foregroundStyle(AppColors.textSecondary)
               }
@@ -456,20 +572,32 @@ private struct MonthlyTrendsSection: View {
             .padding(.horizontal, 4)
             .background(Color.clear)
         }
-
-        HStack(spacing: 10) {
-          ForEach(kpis) { kpi in
-            TrendKPIChip(stat: kpi)
+        .chartOverlay { proxy in
+          GeometryReader { geometry in
+            Rectangle()
+              .fill(Color.clear)
+              .contentShape(Rectangle())
+              .gesture(
+                SpatialTapGesture()
+                  .onEnded { value in
+                    handleChartTap(at: value.location, proxy: proxy, geometry: geometry)
+                  }
+              )
           }
         }
+        .onChange(of: orderedPoints.map(\.monthStart)) { _, newValue in
+          selectedMonthStarts.formIntersection(Set(newValue))
+        }
 
-        if !hasData {
-          Text("No completed workouts yet. Your monthly trend line will appear here.")
+        MonthlyTrendSelectionSummaryView(summary: summary)
+
+        if !summary.hasSessions {
+          Text("No completed workouts in the selected month range.")
             .font(.system(size: 13))
             .foregroundStyle(AppColors.textSecondary)
         }
 
-        Text(insight)
+        Text(summary.footerMessage)
           .font(.system(size: 14, weight: .semibold))
           .foregroundStyle(AppColors.textPrimary)
       }
@@ -482,9 +610,127 @@ private struct MonthlyTrendsSection: View {
       )
     }
   }
+
+  private func handleChartTap(
+    at location: CGPoint,
+    proxy: ChartProxy,
+    geometry: GeometryProxy
+  ) {
+    let plotAreaFrame = geometry[proxy.plotAreaFrame]
+    guard plotAreaFrame.contains(location) else {
+      return
+    }
+
+    let plotAreaX = location.x - plotAreaFrame.origin.x
+    guard let tappedDate = proxy.value(atX: plotAreaX, as: Date.self) else {
+      return
+    }
+
+    guard
+      let nearestMonth = orderedPoints.min(by: { lhs, rhs in
+        abs(lhs.monthStart.timeIntervalSince(tappedDate)) < abs(rhs.monthStart.timeIntervalSince(tappedDate))
+      })?.monthStart
+    else {
+      return
+    }
+
+    if selectedMonthStarts.contains(nearestMonth) {
+      selectedMonthStarts.remove(nearestMonth)
+    } else if visibleMonthStarts.contains(nearestMonth) {
+      selectedMonthStarts.insert(nearestMonth)
+    }
+  }
+
+  private func formattedVolume(_ value: Double) -> String {
+    let unitLabel =
+      orderedPoints.first?.totalVolumeText
+      .split(separator: " ")
+      .last
+      .map(String.init)
+      ?? "kg"
+
+    guard value > 0 else {
+      return "0 \(unitLabel)"
+    }
+
+    if value >= 1000 {
+      return String(format: "%.1f K %@", value / 1000, unitLabel)
+    }
+
+    return "\(Self.formattedNumber(value, maximumFractionDigits: 0)) \(unitLabel)"
+  }
+
+  private static func formattedCalories(_ value: Double) -> String {
+    "\(formattedNumber(max(value, 0), maximumFractionDigits: 0)) cal"
+  }
+
+  private static func formattedDuration(_ minutes: Int) -> String {
+    guard minutes > 0 else {
+      return "0m"
+    }
+
+    let hours = minutes / 60
+    let remainingMinutes = minutes % 60
+
+    if hours == 0 {
+      return "\(minutes)m"
+    }
+
+    if remainingMinutes == 0 {
+      return "\(hours)h"
+    }
+
+    return "\(hours)h \(remainingMinutes)m"
+  }
+
+  private static func formattedNumber(
+    _ value: Double,
+    maximumFractionDigits: Int
+  ) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.minimumFractionDigits = 0
+    formatter.maximumFractionDigits = maximumFractionDigits
+
+    if let result = formatter.string(from: NSNumber(value: value)) {
+      return result
+    }
+
+    return String(format: "%.\(maximumFractionDigits)f", value)
+  }
 }
 
-private struct TrendKPIChip: View {
+private struct MonthlyTrendSelectionSummaryView: View {
+  let summary: MonthlyTrendSelectionSummaryData
+
+  private let columns = [
+    GridItem(.flexible(), spacing: 10),
+    GridItem(.flexible(), spacing: 10),
+    GridItem(.flexible(), spacing: 10),
+  ]
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 14) {
+      VStack(alignment: .leading, spacing: 4) {
+        Text(summary.title)
+          .font(.system(size: 18, weight: .bold))
+          .foregroundStyle(AppColors.textPrimary)
+
+        Text(summary.subtitle)
+          .font(.system(size: 13))
+          .foregroundStyle(AppColors.textSecondary)
+      }
+
+      LazyVGrid(columns: columns, spacing: 10) {
+        ForEach(summary.metrics) { stat in
+          TrendSummaryMetricCard(stat: stat)
+        }
+      }
+    }
+  }
+}
+
+private struct TrendSummaryMetricCard: View {
   let stat: ProgressSummaryStat
 
   var body: some View {
@@ -498,7 +744,7 @@ private struct TrendKPIChip: View {
       .foregroundStyle(AppColors.textSecondary)
 
       Text(stat.valueText)
-        .font(.system(size: 16, weight: .bold))
+        .font(.system(size: 15, weight: .bold))
         .foregroundStyle(AppColors.textPrimary)
         .minimumScaleFactor(0.7)
         .lineLimit(1)
