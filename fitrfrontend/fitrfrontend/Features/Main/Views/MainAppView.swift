@@ -62,7 +62,12 @@ struct MainAppView: View {
             launchAction: $pendingWorkoutsLaunchAction
           )
         case .progress:
-          ProgressMainView()
+          ProgressMainView(
+            sessionStore: sessionStore,
+            onSeeFullHistoryTap: {
+              selectedTab = .workouts
+            }
+          )
         case .profile:
           ProfileView()
         }
