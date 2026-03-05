@@ -45,6 +45,7 @@ struct WeightHistoryChartPoint: Identifiable, Hashable {
 struct WeightHistoryEntryRow: Identifiable, Hashable {
   let id: Int64
   let recordedAt: Date
+  let displayValue: Double
   let dateText: String
   let entryPeriodText: String
   let valueText: String
@@ -69,6 +70,10 @@ final class WeightHistoryViewModel: ObservableObject {
   @Published var hasMoreEntries = false
   @Published var showAddSheet = false
   @Published var addEntryErrorMessage: String?
+  @Published var showEditSheet = false
+  @Published var editingEntry: WeightHistoryEntryRow?
+  @Published var pendingDeleteEntry: WeightHistoryEntryRow?
+  @Published var entryMutationErrorMessage: String?
 
   private let sessionStore: SessionStore
   private let bodyMetricsService: BodyMetricsService
@@ -235,6 +240,7 @@ final class WeightHistoryViewModel: ObservableObject {
         )
       )
       showAddSheet = false
+      addEntryErrorMessage = nil
       await refresh()
       return true
     } catch is CancellationError {
@@ -246,6 +252,94 @@ final class WeightHistoryViewModel: ObservableObject {
       return false
     } catch {
       addEntryErrorMessage = error.localizedDescription
+      return false
+    }
+  }
+
+  func updateWeightEntry(id: Int64, inputText: String) async -> Bool {
+    guard !isSavingEntry else { return false }
+
+    entryMutationErrorMessage = nil
+    let trimmedInput = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    guard let valueInPreferredUnit = Float(trimmedInput) else {
+      entryMutationErrorMessage = "Enter a valid number."
+      return false
+    }
+
+    guard valueInPreferredUnit > 0 else {
+      entryMutationErrorMessage = "Weight must be greater than 0."
+      return false
+    }
+
+    if
+      let validRange = UnitValidator.validWeightRange(for: preferredWeightUnit),
+      !validRange.contains(valueInPreferredUnit)
+    {
+      let minValue = Self.formattedNumber(Double(validRange.lowerBound), maximumFractionDigits: 0)
+      let maxValue = Self.formattedNumber(Double(validRange.upperBound), maximumFractionDigits: 0)
+      entryMutationErrorMessage = "Enter a value between \(minValue) and \(maxValue) \(weightUnitLabel)."
+      return false
+    }
+
+    let valueInKg = UnitConverter.convertWeight(
+      valueInPreferredUnit,
+      from: preferredWeightUnit,
+      to: .kg
+    )
+
+    guard valueInKg.isFinite && valueInKg > 0 else {
+      entryMutationErrorMessage = "Unable to convert this weight value."
+      return false
+    }
+
+    isSavingEntry = true
+
+    defer {
+      isSavingEntry = false
+    }
+
+    do {
+      _ = try await bodyMetricsService.updateBodyMetric(
+        id: id,
+        request: CreateBodyMetricRequest(metricType: .weight, value: valueInKg)
+      )
+      showEditSheet = false
+      editingEntry = nil
+      entryMutationErrorMessage = nil
+      await refresh()
+      return true
+    } catch is CancellationError {
+      return false
+    } catch let urlError as URLError where urlError.code == .cancelled {
+      return false
+    } catch let apiError as APIErrorResponse {
+      entryMutationErrorMessage = apiError.message
+      return false
+    } catch {
+      entryMutationErrorMessage = error.localizedDescription
+      return false
+    }
+  }
+
+  func deleteWeightEntry(id: Int64) async -> Bool {
+    entryMutationErrorMessage = nil
+
+    do {
+      try await bodyMetricsService.deleteBodyMetric(id: id)
+      pendingDeleteEntry = nil
+      entryMutationErrorMessage = nil
+      await refresh()
+      return true
+    } catch is CancellationError {
+      return false
+    } catch let urlError as URLError where urlError.code == .cancelled {
+      return false
+    } catch let apiError as APIErrorResponse {
+      entryMutationErrorMessage = apiError.message
+      return false
+    } catch {
+      entryMutationErrorMessage = error.localizedDescription
       return false
     }
   }
@@ -303,6 +397,7 @@ final class WeightHistoryViewModel: ObservableObject {
     loadedCountText = "\(entries.count) Loaded"
     hasMoreEntries = entriesMetrics.count >= currentLimit
     addEntryErrorMessage = nil
+    entryMutationErrorMessage = nil
   }
 
   private func buildEntryRows(from metrics: [BodyMetricResponse]) -> [WeightHistoryEntryRow] {
@@ -346,6 +441,7 @@ final class WeightHistoryViewModel: ObservableObject {
       return WeightHistoryEntryRow(
         id: metric.id,
         recordedAt: metric.updatedAt,
+        displayValue: displayWeightValue(fromKg: Double(metric.value)),
         dateText: Self.entryDateFormatter.string(from: metric.updatedAt),
         entryPeriodText: entryPeriodText(for: metric.updatedAt),
         valueText: valueText,
