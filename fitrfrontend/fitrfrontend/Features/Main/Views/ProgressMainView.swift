@@ -10,15 +10,20 @@ import SwiftUI
 
 struct ProgressMainView: View {
   @StateObject private var viewModel: ProgressViewModel
+  private let sessionStore: SessionStore
   private let onSeeFullHistoryTap: () -> Void
+  private let onWeightEntrySaved: () -> Void
 
   init(
     sessionStore: SessionStore,
     onSeeFullHistoryTap: @escaping () -> Void = {},
+    onWeightEntrySaved: @escaping () -> Void = {},
     initialDashboard: ProgressDashboardData? = nil,
     initialError: String? = nil
   ) {
+    self.sessionStore = sessionStore
     self.onSeeFullHistoryTap = onSeeFullHistoryTap
+    self.onWeightEntrySaved = onWeightEntrySaved
     _viewModel = StateObject(
       wrappedValue: ProgressViewModel(
         sessionStore: sessionStore,
@@ -44,8 +49,14 @@ struct ProgressMainView: View {
             ProgressDashboardContent(
               dashboard: dashboard,
               isRefreshing: viewModel.isLoading,
+              sessionStore: sessionStore,
               onSeeFullHistoryTap: onSeeFullHistoryTap
-            )
+            ) {
+              onWeightEntrySaved()
+              Task {
+                await viewModel.refresh()
+              }
+            }
           } else if viewModel.isLoading {
             ProgressSkeletonView()
           } else {
@@ -98,11 +109,17 @@ struct ProgressMainView: View {
 private struct ProgressDashboardContent: View {
   let dashboard: ProgressDashboardData
   let isRefreshing: Bool
+  let sessionStore: SessionStore
   let onSeeFullHistoryTap: () -> Void
+  let onWeightEntrySaved: () -> Void
 
   var body: some View {
     VStack(spacing: 24) {
-      BodyCompositionSection(data: dashboard.bodyComposition)
+      BodyCompositionSection(
+        data: dashboard.bodyComposition,
+        sessionStore: sessionStore,
+        onWeightEntrySaved: onWeightEntrySaved
+      )
       WorkoutSummarySection(stats: dashboard.workoutSummary)
       MonthlyTrendsSection(
         points: dashboard.monthlyTrendPoints,
@@ -134,6 +151,8 @@ private struct ProgressDashboardContent: View {
 
 private struct BodyCompositionSection: View {
   let data: ProgressDashboardData.BodyCompositionData
+  let sessionStore: SessionStore
+  let onWeightEntrySaved: () -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
@@ -153,65 +172,74 @@ private struct BodyCompositionSection: View {
           .clipShape(Capsule())
       }
 
-      VStack(alignment: .leading, spacing: 14) {
-        if let weightDisplayText = data.weightDisplayText {
-          Text(weightDisplayText)
-            .font(.system(size: 42, weight: .bold))
-            .foregroundStyle(AppColors.textPrimary)
-            .monospacedDigit()
-        } else {
-          Text("No weight data")
-            .font(.system(size: 24, weight: .bold))
-            .foregroundStyle(AppColors.textPrimary)
-        }
-
-        if let weightDeltaText = data.weightDeltaText,
-          let weightDeltaDirection = data.weightDeltaDirection
-        {
-          HStack(spacing: 8) {
-            Image(systemName: deltaSymbol(for: weightDeltaDirection))
-              .font(.system(size: 12, weight: .bold))
-              .foregroundStyle(deltaColor(for: weightDeltaDirection))
-
-            Text(weightDeltaText)
-              .font(.system(size: 14, weight: .semibold))
+      NavigationLink {
+        WeightHistoryView(
+          sessionStore: sessionStore,
+          onWeightEntrySaved: onWeightEntrySaved
+        )
+      } label: {
+        VStack(alignment: .leading, spacing: 14) {
+          if let weightDisplayText = data.weightDisplayText {
+            Text(weightDisplayText)
+              .font(.system(size: 42, weight: .bold))
               .foregroundStyle(AppColors.textPrimary)
               .monospacedDigit()
+          } else {
+            Text("No weight data")
+              .font(.system(size: 24, weight: .bold))
+              .foregroundStyle(AppColors.textPrimary)
+          }
 
+          if let weightDeltaText = data.weightDeltaText,
+            let weightDeltaDirection = data.weightDeltaDirection
+          {
+            HStack(spacing: 8) {
+              Image(systemName: deltaSymbol(for: weightDeltaDirection))
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(deltaColor(for: weightDeltaDirection))
+
+              Text(weightDeltaText)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(AppColors.textPrimary)
+                .monospacedDigit()
+
+              Text(data.weightDeltaDescription)
+                .font(.system(size: 14))
+                .foregroundStyle(AppColors.textSecondary)
+            }
+          } else {
             Text(data.weightDeltaDescription)
               .font(.system(size: 14))
               .foregroundStyle(AppColors.textSecondary)
           }
-        } else {
-          Text(data.weightDeltaDescription)
-            .font(.system(size: 14))
+
+          if let bodyEmptyMessage = data.bodyEmptyMessage {
+            Text(bodyEmptyMessage)
+              .font(.system(size: 14))
+              .foregroundStyle(AppColors.textSecondary)
+              .padding(.top, 4)
+          }
+
+          WeightTrendChart(
+            points: data.weightPoints,
+            weightUnitLabel: data.weightUnitLabel
+          )
+          .frame(height: 170)
+
+          Text("Latest weigh-in per month (last 6 months)")
+            .font(.system(size: 12, weight: .medium))
             .foregroundStyle(AppColors.textSecondary)
         }
-
-        if let bodyEmptyMessage = data.bodyEmptyMessage {
-          Text(bodyEmptyMessage)
-            .font(.system(size: 14))
-            .foregroundStyle(AppColors.textSecondary)
-            .padding(.top, 4)
-        }
-
-        WeightTrendChart(
-          points: data.weightPoints,
-          weightUnitLabel: data.weightUnitLabel
+        .padding(18)
+        .background(AppColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+          RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .stroke(AppColors.borderGray, lineWidth: 1)
         )
-        .frame(height: 170)
-
-        Text("Latest weigh-in per month (last 6 months)")
-          .font(.system(size: 12, weight: .medium))
-          .foregroundStyle(AppColors.textSecondary)
       }
-      .padding(18)
-      .background(AppColors.surface)
-      .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-      .overlay(
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-          .stroke(AppColors.borderGray, lineWidth: 1)
-      )
+      .buttonStyle(.plain)
+      .accessibilityLabel("Open weight history")
 
       HStack(spacing: 12) {
         ProgressMetricCard(

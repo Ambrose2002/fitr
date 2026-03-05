@@ -92,6 +92,36 @@ final class BodyMetricsService {
     }
   }
 
+  private func performRequest<T: Decodable, B: Encodable>(
+    _ url: URL,
+    method: String,
+    body: B
+  ) async throws -> T {
+    var request = URLRequest(url: url)
+    request.httpMethod = method
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    addAuthHeaders(&request)
+    request.httpBody = try JSONEncoder().encode(body)
+
+    let (data, response) = try await URLSession.shared.data(for: request)
+
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw URLError(.badServerResponse)
+    }
+
+    switch httpResponse.statusCode {
+    case 200...299:
+      return try createDecoder().decode(T.self, from: data)
+    case 400...599:
+      if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
+        throw apiError
+      }
+      throw URLError(.badServerResponse)
+    default:
+      throw URLError(.unknown)
+    }
+  }
+
   func fetchBodyMetrics(
     metricType: MetricType? = nil,
     limit: Int? = nil,
@@ -143,5 +173,10 @@ final class BodyMetricsService {
     )
 
     return try await performRequest(url)
+  }
+
+  func createBodyMetric(_ request: CreateBodyMetricRequest) async throws -> BodyMetricResponse {
+    let url = try makeURL(path: APIEndpoints.bodyMetrics)
+    return try await performRequest(url, method: "POST", body: request)
   }
 }

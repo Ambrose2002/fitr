@@ -933,4 +933,64 @@ struct MockData {
     monthlyInsight: "Your workload has been steady across the last 6 months.",
     hasMonthlyTrendData: true
   )
+
+  // MARK: - Weight History Screen Data
+
+  private static func weightMetric(
+    id: Int64,
+    daysAgo: Int,
+    hour: Int,
+    value: Float,
+    referenceDate: Date = Date()
+  ) -> BodyMetricResponse {
+    let calendar = Calendar.current
+    let dayStart = calendar.startOfDay(for: referenceDate)
+    let dayDate =
+      calendar.date(byAdding: .day, value: -daysAgo, to: dayStart)
+      ?? dayStart.addingTimeInterval(Double(-daysAgo) * 86_400)
+    let timestamp = calendar.date(bySettingHour: hour, minute: 10, second: 0, of: dayDate) ?? dayDate
+
+    return BodyMetricResponse(
+      id: id,
+      userId: mockProfile.userId,
+      metricType: .weight,
+      value: value,
+      updatedAt: timestamp,
+      createdAt: timestamp
+    )
+  }
+
+  static let weightHistoryEntriesFull: [BodyMetricResponse] = [
+    weightMetric(id: 501, daysAgo: 0, hour: 7, value: 83.5),
+    weightMetric(id: 502, daysAgo: 5, hour: 8, value: 83.7),
+    weightMetric(id: 503, daysAgo: 10, hour: 7, value: 84.2),
+    weightMetric(id: 504, daysAgo: 15, hour: 8, value: 84.9),
+    weightMetric(id: 505, daysAgo: 20, hour: 7, value: 84.5),
+    weightMetric(id: 506, daysAgo: 25, hour: 8, value: 84.8),
+    weightMetric(id: 507, daysAgo: 29, hour: 7, value: 85.2),
+    weightMetric(id: 508, daysAgo: 33, hour: 8, value: 85.0),
+    weightMetric(id: 509, daysAgo: 38, hour: 7, value: 85.4),
+    weightMetric(id: 510, daysAgo: 44, hour: 8, value: 85.1),
+    weightMetric(id: 511, daysAgo: 49, hour: 7, value: 85.7),
+    weightMetric(id: 512, daysAgo: 55, hour: 8, value: 85.3),
+    weightMetric(id: 513, daysAgo: 62, hour: 7, value: 86.0),
+    weightMetric(id: 514, daysAgo: 70, hour: 8, value: 85.8),
+  ]
+
+  static let weightHistoryChartMetricsFull: [BodyMetricResponse] = weightHistoryEntriesFull.filter {
+    Calendar.current.dateComponents([.day], from: $0.updatedAt, to: Date()).day ?? 0 <= 30
+  }
+
+  static let weightHistoryEntriesSparse: [BodyMetricResponse] = [
+    weightMetric(id: 601, daysAgo: 2, hour: 7, value: 82.1),
+    weightMetric(id: 602, daysAgo: 14, hour: 8, value: 82.6),
+    weightMetric(id: 603, daysAgo: 27, hour: 7, value: 82.0),
+    weightMetric(id: 604, daysAgo: 43, hour: 8, value: 82.4),
+  ]
+
+  static let weightHistoryChartMetricsSparse: [BodyMetricResponse] = [
+    weightMetric(id: 601, daysAgo: 2, hour: 7, value: 82.1),
+    weightMetric(id: 602, daysAgo: 14, hour: 8, value: 82.6),
+    weightMetric(id: 603, daysAgo: 27, hour: 7, value: 82.0),
+  ]
 }
