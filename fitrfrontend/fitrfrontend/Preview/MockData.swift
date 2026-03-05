@@ -690,22 +690,19 @@ struct MockData {
   }
 
   private static func progressWeightPoint(
-    monthStart: Date,
-    value: Double?,
-    representativeDayOffset: Int? = nil,
-    weighInCount: Int = 0
+    daysAgo: Int,
+    value: Double,
+    referenceDate: Date = Date()
   ) -> ProgressWeightPoint {
-    let calendar = Calendar.current
-    let representativeDate = representativeDayOffset.flatMap { dayOffset in
-      calendar.date(byAdding: .day, value: dayOffset, to: monthStart)
-    }
+    let date =
+      Calendar.current.date(byAdding: .day, value: -daysAgo, to: referenceDate)
+      ?? referenceDate.addingTimeInterval(Double(-daysAgo) * 86_400)
+    let stableValueId = Int((value * 10).rounded())
 
     return ProgressWeightPoint(
-      monthStart: monthStart,
-      monthLabel: progressMonthLabel(for: monthStart),
-      representativeDate: representativeDate,
-      value: value,
-      weighInCount: weighInCount
+      id: "preview-\(daysAgo)-\(stableValueId)",
+      date: date,
+      value: value
     )
   }
 
@@ -775,12 +772,15 @@ struct MockData {
         weightDeltaDirection: .down,
         weightDeltaDescription: "since last week",
         weightPoints: [
-          progressWeightPoint(monthStart: monthStarts[0], value: 84.4, representativeDayOffset: 24, weighInCount: 1),
-          progressWeightPoint(monthStart: monthStarts[1], value: 84.0, representativeDayOffset: 26, weighInCount: 2),
-          progressWeightPoint(monthStart: monthStarts[2], value: nil),
-          progressWeightPoint(monthStart: monthStarts[3], value: 83.5, representativeDayOffset: 21, weighInCount: 1),
-          progressWeightPoint(monthStart: monthStarts[4], value: 82.8, representativeDayOffset: 27, weighInCount: 3),
-          progressWeightPoint(monthStart: monthStarts[5], value: 81.2, representativeDayOffset: 25, weighInCount: 2),
+          progressWeightPoint(daysAgo: 30, value: 84.4, referenceDate: now),
+          progressWeightPoint(daysAgo: 26, value: 84.2, referenceDate: now),
+          progressWeightPoint(daysAgo: 23, value: 84.0, referenceDate: now),
+          progressWeightPoint(daysAgo: 19, value: 83.8, referenceDate: now),
+          progressWeightPoint(daysAgo: 15, value: 83.5, referenceDate: now),
+          progressWeightPoint(daysAgo: 11, value: 83.3, referenceDate: now),
+          progressWeightPoint(daysAgo: 7, value: 82.8, referenceDate: now),
+          progressWeightPoint(daysAgo: 3, value: 81.9, referenceDate: now),
+          progressWeightPoint(daysAgo: 1, value: 81.2, referenceDate: now),
         ],
         currentHeightDisplayText: "184 cm",
         currentWeightStatDisplayText: "81.2 kg",
@@ -826,15 +826,9 @@ struct MockData {
       weightDeltaText: nil,
       weightDeltaDirection: nil,
       weightDeltaDescription: "Add another weigh-in to see weekly change",
-      weightPoints: {
-        let monthStarts = progressMonthStarts()
-        return monthStarts.enumerated().map { index, monthStart in
-          progressWeightPoint(
-            monthStart: monthStart,
-            value: index == monthStarts.count - 1 ? 82.4 : nil
-          )
-        }
-      }(),
+      weightPoints: [
+        progressWeightPoint(daysAgo: 0, value: 82.4)
+      ],
       currentHeightDisplayText: "180 cm",
       currentWeightStatDisplayText: "82.4 kg",
       bodyEmptyMessage: nil
@@ -896,9 +890,7 @@ struct MockData {
       weightDeltaText: nil,
       weightDeltaDirection: nil,
       weightDeltaDescription: "Add another weigh-in to see weekly change",
-      weightPoints: progressMonthStarts().map { monthStart in
-        progressWeightPoint(monthStart: monthStart, value: nil)
-      },
+      weightPoints: [],
       currentHeightDisplayText: "--",
       currentWeightStatDisplayText: "--",
       bodyEmptyMessage: "Log your first weigh-in to start tracking body composition."

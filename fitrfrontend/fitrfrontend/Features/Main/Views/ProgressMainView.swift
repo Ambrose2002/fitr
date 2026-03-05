@@ -226,7 +226,7 @@ private struct BodyCompositionSection: View {
           )
           .frame(height: 170)
 
-          Text("Latest weigh-in per month (last 6 months)")
+          Text("Last 30 days")
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(AppColors.textSecondary)
         }
@@ -287,19 +287,19 @@ private struct WeightTrendChart: View {
   let weightUnitLabel: String
 
   private var orderedPoints: [ProgressWeightPoint] {
-    points.sorted { $0.monthStart < $1.monthStart }
+    points.sorted { $0.date < $1.date }
   }
 
   private var plottedValues: [Double] {
-    orderedPoints.compactMap(\.value)
+    orderedPoints.map(\.value)
   }
 
-  private var hasPlottedValues: Bool {
-    !plottedValues.isEmpty
+  private var hasChartData: Bool {
+    !orderedPoints.isEmpty
   }
 
   private var latestPlottedPoint: ProgressWeightPoint? {
-    orderedPoints.reversed().first { $0.value != nil }
+    orderedPoints.last
   }
 
   private var yDomain: ClosedRange<Double> {
@@ -323,50 +323,104 @@ private struct WeightTrendChart: View {
     return [lower, middle, upper]
   }
 
-  private var xDomain: ClosedRange<Date>? {
-    guard let firstMonth = orderedPoints.first?.monthStart,
-      let lastMonth = orderedPoints.last?.monthStart
-    else {
-      return nil
-    }
+  private var xDomain: ClosedRange<Date> {
+    let now = Date()
+    let start =
+      Calendar.current.date(byAdding: .day, value: -30, to: now)
+      ?? now.addingTimeInterval(-30 * 86_400)
+    return start...now
+  }
 
-    return firstMonth...lastMonth
+  private var xAxisValues: [Date] {
+    let start = xDomain.lowerBound
+    let end = xDomain.upperBound
+    let total = end.timeIntervalSince(start)
+    let step = total / 5
+
+    return (0...5).map { index in
+      start.addingTimeInterval(Double(index) * step)
+    }
   }
 
   var body: some View {
     Group {
-      if let xDomain {
-        chartContent
-          .chartXScale(domain: xDomain)
+      if hasChartData {
+        chartView
       } else {
-        chartContent
+        VStack(spacing: 10) {
+          Image(systemName: "scalemass")
+            .font(.system(size: 24, weight: .semibold))
+            .foregroundStyle(AppColors.textSecondary)
+
+          Text("No entries in the last 30 days.")
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(AppColors.textSecondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGray6).opacity(0.35))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
       }
     }
+  }
+
+  private var chartView: some View {
+    Chart {
+      ForEach(orderedPoints) { point in
+        LineMark(
+          x: .value("Date", point.date),
+          y: .value("Weight", point.value)
+        )
+        .interpolationMethod(.catmullRom)
+        .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+        .foregroundStyle(AppColors.accent)
+
+        AreaMark(
+          x: .value("Date", point.date),
+          yStart: .value("Baseline", yDomain.lowerBound),
+          yEnd: .value("Weight", point.value)
+        )
+        .foregroundStyle(
+          LinearGradient(
+            colors: [AppColors.accent.opacity(0.28), AppColors.accent.opacity(0.04)],
+            startPoint: .top,
+            endPoint: .bottom
+          )
+        )
+      }
+
+      if let latestPlottedPoint {
+        PointMark(
+          x: .value("Date", latestPlottedPoint.date),
+          y: .value("Weight", latestPlottedPoint.value)
+        )
+        .symbolSize(80)
+        .foregroundStyle(AppColors.accentStrong)
+      }
+    }
+    .chartXScale(domain: xDomain)
     .chartYScale(domain: yDomain)
     .chartXAxis {
-      AxisMarks(values: orderedPoints.map(\.monthStart)) { value in
+      AxisMarks(values: xAxisValues) { value in
         AxisValueLabel {
-          if let monthStart = value.as(Date.self) {
-            Text(monthStart, format: .dateTime.month(.abbreviated))
-              .font(.system(size: 11, weight: .semibold))
+          if let date = value.as(Date.self) {
+            Text(date, format: .dateTime.month(.abbreviated).day())
+              .font(.system(size: 10, weight: .semibold))
               .foregroundStyle(AppColors.textSecondary)
           }
         }
       }
     }
     .chartYAxis {
-      if hasPlottedValues {
-        AxisMarks(position: .leading, values: yAxisValues) { value in
-          AxisGridLine(stroke: StrokeStyle(lineWidth: 0.8, dash: [3, 3]))
-            .foregroundStyle(AppColors.borderGray.opacity(0.65))
-          AxisTick(stroke: StrokeStyle(lineWidth: 0.8))
-            .foregroundStyle(AppColors.borderGray)
-          AxisValueLabel {
-            if let rawValue = value.as(Double.self) {
-              Text("\(formattedWeight(rawValue)) \(weightUnitLabel)")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(AppColors.textSecondary)
-            }
+      AxisMarks(position: .leading, values: yAxisValues) { value in
+        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.9, dash: [3, 3]))
+          .foregroundStyle(AppColors.borderGray.opacity(0.7))
+        AxisTick(stroke: StrokeStyle(lineWidth: 0.8))
+          .foregroundStyle(AppColors.borderGray)
+        AxisValueLabel {
+          if let rawValue = value.as(Double.self) {
+            Text("\(formattedWeight(rawValue)) \(weightUnitLabel)")
+              .font(.system(size: 10, weight: .semibold))
+              .foregroundStyle(AppColors.textSecondary)
           }
         }
       }
@@ -376,39 +430,19 @@ private struct WeightTrendChart: View {
       plotArea
         .background(Color.clear)
     }
-  }
-
-  private var chartContent: some View {
-    Chart {
-      ForEach(orderedPoints) { point in
-        RuleMark(x: .value("Month", point.monthStart))
-          .foregroundStyle(Color.clear)
-
-        if let value = point.value {
-          let isLatest = latestPlottedPoint?.id == point.id
-
-          PointMark(
-            x: .value("Month", point.monthStart),
-            y: .value("Weight", value)
+    .overlay(alignment: .topTrailing) {
+      if let latestPlottedPoint {
+        Text("\(formattedWeight(latestPlottedPoint.value)) \(weightUnitLabel)")
+          .font(.system(size: 10, weight: .semibold))
+          .foregroundStyle(AppColors.textPrimary)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 4)
+          .background(AppColors.surface.opacity(0.96))
+          .clipShape(Capsule())
+          .overlay(
+            Capsule()
+              .stroke(AppColors.borderGray, lineWidth: 1)
           )
-          .symbolSize(isLatest ? 110 : 70)
-          .foregroundStyle(isLatest ? AppColors.accentStrong : AppColors.accent)
-          .annotation(position: .top, alignment: .center, spacing: 6) {
-            if isLatest {
-              Text("\(formattedWeight(value)) \(weightUnitLabel)")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(AppColors.textPrimary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(AppColors.surface.opacity(0.95))
-                .clipShape(Capsule())
-                .overlay(
-                  Capsule()
-                    .stroke(AppColors.borderGray, lineWidth: 1)
-                )
-            }
-          }
-        }
       }
     }
   }

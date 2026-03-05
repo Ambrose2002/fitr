@@ -9,13 +9,9 @@ import Foundation
 internal import Combine
 
 struct ProgressWeightPoint: Identifiable, Hashable {
-  let monthStart: Date
-  let monthLabel: String
-  let representativeDate: Date?
-  let value: Double?
-  let weighInCount: Int
-
-  var id: Date { monthStart }
+  let id: String
+  let date: Date
+  let value: Double
 }
 
 struct ProgressMonthlyTrendPoint: Identifiable, Hashable {
@@ -280,68 +276,36 @@ final class ProgressViewModel: ObservableObject {
     from metrics: [BodyMetricResponse],
     fallbackWeight: Double?
   ) -> [ProgressWeightPoint] {
-    let calendar = Calendar.current
     let now = Date()
-    let currentMonthStart = calendar.date(
-      from: calendar.dateComponents([.year, .month], from: now)
-    ) ?? now
-    let monthStarts = (0..<6).compactMap { offset in
-      calendar.date(byAdding: .month, value: offset - 5, to: currentMonthStart)
-    }
+    let startDate =
+      Calendar.current.date(byAdding: .day, value: -30, to: now)
+      ?? now.addingTimeInterval(-30 * 86_400)
 
-    let visibleMonthStarts = Set(monthStarts)
-    var metricsByMonth: [Date: BodyMetricResponse] = [:]
-    var weighInCounts: [Date: Int] = [:]
+    let recentMetrics = metrics
+      .filter { $0.updatedAt >= startDate && $0.updatedAt <= now }
+      .sorted { $0.updatedAt < $1.updatedAt }
 
-    for metric in metrics {
-      let monthStart = calendar.date(
-        from: calendar.dateComponents([.year, .month], from: metric.updatedAt)
-      ) ?? currentMonthStart
-
-      guard visibleMonthStarts.contains(monthStart) else {
-        continue
-      }
-
-      weighInCounts[monthStart, default: 0] += 1
-
-      if let currentMetric = metricsByMonth[monthStart] {
-        if metric.updatedAt > currentMetric.updatedAt {
-          metricsByMonth[monthStart] = metric
-        }
-      } else {
-        metricsByMonth[monthStart] = metric
+    if !recentMetrics.isEmpty {
+      return recentMetrics.map { metric in
+        ProgressWeightPoint(
+          id: "metric-\(metric.id)",
+          date: metric.updatedAt,
+          value: displayWeightValue(fromKg: Double(metric.value))
+        )
       }
     }
 
-    return monthStarts.map { monthStart in
-      if let metric = metricsByMonth[monthStart] {
-        return ProgressWeightPoint(
-          monthStart: monthStart,
-          monthLabel: Self.monthFormatter.string(from: monthStart),
-          representativeDate: metric.updatedAt,
-          value: displayWeightValue(fromKg: Double(metric.value)),
-          weighInCount: weighInCounts[monthStart, default: 0]
-        )
-      }
+    guard let fallbackWeight else {
+      return []
+    }
 
-      if metrics.isEmpty, let fallbackWeight, monthStart == currentMonthStart {
-        return ProgressWeightPoint(
-          monthStart: monthStart,
-          monthLabel: Self.monthFormatter.string(from: monthStart),
-          representativeDate: nil,
-          value: displayWeightValue(fromKg: fallbackWeight),
-          weighInCount: 0
-        )
-      }
-
-      return ProgressWeightPoint(
-        monthStart: monthStart,
-        monthLabel: Self.monthFormatter.string(from: monthStart),
-        representativeDate: nil,
-        value: nil,
-        weighInCount: 0
+    return [
+      ProgressWeightPoint(
+        id: "fallback-\(Int64(now.timeIntervalSince1970))",
+        date: now,
+        value: displayWeightValue(fromKg: fallbackWeight)
       )
-    }
+    ]
   }
 
   private func weightDeltaDetails(
