@@ -195,8 +195,15 @@ private struct BodyCompositionSection: View {
             .padding(.top, 4)
         }
 
-        WeightTrendChart(points: data.weightPoints)
-          .frame(height: 150)
+        WeightTrendChart(
+          points: data.weightPoints,
+          weightUnitLabel: data.weightUnitLabel
+        )
+        .frame(height: 170)
+
+        Text("Latest weigh-in per month (last 6 months)")
+          .font(.system(size: 12, weight: .medium))
+          .foregroundStyle(AppColors.textSecondary)
       }
       .padding(18)
       .background(AppColors.surface)
@@ -249,25 +256,43 @@ private struct BodyCompositionSection: View {
 
 private struct WeightTrendChart: View {
   let points: [ProgressWeightPoint]
+  let weightUnitLabel: String
 
   private var orderedPoints: [ProgressWeightPoint] {
     points.sorted { $0.monthStart < $1.monthStart }
   }
 
-  private var yDomain: ClosedRange<Double> {
-    let values = orderedPoints.compactMap(\.value)
+  private var plottedValues: [Double] {
+    orderedPoints.compactMap(\.value)
+  }
 
-    guard let minimumValue = values.min(), let maximumValue = values.max() else {
+  private var hasPlottedValues: Bool {
+    !plottedValues.isEmpty
+  }
+
+  private var latestPlottedPoint: ProgressWeightPoint? {
+    orderedPoints.reversed().first { $0.value != nil }
+  }
+
+  private var yDomain: ClosedRange<Double> {
+    guard let minimumValue = plottedValues.min(), let maximumValue = plottedValues.max() else {
       return 0...1
     }
 
     if abs(maximumValue - minimumValue) < 0.01 {
-      let padding = max(maximumValue * 0.02, 1)
+      let padding = max(maximumValue * 0.04, 1.5)
       return (minimumValue - padding)...(maximumValue + padding)
     }
 
-    let padding = max((maximumValue - minimumValue) * 0.14, 0.5)
+    let padding = max((maximumValue - minimumValue) * 0.18, 0.8)
     return (minimumValue - padding)...(maximumValue + padding)
+  }
+
+  private var yAxisValues: [Double] {
+    let lower = yDomain.lowerBound
+    let upper = yDomain.upperBound
+    let middle = (lower + upper) / 2
+    return [lower, middle, upper]
   }
 
   private var xDomain: ClosedRange<Date>? {
@@ -301,7 +326,23 @@ private struct WeightTrendChart: View {
         }
       }
     }
-    .chartYAxis(.hidden)
+    .chartYAxis {
+      if hasPlottedValues {
+        AxisMarks(position: .leading, values: yAxisValues) { value in
+          AxisGridLine(stroke: StrokeStyle(lineWidth: 0.8, dash: [3, 3]))
+            .foregroundStyle(AppColors.borderGray.opacity(0.65))
+          AxisTick(stroke: StrokeStyle(lineWidth: 0.8))
+            .foregroundStyle(AppColors.borderGray)
+          AxisValueLabel {
+            if let rawValue = value.as(Double.self) {
+              Text("\(formattedWeight(rawValue)) \(weightUnitLabel)")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(AppColors.textSecondary)
+            }
+          }
+        }
+      }
+    }
     .chartLegend(.hidden)
     .chartPlotStyle { plotArea in
       plotArea
@@ -316,15 +357,45 @@ private struct WeightTrendChart: View {
           .foregroundStyle(Color.clear)
 
         if let value = point.value {
+          let isLatest = latestPlottedPoint?.id == point.id
+
           PointMark(
             x: .value("Month", point.monthStart),
             y: .value("Weight", value)
           )
-          .symbolSize(70)
-          .foregroundStyle(AppColors.accent)
+          .symbolSize(isLatest ? 110 : 70)
+          .foregroundStyle(isLatest ? AppColors.accentStrong : AppColors.accent)
+          .annotation(position: .top, alignment: .center, spacing: 6) {
+            if isLatest {
+              Text("\(formattedWeight(value)) \(weightUnitLabel)")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(AppColors.textPrimary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(AppColors.surface.opacity(0.95))
+                .clipShape(Capsule())
+                .overlay(
+                  Capsule()
+                    .stroke(AppColors.borderGray, lineWidth: 1)
+                )
+            }
+          }
         }
       }
     }
+  }
+
+  private func formattedWeight(_ value: Double) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.minimumFractionDigits = 0
+    formatter.maximumFractionDigits = 1
+
+    if let formatted = formatter.string(from: NSNumber(value: value)) {
+      return formatted
+    }
+
+    return String(format: "%.1f", value)
   }
 }
 

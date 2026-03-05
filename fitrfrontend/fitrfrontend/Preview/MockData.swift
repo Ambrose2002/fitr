@@ -769,6 +769,7 @@ struct MockData {
     return ProgressDashboardData(
       bodyComposition: ProgressDashboardData.BodyCompositionData(
         weightDisplayText: "81.2 kg",
+        weightUnitLabel: "kg",
         weightBadgeText: "Weekly Low",
         weightDeltaText: "1.3 kg",
         weightDeltaDirection: .down,
@@ -820,6 +821,7 @@ struct MockData {
   static let progressDashboardNoWorkouts = ProgressDashboardData(
     bodyComposition: ProgressDashboardData.BodyCompositionData(
       weightDisplayText: "82.4 kg",
+      weightUnitLabel: "kg",
       weightBadgeText: "Current",
       weightDeltaText: nil,
       weightDeltaDirection: nil,
@@ -889,6 +891,7 @@ struct MockData {
   static let progressDashboardNoMetrics = ProgressDashboardData(
     bodyComposition: ProgressDashboardData.BodyCompositionData(
       weightDisplayText: nil,
+      weightUnitLabel: "kg",
       weightBadgeText: "Current",
       weightDeltaText: nil,
       weightDeltaDirection: nil,

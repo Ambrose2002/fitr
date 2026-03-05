@@ -84,6 +84,7 @@ enum ProgressDeltaDirection {
 struct ProgressDashboardData {
   struct BodyCompositionData {
     let weightDisplayText: String?
+    let weightUnitLabel: String
     let weightBadgeText: String
     let weightDeltaText: String?
     let weightDeltaDirection: ProgressDeltaDirection?
@@ -180,6 +181,10 @@ final class ProgressViewModel: ObservableObject {
         latestMetrics: latestMetrics
       )
       hasResolvedInitialState = true
+    } catch is CancellationError {
+      return
+    } catch let urlError as URLError where urlError.code == .cancelled {
+      return
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
       hasResolvedInitialState = true
@@ -241,6 +246,7 @@ final class ProgressViewModel: ObservableObject {
     let weightDisplayText = latestWeightValue.map {
       UnitFormatter.formatWeight($0, preferredUnit: preferredWeightUnit, decimalPlaces: 1)
     }
+    let weightUnitLabel = preferredWeightUnit.abbreviation
     let currentWeightStatDisplayText = weightDisplayText ?? "--"
 
     let weightPoints = buildWeightPoints(
@@ -256,6 +262,7 @@ final class ProgressViewModel: ObservableObject {
 
     return ProgressDashboardData.BodyCompositionData(
       weightDisplayText: weightDisplayText,
+      weightUnitLabel: weightUnitLabel,
       weightBadgeText: weightMetrics.isEmpty ? "Current" : weightBadgeText(from: weightMetrics),
       weightDeltaText: weightDelta.text,
       weightDeltaDirection: weightDelta.direction,
