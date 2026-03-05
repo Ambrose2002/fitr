@@ -103,6 +103,8 @@ struct ProgressDashboardData {
 
 @MainActor
 final class ProgressViewModel: ObservableObject {
+  private static let streakLookbackDays = 730
+
   @Published var isLoading = false
   @Published var errorMessage: String?
   @Published var dashboard: ProgressDashboardData?
@@ -141,7 +143,8 @@ final class ProgressViewModel: ObservableObject {
     let calendar = Calendar.current
     let now = Date()
     let workoutsStartDate =
-      calendar.date(byAdding: .day, value: -180, to: now) ?? now.addingTimeInterval(-180 * 86_400)
+      calendar.date(byAdding: .day, value: -Self.streakLookbackDays, to: now)
+      ?? now.addingTimeInterval(Double(-Self.streakLookbackDays) * 86_400)
     let currentMonthStart = calendar.date(
       from: calendar.dateComponents([.year, .month], from: now)
     ) ?? now
@@ -439,6 +442,7 @@ final class ProgressViewModel: ObservableObject {
     let sessionCount = recentWorkouts.count
     let averageMinutes = averageDurationMinutes(for: recentWorkouts)
     let currentStreak = streak(for: allCompletedWorkouts)
+    let streakText = currentStreak == 1 ? "1 week" : "\(currentStreak) weeks"
 
     return [
       ProgressSummaryStat(
@@ -461,7 +465,7 @@ final class ProgressViewModel: ObservableObject {
         id: "consistency",
         title: "Consistency",
         subtitle: "Current streak",
-        valueText: "\(currentStreak) days",
+        valueText: streakText,
         systemImage: "calendar",
         isValueAccent: true
       ),
@@ -628,26 +632,7 @@ final class ProgressViewModel: ObservableObject {
   }
 
   private func streak(for workouts: [WorkoutSessionResponse]) -> Int {
-    let calendar = Calendar.current
-    let workoutDays = Set(workouts.map { calendar.startOfDay(for: $0.startTime) })
-    let today = calendar.startOfDay(for: Date())
-
-    guard workoutDays.contains(today) else {
-      return 0
-    }
-
-    var streakCount = 0
-    var currentDay = today
-
-    while workoutDays.contains(currentDay) {
-      streakCount += 1
-      guard let previousDay = calendar.date(byAdding: .day, value: -1, to: currentDay) else {
-        break
-      }
-      currentDay = previousDay
-    }
-
-    return streakCount
+    WeeklyStreakCalculator.calculate(workoutDates: workouts.map(\.startTime))
   }
 
   private func totalVolumeKgReps(for workouts: [WorkoutSessionResponse]) -> Double {

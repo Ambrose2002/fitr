@@ -23,6 +23,8 @@ extension ISO8601DateFormatter {
 }
 
 class HomeService {
+  private static let streakLookbackDays = 730
+
   private var authToken: String? {
     KeychainSwift().get("userAccessToken")
   }
@@ -170,8 +172,14 @@ class HomeService {
   }
 
   private func fetchStreak() async throws -> StreakDTO {
-    let workouts = try await fetchRecentWorkouts(limit: 30)
-    let currentStreak = calculateStreak(from: workouts)
+    let workouts = try await fetchWorkoutsForStreak()
+    let completedWorkoutDates = workouts.compactMap { workout -> Date? in
+      guard workout.endTime != nil else {
+        return nil
+      }
+      return workout.startTime
+    }
+    let currentStreak = WeeklyStreakCalculator.calculate(workoutDates: completedWorkoutDates)
     let percentile = min(99, max(0, currentStreak * 5))
 
     return StreakDTO(currentStreak: currentStreak, streakPercentile: percentile)
@@ -181,6 +189,24 @@ class HomeService {
     let url = try makeURL(
       path: APIEndpoints.workouts,
       queryItems: [URLQueryItem(name: "limit", value: "\(limit)")]
+    )
+
+    return try await performRequest(url)
+  }
+
+  private func fetchWorkoutsForStreak() async throws -> [WorkoutSessionResponse] {
+    let calendar = Calendar.current
+    let now = Date()
+    let startDate =
+      calendar.date(byAdding: .day, value: -Self.streakLookbackDays, to: now)
+      ?? now.addingTimeInterval(Double(-Self.streakLookbackDays) * 86_400)
+
+    let url = try makeURL(
+      path: APIEndpoints.workouts,
+      queryItems: [
+        URLQueryItem(name: "startDate", value: ISO8601DateFormatter.standard.string(from: startDate)),
+        URLQueryItem(name: "endDate", value: ISO8601DateFormatter.standard.string(from: now)),
+      ]
     )
 
     return try await performRequest(url)
@@ -205,29 +231,6 @@ class HomeService {
 
     let workouts: [WorkoutSessionResponse] = try await performRequest(url)
     return workouts.count
-  }
-
-  private func calculateStreak(from workouts: [WorkoutSessionResponse]) -> Int {
-    let calendar = Calendar.current
-    let workoutDays = Set(workouts.map { calendar.startOfDay(for: $0.startTime) })
-    let today = calendar.startOfDay(for: Date())
-
-    guard workoutDays.contains(today) else {
-      return 0
-    }
-
-    var streak = 0
-    var day = today
-
-    while workoutDays.contains(day) {
-      streak += 1
-      guard let previousDay = calendar.date(byAdding: .day, value: -1, to: day) else {
-        break
-      }
-      day = previousDay
-    }
-
-    return streak
   }
 
   private func buildWeekProgress(_ workoutCount: Int, weeklyTarget: Int = 5) -> String {

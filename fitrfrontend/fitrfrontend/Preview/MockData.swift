@@ -806,7 +806,7 @@ struct MockData {
           id: "consistency",
           title: "Consistency",
           subtitle: "Current streak",
-          valueText: "4 days",
+          valueText: "4 weeks",
           systemImage: "calendar",
           isValueAccent: true
         ),
@@ -858,7 +858,7 @@ struct MockData {
         id: "consistency",
         title: "Consistency",
         subtitle: "Current streak",
-        valueText: "0 days",
+        valueText: "0 weeks",
         systemImage: "calendar",
         isValueAccent: true
       ),
@@ -921,7 +921,7 @@ struct MockData {
         id: "consistency",
         title: "Consistency",
         subtitle: "Current streak",
-        valueText: "2 days",
+        valueText: "2 weeks",
         systemImage: "calendar",
         isValueAccent: true
       ),
