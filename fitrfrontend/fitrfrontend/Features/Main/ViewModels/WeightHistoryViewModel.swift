@@ -193,7 +193,13 @@ final class WeightHistoryViewModel: ObservableObject {
     guard !isSavingEntry else { return false }
 
     addEntryErrorMessage = nil
-    let trimmedInput = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+    let inputCopy = String(inputText)
+    let trimmedInput = inputCopy.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    guard !trimmedInput.isEmpty else {
+      addEntryErrorMessage = "Enter a weight value."
+      return false
+    }
 
     guard let valueInPreferredUnit = Float(trimmedInput) else {
       addEntryErrorMessage = "Enter a valid number."
@@ -260,7 +266,13 @@ final class WeightHistoryViewModel: ObservableObject {
     guard !isSavingEntry else { return false }
 
     entryMutationErrorMessage = nil
-    let trimmedInput = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+    let inputCopy = String(inputText)
+    let trimmedInput = inputCopy.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    guard !trimmedInput.isEmpty else {
+      entryMutationErrorMessage = "Enter a weight value."
+      return false
+    }
 
     guard let valueInPreferredUnit = Float(trimmedInput) else {
       entryMutationErrorMessage = "Enter a valid number."

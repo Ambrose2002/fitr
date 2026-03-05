@@ -118,9 +118,12 @@ struct WeightHistoryView: View {
           viewModel.addEntryErrorMessage = nil
         },
         onSave: { inputText in
-          let didSave = await viewModel.saveWeightEntry(inputText: inputText)
-          if didSave {
-            onWeightEntrySaved()
+          let submittedText = String(inputText)
+          Task {
+            let didSave = await viewModel.saveWeightEntry(inputText: submittedText)
+            if didSave {
+              onWeightEntrySaved()
+            }
           }
         }
       )
@@ -129,6 +132,7 @@ struct WeightHistoryView: View {
     }
     .sheet(isPresented: $viewModel.showEditSheet) {
       if let editingEntry = viewModel.editingEntry {
+        let entryID = editingEntry.id
         WeightEntrySheet(
           weightUnitLabel: viewModel.weightUnitLabel,
           isSaving: viewModel.isSavingEntry,
@@ -144,9 +148,12 @@ struct WeightHistoryView: View {
             viewModel.entryMutationErrorMessage = nil
           },
           onSave: { inputText in
-            let didSave = await viewModel.updateWeightEntry(id: editingEntry.id, inputText: inputText)
-            if didSave {
-              onWeightEntrySaved()
+            let submittedText = String(inputText)
+            Task {
+              let didSave = await viewModel.updateWeightEntry(id: entryID, inputText: submittedText)
+              if didSave {
+                onWeightEntrySaved()
+              }
             }
           }
         )
@@ -804,7 +811,7 @@ private struct WeightEntrySheet: View {
   let helperText: String?
   let saveButtonTitle: String
   let onCancel: () -> Void
-  let onSave: (String) async -> Void
+  let onSave: (String) -> Void
 
   @State private var weightText = ""
 
@@ -818,7 +825,7 @@ private struct WeightEntrySheet: View {
     saveButtonTitle: String = "Save Entry",
     initialWeightText: String = "",
     onCancel: @escaping () -> Void,
-    onSave: @escaping (String) async -> Void
+    onSave: @escaping (String) -> Void
   ) {
     self.weightUnitLabel = weightUnitLabel
     self.isSaving = isSaving
@@ -873,9 +880,8 @@ private struct WeightEntrySheet: View {
         Spacer()
 
         Button {
-          Task {
-            await onSave(weightText)
-          }
+          let submittedText = String(weightText)
+          onSave(submittedText)
         } label: {
           HStack {
             if isSaving {
