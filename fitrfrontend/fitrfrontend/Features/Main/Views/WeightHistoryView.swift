@@ -10,6 +10,7 @@ import SwiftUI
 
 struct WeightHistoryView: View {
   @StateObject private var viewModel: WeightHistoryViewModel
+  @State private var deleteFailureMessage: String?
   private let onWeightEntrySaved: () -> Void
 
   init(
@@ -63,6 +64,16 @@ struct WeightHistoryView: View {
             loadedCountText: viewModel.loadedCountText,
             isLoadingMore: viewModel.isLoadingMore,
             hasMoreEntries: viewModel.hasMoreEntries,
+            isInteractionLocked: viewModel.showEditSheet || viewModel.pendingDeleteEntry != nil,
+            onEditRow: { row in
+              viewModel.entryMutationErrorMessage = nil
+              viewModel.editingEntry = row
+              viewModel.showEditSheet = true
+            },
+            onDeleteRow: { row in
+              viewModel.entryMutationErrorMessage = nil
+              viewModel.pendingDeleteEntry = row
+            },
             onLoadMore: { Task { await viewModel.loadMoreEntries() } }
           )
         }
@@ -116,6 +127,89 @@ struct WeightHistoryView: View {
       .presentationDetents([.medium])
       .presentationDragIndicator(.visible)
     }
+    .sheet(isPresented: $viewModel.showEditSheet) {
+      if let editingEntry = viewModel.editingEntry {
+        WeightEntrySheet(
+          weightUnitLabel: viewModel.weightUnitLabel,
+          isSaving: viewModel.isSavingEntry,
+          errorMessage: viewModel.entryMutationErrorMessage,
+          title: "Edit Weight",
+          headlineText: "Update this weigh-in value",
+          helperText: "Date stays unchanged for this entry.",
+          saveButtonTitle: "Save Changes",
+          initialWeightText: inputText(for: editingEntry.displayValue),
+          onCancel: {
+            viewModel.showEditSheet = false
+            viewModel.editingEntry = nil
+            viewModel.entryMutationErrorMessage = nil
+          },
+          onSave: { inputText in
+            let didSave = await viewModel.updateWeightEntry(id: editingEntry.id, inputText: inputText)
+            if didSave {
+              onWeightEntrySaved()
+            }
+          }
+        )
+        .id(editingEntry.id)
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+      }
+    }
+    .confirmationDialog(
+      "Delete this entry?",
+      isPresented: Binding(
+        get: { viewModel.pendingDeleteEntry != nil },
+        set: { isPresented in
+          if !isPresented {
+            viewModel.pendingDeleteEntry = nil
+          }
+        }
+      ),
+      titleVisibility: .visible
+    ) {
+      Button("Delete Entry", role: .destructive) {
+        guard let entry = viewModel.pendingDeleteEntry else { return }
+        Task {
+          let didDelete = await viewModel.deleteWeightEntry(id: entry.id)
+          if didDelete {
+            onWeightEntrySaved()
+          } else if let mutationError = viewModel.entryMutationErrorMessage {
+            deleteFailureMessage = mutationError
+          }
+        }
+      }
+
+      Button("Cancel", role: .cancel) {
+        viewModel.pendingDeleteEntry = nil
+      }
+    } message: {
+      if let entry = viewModel.pendingDeleteEntry {
+        Text("This will permanently delete the entry from \(entry.dateText).")
+      }
+    }
+    .alert(
+      "Unable to delete entry",
+      isPresented: Binding(
+        get: { deleteFailureMessage != nil },
+        set: { isPresented in
+          if !isPresented {
+            deleteFailureMessage = nil
+          }
+        }
+      )
+    ) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text(deleteFailureMessage ?? "Please try again.")
+    }
+  }
+
+  private func inputText(for value: Double) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.minimumFractionDigits = 0
+    formatter.maximumFractionDigits = 2
+    return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
   }
 }
 
@@ -409,6 +503,9 @@ private struct WeightHistoryMeasurementsSection: View {
   let loadedCountText: String
   let isLoadingMore: Bool
   let hasMoreEntries: Bool
+  let isInteractionLocked: Bool
+  let onEditRow: (WeightHistoryEntryRow) -> Void
+  let onDeleteRow: (WeightHistoryEntryRow) -> Void
   let onLoadMore: () -> Void
 
   var body: some View {
@@ -426,7 +523,16 @@ private struct WeightHistoryMeasurementsSection: View {
       }
 
       ForEach(rows) { row in
-        WeightHistoryRowCard(row: row)
+        WeightHistorySwipeRow(
+          row: row,
+          isInteractionLocked: isInteractionLocked,
+          onEdit: {
+            onEditRow(row)
+          },
+          onDelete: {
+            onDeleteRow(row)
+          }
+        )
       }
 
       if hasMoreEntries {
@@ -457,6 +563,131 @@ private struct WeightHistoryMeasurementsSection: View {
         .padding(.top, 4)
       }
     }
+  }
+}
+
+private struct WeightHistorySwipeRow: View {
+  let row: WeightHistoryEntryRow
+  let isInteractionLocked: Bool
+  let onEdit: () -> Void
+  let onDelete: () -> Void
+
+  @State private var dragOffsetX: CGFloat = 0
+  @State private var didTriggerActionThisGesture = false
+
+  private let triggerThreshold: CGFloat = 72
+  private let maxVisualOffset: CGFloat = 90
+  private let cornerRadius: CGFloat = 14
+
+  private var swipeProgress: CGFloat {
+    min(abs(dragOffsetX) / maxVisualOffset, 1)
+  }
+
+  private var crossedThreshold: Bool {
+    abs(dragOffsetX) >= triggerThreshold
+  }
+
+  private var isRightSwipe: Bool {
+    dragOffsetX > 0
+  }
+
+  private var isLeftSwipe: Bool {
+    dragOffsetX < 0
+  }
+
+  private var hintTint: Color {
+    if isRightSwipe {
+      return AppColors.accentStrong
+    }
+    if isLeftSwipe {
+      return AppColors.errorRed
+    }
+    return .clear
+  }
+
+  private var hintIconName: String {
+    if isRightSwipe {
+      return "pencil"
+    }
+    if isLeftSwipe {
+      return "trash"
+    }
+    return "arrow.left.and.right"
+  }
+
+  var body: some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        .fill(hintTint.opacity(0.14 * swipeProgress))
+        .overlay(
+          RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .stroke(hintTint.opacity(0.3 * swipeProgress), lineWidth: 1)
+        )
+        .overlay(
+          HStack {
+            if isRightSwipe {
+              swipeHintIcon
+                .padding(.leading, 12)
+              Spacer(minLength: 0)
+            } else if isLeftSwipe {
+              Spacer(minLength: 0)
+              swipeHintIcon
+                .padding(.trailing, 12)
+            }
+          }
+        )
+        .opacity(swipeProgress > 0.01 ? 1 : 0)
+
+      WeightHistoryRowCard(row: row)
+        .offset(x: dragOffsetX)
+        .contentShape(Rectangle())
+    }
+    .highPriorityGesture(
+      DragGesture(minimumDistance: 10, coordinateSpace: .local)
+        .onChanged { value in
+          guard !isInteractionLocked else { return }
+          guard !didTriggerActionThisGesture else { return }
+          guard abs(value.translation.width) > abs(value.translation.height) else { return }
+          dragOffsetX = min(max(value.translation.width, -maxVisualOffset), maxVisualOffset)
+        }
+        .onEnded { value in
+          defer {
+            didTriggerActionThisGesture = false
+            withAnimation(.spring(response: 0.24, dampingFraction: 0.88)) {
+              dragOffsetX = 0
+            }
+          }
+
+          guard !isInteractionLocked else { return }
+          guard !didTriggerActionThisGesture else { return }
+          guard abs(value.translation.width) > abs(value.translation.height) else { return }
+          let projectedX = value.predictedEndTranslation.width
+          let translationX = value.translation.width
+
+          if projectedX >= triggerThreshold || translationX >= triggerThreshold {
+            didTriggerActionThisGesture = true
+            onEdit()
+          } else if projectedX <= -triggerThreshold || translationX <= -triggerThreshold {
+            didTriggerActionThisGesture = true
+            onDelete()
+          }
+        }
+    )
+  }
+
+  private var swipeHintIcon: some View {
+    ZStack {
+      Circle()
+        .fill(hintTint.opacity(crossedThreshold ? 0.22 : 0.14))
+        .frame(width: 24, height: 24)
+
+      Image(systemName: hintIconName)
+        .font(.system(size: 12, weight: .bold))
+        .symbolVariant(crossedThreshold ? .fill : .none)
+    }
+    .foregroundStyle(hintTint)
+    .scaleEffect(crossedThreshold ? 1.08 : 1)
+    .animation(.spring(response: 0.2, dampingFraction: 0.9), value: crossedThreshold)
   }
 }
 
@@ -534,7 +765,9 @@ private struct WeightHistoryRowCard: View {
     switch direction {
     case .up:
       return AppColors.errorRed
-    case .down, .flat:
+    case .down:
+      return AppColors.successGreen
+    case .flat:
       return AppColors.textSecondary
     }
   }
@@ -543,7 +776,9 @@ private struct WeightHistoryRowCard: View {
     switch direction {
     case .up:
       return AppColors.errorRed.opacity(0.12)
-    case .down, .flat:
+    case .down:
+      return AppColors.successGreen.opacity(0.12)
+    case .flat:
       return Color(.systemGray6)
     }
   }
@@ -552,7 +787,9 @@ private struct WeightHistoryRowCard: View {
     switch direction {
     case .up:
       return AppColors.errorRed.opacity(0.3)
-    case .down, .flat:
+    case .down:
+      return AppColors.successGreen.opacity(0.3)
+    case .flat:
       return AppColors.borderGray
     }
   }
@@ -562,15 +799,43 @@ private struct WeightEntrySheet: View {
   let weightUnitLabel: String
   let isSaving: Bool
   let errorMessage: String?
+  let title: String
+  let headlineText: String
+  let helperText: String?
+  let saveButtonTitle: String
   let onCancel: () -> Void
   let onSave: (String) async -> Void
 
   @State private var weightText = ""
 
+  init(
+    weightUnitLabel: String,
+    isSaving: Bool,
+    errorMessage: String?,
+    title: String = "Add Weight",
+    headlineText: String = "Add a new weigh-in",
+    helperText: String? = "Saved as a current-time entry.",
+    saveButtonTitle: String = "Save Entry",
+    initialWeightText: String = "",
+    onCancel: @escaping () -> Void,
+    onSave: @escaping (String) async -> Void
+  ) {
+    self.weightUnitLabel = weightUnitLabel
+    self.isSaving = isSaving
+    self.errorMessage = errorMessage
+    self.title = title
+    self.headlineText = headlineText
+    self.helperText = helperText
+    self.saveButtonTitle = saveButtonTitle
+    self.onCancel = onCancel
+    self.onSave = onSave
+    _weightText = State(initialValue: initialWeightText)
+  }
+
   var body: some View {
     NavigationStack {
       VStack(alignment: .leading, spacing: 16) {
-        Text("Add a new weigh-in")
+        Text(headlineText)
           .font(.system(size: 20, weight: .bold))
           .foregroundStyle(AppColors.textPrimary)
 
@@ -593,9 +858,11 @@ private struct WeightEntrySheet: View {
         .background(Color(.systemGray6))
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-        Text("Saved as a current-time entry.")
-          .font(.system(size: 13))
-          .foregroundStyle(AppColors.textSecondary)
+        if let helperText {
+          Text(helperText)
+            .font(.system(size: 13))
+            .foregroundStyle(AppColors.textSecondary)
+        }
 
         if let errorMessage {
           Text(errorMessage)
@@ -616,7 +883,7 @@ private struct WeightEntrySheet: View {
                 .controlSize(.small)
                 .tint(.white)
             }
-            Text(isSaving ? "Saving..." : "Save Entry")
+            Text(isSaving ? "Saving..." : saveButtonTitle)
               .font(.system(size: 16, weight: .bold))
           }
           .foregroundStyle(.white)
@@ -629,7 +896,7 @@ private struct WeightEntrySheet: View {
         .disabled(isSaving || weightText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
       }
       .padding(16)
-      .navigationTitle("Add Weight")
+      .navigationTitle(title)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .topBarLeading) {
