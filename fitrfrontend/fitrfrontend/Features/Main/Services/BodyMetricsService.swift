@@ -122,6 +122,31 @@ final class BodyMetricsService {
     }
   }
 
+  private func performRequestWithoutResponse(_ url: URL, method: String) async throws {
+    var request = URLRequest(url: url)
+    request.httpMethod = method
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    addAuthHeaders(&request)
+
+    let (data, response) = try await URLSession.shared.data(for: request)
+
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw URLError(.badServerResponse)
+    }
+
+    switch httpResponse.statusCode {
+    case 200...299:
+      return
+    case 400...599:
+      if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
+        throw apiError
+      }
+      throw URLError(.badServerResponse)
+    default:
+      throw URLError(.unknown)
+    }
+  }
+
   func fetchBodyMetrics(
     metricType: MetricType? = nil,
     limit: Int? = nil,
@@ -178,5 +203,25 @@ final class BodyMetricsService {
   func createBodyMetric(_ request: CreateBodyMetricRequest) async throws -> BodyMetricResponse {
     let url = try makeURL(path: APIEndpoints.bodyMetrics)
     return try await performRequest(url, method: "POST", body: request)
+  }
+
+  func updateBodyMetric(id: Int64, request payload: CreateBodyMetricRequest) async throws
+    -> BodyMetricResponse
+  {
+    guard let metricId = Int(exactly: id) else {
+      throw URLError(.badURL)
+    }
+
+    let url = try makeURL(path: APIEndpoints.bodyMetrics + "/\(metricId)")
+    return try await performRequest(url, method: "PUT", body: payload)
+  }
+
+  func deleteBodyMetric(id: Int64) async throws {
+    guard let metricId = Int(exactly: id) else {
+      throw URLError(.badURL)
+    }
+
+    let url = try makeURL(path: APIEndpoints.bodyMetrics + "/\(metricId)")
+    try await performRequestWithoutResponse(url, method: "DELETE")
   }
 }
