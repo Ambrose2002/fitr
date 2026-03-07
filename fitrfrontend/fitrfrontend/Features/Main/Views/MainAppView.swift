@@ -69,7 +69,7 @@ struct MainAppView: View {
             }
           )
         case .profile:
-          ProfileView()
+          ProfileView(sessionStore: sessionStore)
         }
       }
 
