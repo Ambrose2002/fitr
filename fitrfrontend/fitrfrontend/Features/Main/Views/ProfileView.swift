@@ -143,13 +143,13 @@ struct ProfileView: View {
         Divider()
           .padding(.leading, 64)
 
-        ProfileSettingsRow(
+        ProfileSettingsNavigationRow(
           iconName: "mappin.circle",
           iconTint: AppColors.accent,
           title: "Gym Locations",
           subtitle: viewModel.rowSubtitles.locations
         ) {
-          comingSoonDestination = .gymLocations
+          GymLocationsView()
         }
       }
 
@@ -239,7 +239,6 @@ struct ProfileView: View {
 private enum ComingSoonDestination: String, Identifiable {
   case edit
   case personalInformation
-  case gymLocations
   case unitsAndPreferences
   case appVersion
 
@@ -251,13 +250,48 @@ private enum ComingSoonDestination: String, Identifiable {
       return "Edit Profile"
     case .personalInformation:
       return "Personal Information"
-    case .gymLocations:
-      return "Gym Locations"
     case .unitsAndPreferences:
       return "Units & Preferences"
     case .appVersion:
       return "App Version"
     }
+  }
+}
+
+private struct ProfileSettingsNavigationRow<Destination: View>: View {
+  let iconName: String
+  let iconTint: Color
+  let title: String
+  let subtitle: String?
+  let destination: Destination
+
+  init(
+    iconName: String,
+    iconTint: Color,
+    title: String,
+    subtitle: String?,
+    @ViewBuilder destination: () -> Destination
+  ) {
+    self.iconName = iconName
+    self.iconTint = iconTint
+    self.title = title
+    self.subtitle = subtitle
+    self.destination = destination()
+  }
+
+  var body: some View {
+    NavigationLink {
+      destination
+    } label: {
+      ProfileSettingsRowContent(
+        iconName: iconName,
+        iconTint: iconTint,
+        title: title,
+        subtitle: subtitle,
+        isDestructive: false
+      )
+    }
+    .buttonStyle(.plain)
   }
 }
 
@@ -271,39 +305,57 @@ private struct ProfileSettingsRow: View {
 
   var body: some View {
     Button(action: action) {
-      HStack(spacing: 12) {
-        Image(systemName: iconName)
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundStyle(iconTint)
-          .frame(width: 38, height: 38)
-          .background(iconTint.opacity(0.12))
-          .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-
-        VStack(alignment: .leading, spacing: 2) {
-          Text(title)
-            .font(.system(size: 17, weight: .semibold))
-            .foregroundStyle(isDestructive ? AppColors.errorRed : AppColors.textPrimary)
-
-          if let subtitle, !subtitle.isEmpty {
-            Text(subtitle)
-              .font(.system(size: 13))
-              .foregroundStyle(AppColors.textSecondary)
-              .lineLimit(2)
-          }
-        }
-
-        Spacer()
-
-        Image(systemName: "chevron.right")
-          .font(.system(size: 13, weight: .semibold))
-          .foregroundStyle(Color(.systemGray3))
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(.horizontal, 16)
-      .padding(.vertical, 14)
-      .contentShape(Rectangle())
+      ProfileSettingsRowContent(
+        iconName: iconName,
+        iconTint: iconTint,
+        title: title,
+        subtitle: subtitle,
+        isDestructive: isDestructive
+      )
     }
     .buttonStyle(.plain)
+  }
+}
+
+private struct ProfileSettingsRowContent: View {
+  let iconName: String
+  let iconTint: Color
+  let title: String
+  let subtitle: String?
+  let isDestructive: Bool
+
+  var body: some View {
+    HStack(spacing: 12) {
+      Image(systemName: iconName)
+        .font(.system(size: 16, weight: .semibold))
+        .foregroundStyle(iconTint)
+        .frame(width: 38, height: 38)
+        .background(iconTint.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+
+      VStack(alignment: .leading, spacing: 2) {
+        Text(title)
+          .font(.system(size: 17, weight: .semibold))
+          .foregroundStyle(isDestructive ? AppColors.errorRed : AppColors.textPrimary)
+
+        if let subtitle, !subtitle.isEmpty {
+          Text(subtitle)
+            .font(.system(size: 13))
+            .foregroundStyle(AppColors.textSecondary)
+            .lineLimit(2)
+        }
+      }
+
+      Spacer()
+
+      Image(systemName: "chevron.right")
+        .font(.system(size: 13, weight: .semibold))
+        .foregroundStyle(Color(.systemGray3))
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.horizontal, 16)
+    .padding(.vertical, 14)
+    .contentShape(Rectangle())
   }
 }
 
