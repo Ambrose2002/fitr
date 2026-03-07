@@ -30,7 +30,7 @@ final class ProfileViewModel: ObservableObject {
   @Published private(set) var rowSubtitles = RowSubtitles(
     personalInfo: "Name, email, gender, goals",
     locations: "No saved locations yet",
-    units: "KG, KM",
+    units: "Weight: KG • Distance: KM",
     appVersion: ProfileViewModel.appVersionString
   )
 
@@ -180,7 +180,7 @@ final class ProfileViewModel: ObservableObject {
       displayName = "Your Profile"
       email = "No email on file"
       rowSubtitles.personalInfo = "Name, email, gender, goals"
-      rowSubtitles.units = "KG, KM"
+      rowSubtitles.units = "Weight: KG • Distance: KM"
       return
     }
 
@@ -197,7 +197,8 @@ final class ProfileViewModel: ObservableObject {
 
     rowSubtitles.personalInfo =
       "\(resolvedEmail), \(profile.gender.representation), \(profile.goal.representation) goal"
-    rowSubtitles.units = "\(profile.preferredWeightUnit.rawValue), \(profile.preferredDistanceUnit.rawValue)"
+    rowSubtitles.units =
+      "Weight: \(profile.preferredWeightUnit.rawValue) • Distance: \(profile.preferredDistanceUnit.rawValue)"
   }
 
   private func applyWorkoutStats(from workouts: [WorkoutSessionResponse]) {

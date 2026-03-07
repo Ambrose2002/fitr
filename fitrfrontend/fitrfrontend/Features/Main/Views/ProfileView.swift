@@ -154,25 +154,21 @@ struct ProfileView: View {
       }
 
       sectionGroup(title: "PREFERENCES") {
-        ProfileSettingsRow(
+        ProfileSettingsStaticRow(
           iconName: "slider.horizontal.3",
           iconTint: AppColors.accent,
           title: "Units & Preferences",
           subtitle: viewModel.rowSubtitles.units
-        ) {
-          comingSoonDestination = .unitsAndPreferences
-        }
+        )
       }
 
       sectionGroup(title: "SYSTEM") {
-        ProfileSettingsRow(
+        ProfileSettingsStaticRow(
           iconName: "iphone",
           iconTint: AppColors.accent,
           title: "App Version",
           subtitle: viewModel.rowSubtitles.appVersion
-        ) {
-          comingSoonDestination = .appVersion
-        }
+        )
       }
 
       ProfileSettingsRow(
@@ -239,8 +235,6 @@ struct ProfileView: View {
 private enum ComingSoonDestination: String, Identifiable {
   case edit
   case personalInformation
-  case unitsAndPreferences
-  case appVersion
 
   var id: String { rawValue }
 
@@ -250,10 +244,6 @@ private enum ComingSoonDestination: String, Identifiable {
       return "Edit Profile"
     case .personalInformation:
       return "Personal Information"
-    case .unitsAndPreferences:
-      return "Units & Preferences"
-    case .appVersion:
-      return "App Version"
     }
   }
 }
@@ -288,7 +278,8 @@ private struct ProfileSettingsNavigationRow<Destination: View>: View {
         iconTint: iconTint,
         title: title,
         subtitle: subtitle,
-        isDestructive: false
+        isDestructive: false,
+        showsChevron: true
       )
     }
     .buttonStyle(.plain)
@@ -301,6 +292,7 @@ private struct ProfileSettingsRow: View {
   let title: String
   let subtitle: String?
   var isDestructive: Bool = false
+  var showsChevron: Bool = true
   let action: () -> Void
 
   var body: some View {
@@ -310,10 +302,30 @@ private struct ProfileSettingsRow: View {
         iconTint: iconTint,
         title: title,
         subtitle: subtitle,
-        isDestructive: isDestructive
+        isDestructive: isDestructive,
+        showsChevron: showsChevron
       )
     }
     .buttonStyle(.plain)
+  }
+}
+
+private struct ProfileSettingsStaticRow: View {
+  let iconName: String
+  let iconTint: Color
+  let title: String
+  let subtitle: String?
+  var isDestructive: Bool = false
+
+  var body: some View {
+    ProfileSettingsRowContent(
+      iconName: iconName,
+      iconTint: iconTint,
+      title: title,
+      subtitle: subtitle,
+      isDestructive: isDestructive,
+      showsChevron: false
+    )
   }
 }
 
@@ -323,6 +335,7 @@ private struct ProfileSettingsRowContent: View {
   let title: String
   let subtitle: String?
   let isDestructive: Bool
+  let showsChevron: Bool
 
   var body: some View {
     HStack(spacing: 12) {
@@ -348,9 +361,11 @@ private struct ProfileSettingsRowContent: View {
 
       Spacer()
 
-      Image(systemName: "chevron.right")
-        .font(.system(size: 13, weight: .semibold))
-        .foregroundStyle(Color(.systemGray3))
+      if showsChevron {
+        Image(systemName: "chevron.right")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(Color(.systemGray3))
+      }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.horizontal, 16)
