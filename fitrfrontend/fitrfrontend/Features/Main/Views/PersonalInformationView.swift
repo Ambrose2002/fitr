@@ -88,6 +88,14 @@ struct PersonalInformationView: View {
       .padding(.bottom, 40)
     }
     .background(AppColors.background.ignoresSafeArea())
+    .safeAreaInset(edge: .bottom) {
+      Color.clear
+        .frame(height: 100)
+        .allowsHitTesting(false)
+    }
+    .task {
+      await viewModel.load(forceRefresh: true)
+    }
     .navigationTitle("PERSONAL INFO")
     .navigationBarTitleDisplayMode(.inline)
   }

@@ -239,7 +239,7 @@ class HomeService {
     }
 
     let remaining = max(weeklyTarget - workoutCount, 0)
-    return "You've hit \(workoutCount) workouts this week. \(remaining) to go!"
+    return "You've hit \(workoutCount) workouts this week."
   }
 
   private func calculateWeeklyStats(from workouts: [WorkoutSessionResponse]) -> (
