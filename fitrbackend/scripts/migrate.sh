@@ -8,4 +8,5 @@ DB_PASSWORD=${DB_PASSWORD:-password}
 ./mvnw -DskipTests flyway:migrate \
   -Dflyway.url="$DB_URL" \
   -Dflyway.user="$DB_USER" \
-  -Dflyway.password="$DB_PASSWORD"
+  -Dflyway.password="$DB_PASSWORD" \
+  -Dflyway.baselineOnMigrate=true

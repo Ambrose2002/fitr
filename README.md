@@ -26,3 +26,15 @@ Fitr allows users to manage workout plans, track exercise sessions, log performa
 For detailed API documentation including endpoints, request/response formats, and authentication, see [API_DOCUMENTATION.md](fitrbackend/API_DOCUMENTATION.md).
 
 The frontend is coming soon.
+
+## Dev Data Reset and Reseed
+
+For local testing with a clean database and fresh system exercise catalog:
+
+1. Reset all app data (users, profiles, workouts, plans, metrics, exercises):
+   - `cd fitrbackend`
+   - `./scripts/reset_dev_data.sh`
+   - This preserves Flyway metadata but clears prior exercise-seed migration history so the system catalog reseeds on next migrate.
+2. Run Flyway migrations (including system exercise seeding):
+   - `./scripts/migrate.sh`
+3. Start backend/frontend and sign up again in the app.
