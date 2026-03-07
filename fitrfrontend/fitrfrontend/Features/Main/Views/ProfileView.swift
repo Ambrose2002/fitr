@@ -9,9 +9,10 @@ import SwiftUI
 
 struct ProfileView: View {
   @StateObject private var viewModel: ProfileViewModel
-  @State private var comingSoonDestination: ComingSoonDestination?
+  private let sessionStore: SessionStore
 
   init(sessionStore: SessionStore) {
+    self.sessionStore = sessionStore
     _viewModel = StateObject(wrappedValue: ProfileViewModel(sessionStore: sessionStore))
   }
 
@@ -34,11 +35,13 @@ struct ProfileView: View {
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
-          Button("EDIT") {
-            comingSoonDestination = .edit
+          NavigationLink {
+            EditProfileView(sessionStore: sessionStore)
+          } label: {
+            Text("EDIT")
+              .font(.system(size: 16, weight: .semibold))
+              .foregroundStyle(AppColors.accent)
           }
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundStyle(AppColors.accent)
         }
       }
       .task {
@@ -46,13 +49,6 @@ struct ProfileView: View {
       }
       .refreshable {
         await viewModel.load(forceRefresh: true)
-      }
-      .alert(item: $comingSoonDestination) { destination in
-        Alert(
-          title: Text(destination.title),
-          message: Text("Coming Soon"),
-          dismissButton: .default(Text("OK"))
-        )
       }
     }
   }
@@ -229,19 +225,6 @@ struct ProfileView: View {
     .frame(maxWidth: .infinity)
     .padding(.top, 44)
     .padding(.bottom, 50)
-  }
-}
-
-private enum ComingSoonDestination: String, Identifiable {
-  case edit
-
-  var id: String { rawValue }
-
-  var title: String {
-    switch self {
-    case .edit:
-      return "Edit Profile"
-    }
   }
 }
 

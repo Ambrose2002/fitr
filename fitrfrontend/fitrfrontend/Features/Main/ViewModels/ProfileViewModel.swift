@@ -40,6 +40,7 @@ final class ProfileViewModel: ObservableObject {
   private let workoutsService: WorkoutsService
   private let locationsService: LocationsService
   private var hasLoaded = false
+  private var cancellables = Set<AnyCancellable>()
 
   private static let groupedIntegerFormatter: NumberFormatter = {
     let formatter = NumberFormatter()
@@ -78,6 +79,12 @@ final class ProfileViewModel: ObservableObject {
     self.profileService = profileService
     self.workoutsService = workoutsService
     self.locationsService = locationsService
+    sessionStore.$userProfile
+      .receive(on: RunLoop.main)
+      .sink { [weak self] profile in
+        self?.applyProfile(profile)
+      }
+      .store(in: &cancellables)
     applyProfile(sessionStore.userProfile)
   }
 
