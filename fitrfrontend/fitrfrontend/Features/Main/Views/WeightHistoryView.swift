@@ -514,6 +514,7 @@ private struct WeightHistoryMeasurementsSection: View {
   let onEditRow: (WeightHistoryEntryRow) -> Void
   let onDeleteRow: (WeightHistoryEntryRow) -> Void
   let onLoadMore: () -> Void
+  @State private var currentlyOpenRowID: WeightHistoryEntryRow.ID?
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -533,6 +534,7 @@ private struct WeightHistoryMeasurementsSection: View {
         WeightHistorySwipeRow(
           row: row,
           isInteractionLocked: isInteractionLocked,
+          currentlyOpenRowID: $currentlyOpenRowID,
           onEdit: {
             onEditRow(row)
           },
@@ -570,132 +572,190 @@ private struct WeightHistoryMeasurementsSection: View {
         .padding(.top, 4)
       }
     }
+    .onChange(of: isInteractionLocked) { _, locked in
+      if locked {
+        currentlyOpenRowID = nil
+      }
+    }
+    .onChange(of: rows) { _, newRows in
+      guard let openID = currentlyOpenRowID else { return }
+      if !newRows.contains(where: { $0.id == openID }) {
+        currentlyOpenRowID = nil
+      }
+    }
   }
+}
+
+private enum WeightHistorySwipeSide {
+  case leading
+  case trailing
 }
 
 private struct WeightHistorySwipeRow: View {
   let row: WeightHistoryEntryRow
   let isInteractionLocked: Bool
+  @Binding var currentlyOpenRowID: WeightHistoryEntryRow.ID?
   let onEdit: () -> Void
   let onDelete: () -> Void
 
   @State private var dragOffsetX: CGFloat = 0
-  @State private var didTriggerActionThisGesture = false
+  @State private var isDraggingHorizontally = false
+  @State private var openSide: WeightHistorySwipeSide?
 
-  private let triggerThreshold: CGFloat = 72
-  private let maxVisualOffset: CGFloat = 90
+  private let revealWidth: CGFloat = 112
+  private let triggerThreshold: CGFloat = 64
+  private let maxVisualOffset: CGFloat = 128
   private let cornerRadius: CGFloat = 14
 
-  private var swipeProgress: CGFloat {
-    min(abs(dragOffsetX) / maxVisualOffset, 1)
-  }
-
-  private var crossedThreshold: Bool {
-    abs(dragOffsetX) >= triggerThreshold
-  }
-
-  private var isRightSwipe: Bool {
-    dragOffsetX > 0
-  }
-
-  private var isLeftSwipe: Bool {
-    dragOffsetX < 0
-  }
-
-  private var hintTint: Color {
-    if isRightSwipe {
-      return AppColors.infoBlue
+  private var baseOffsetX: CGFloat {
+    switch openSide {
+    case .leading:
+      return revealWidth
+    case .trailing:
+      return -revealWidth
+    case nil:
+      return 0
     }
-    if isLeftSwipe {
-      return AppColors.errorRed
-    }
-    return .clear
   }
 
-  private var hintIconName: String {
-    if isRightSwipe {
-      return "pencil"
-    }
-    if isLeftSwipe {
-      return "trash"
-    }
-    return "arrow.left.and.right"
+  private var resolvedOffsetX: CGFloat {
+    let rawOffset = baseOffsetX + dragOffsetX
+    return min(max(rawOffset, -maxVisualOffset), maxVisualOffset)
+  }
+
+  private var editRevealProgress: CGFloat {
+    min(max(resolvedOffsetX / revealWidth, 0), 1)
+  }
+
+  private var deleteRevealProgress: CGFloat {
+    min(max(-resolvedOffsetX / revealWidth, 0), 1)
+  }
+
+  private var isOpen: Bool {
+    openSide != nil
+  }
+
+  private var isEditActionVisible: Bool {
+    editRevealProgress > 0.97
+  }
+
+  private var isDeleteActionVisible: Bool {
+    deleteRevealProgress > 0.97
   }
 
   var body: some View {
     ZStack {
-      RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        .fill(hintTint.opacity(0.14 * swipeProgress))
-        .overlay(
-          RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .stroke(hintTint.opacity(0.3 * swipeProgress), lineWidth: 1)
-        )
-        .overlay(
-          HStack {
-            if isRightSwipe {
-              swipeHintIcon
-                .padding(.leading, 12)
-              Spacer(minLength: 0)
-            } else if isLeftSwipe {
-              Spacer(minLength: 0)
-              swipeHintIcon
-                .padding(.trailing, 12)
-            }
-          }
-        )
-        .opacity(swipeProgress > 0.01 ? 1 : 0)
+      HStack(spacing: 0) {
+        Button {
+          guard !isInteractionLocked else { return }
+          closeRow()
+          onEdit()
+        } label: {
+          Label("Edit", systemImage: "pencil")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: revealWidth, height: 58)
+            .background(AppColors.infoBlue)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .opacity(editRevealProgress)
+        .scaleEffect(editRevealProgress > 0 ? 1 : 0.92, anchor: .leading)
+        .allowsHitTesting(isEditActionVisible && !isInteractionLocked)
+
+        Spacer(minLength: 0)
+
+        Button(role: .destructive) {
+          guard !isInteractionLocked else { return }
+          closeRow()
+          onDelete()
+        } label: {
+          Label("Delete", systemImage: "trash")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: revealWidth, height: 58)
+            .background(AppColors.errorRed)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .opacity(deleteRevealProgress)
+        .scaleEffect(deleteRevealProgress > 0 ? 1 : 0.92, anchor: .trailing)
+        .allowsHitTesting(isDeleteActionVisible && !isInteractionLocked)
+      }
+      .padding(.horizontal, 2)
+      .padding(.vertical, 2)
 
       WeightHistoryRowCard(row: row)
-        .offset(x: dragOffsetX)
+        .offset(x: resolvedOffsetX)
         .contentShape(Rectangle())
+        .onTapGesture {
+          guard isOpen else { return }
+          closeRow()
+        }
     }
     .highPriorityGesture(
       DragGesture(minimumDistance: 10, coordinateSpace: .local)
         .onChanged { value in
           guard !isInteractionLocked else { return }
-          guard !didTriggerActionThisGesture else { return }
-          guard abs(value.translation.width) > abs(value.translation.height) else { return }
-          dragOffsetX = min(max(value.translation.width, -maxVisualOffset), maxVisualOffset)
-        }
-        .onEnded { value in
-          defer {
-            didTriggerActionThisGesture = false
-            withAnimation(.spring(response: 0.24, dampingFraction: 0.88)) {
-              dragOffsetX = 0
+          if !isDraggingHorizontally {
+            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+            isDraggingHorizontally = true
+            if currentlyOpenRowID != row.id {
+              currentlyOpenRowID = row.id
             }
           }
 
+          guard isDraggingHorizontally else { return }
+          let proposedOffset = baseOffsetX + value.translation.width
+          let clampedOffset = min(max(proposedOffset, -maxVisualOffset), maxVisualOffset)
+          dragOffsetX = clampedOffset - baseOffsetX
+        }
+        .onEnded { value in
           guard !isInteractionLocked else { return }
-          guard !didTriggerActionThisGesture else { return }
-          guard abs(value.translation.width) > abs(value.translation.height) else { return }
+          guard isDraggingHorizontally else { return }
+          isDraggingHorizontally = false
 
-          let projectedX = value.predictedEndTranslation.width
-          let translationX = value.translation.width
+          let projectedX = baseOffsetX + value.predictedEndTranslation.width
+          let translationX = baseOffsetX + value.translation.width
 
           if projectedX >= triggerThreshold || translationX >= triggerThreshold {
-            didTriggerActionThisGesture = true
-            onEdit()
+            openRow(.leading)
           } else if projectedX <= -triggerThreshold || translationX <= -triggerThreshold {
-            didTriggerActionThisGesture = true
-            onDelete()
+            openRow(.trailing)
+          } else {
+            closeRow()
           }
         }
     )
+    .onChange(of: currentlyOpenRowID) { _, newOpenID in
+      if newOpenID != row.id {
+        closeRow(updateOpenRowID: false)
+      }
+    }
+    .onChange(of: isInteractionLocked) { _, locked in
+      if locked {
+        closeRow()
+      }
+    }
   }
 
-  private var swipeHintIcon: some View {
-    ZStack {
-      Circle()
-        .fill(hintTint.opacity(crossedThreshold ? 0.22 : 0.14))
-        .frame(width: 24, height: 24)
-
-      Image(systemName: hintIconName)
-        .font(.system(size: 12, weight: .bold))
-        .symbolVariant(crossedThreshold ? .fill : .none)
+  private func openRow(_ side: WeightHistorySwipeSide) {
+    withAnimation(.spring(response: 0.24, dampingFraction: 0.88)) {
+      openSide = side
+      dragOffsetX = 0
+      currentlyOpenRowID = row.id
     }
-    .foregroundStyle(hintTint)
-    .scaleEffect(crossedThreshold ? 1.08 : 1)
-    .animation(.spring(response: 0.2, dampingFraction: 0.9), value: crossedThreshold)
+  }
+
+  private func closeRow(updateOpenRowID: Bool = true) {
+    withAnimation(.spring(response: 0.24, dampingFraction: 0.88)) {
+      openSide = nil
+      dragOffsetX = 0
+    }
+
+    if updateOpenRowID, currentlyOpenRowID == row.id {
+      currentlyOpenRowID = nil
+    }
   }
 }
 
