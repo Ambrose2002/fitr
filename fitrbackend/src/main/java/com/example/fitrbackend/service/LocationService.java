@@ -53,6 +53,18 @@ public class LocationService {
 
     }
 
+    public void deleteLocation(Long id, String userEmail) {
+        User user = userRepo.findByEmail(userEmail);
+        Location location = locationRepo.findById(id)
+                .orElseThrow(() -> new DataNotFoundException(id, "location"));
+
+        if (!Objects.equals(location.getUser().getId(), user.getId())) {
+            throw new DataNotFoundException(id, "location");
+        }
+
+        locationRepo.delete(location);
+    }
+
     private LocationResponse toLocationResponse(Location location) {
         return new LocationResponse(
                 location.getId(),

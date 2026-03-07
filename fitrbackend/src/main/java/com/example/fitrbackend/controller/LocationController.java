@@ -9,6 +9,7 @@ import com.example.fitrbackend.service.UserService;
 import java.util.List;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -61,6 +62,16 @@ public class LocationController {
         String email = auth.getName();
         return locationService.updateLocation(req, id, email);
 
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteLocation(@PathVariable Long id) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        locationService.deleteLocation(id, email);
     }
 
 }
