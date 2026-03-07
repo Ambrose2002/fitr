@@ -7,19 +7,27 @@ import com.example.fitrbackend.model.Location;
 import com.example.fitrbackend.model.User;
 import com.example.fitrbackend.repository.LocationRepository;
 import com.example.fitrbackend.repository.UserRepository;
+import com.example.fitrbackend.repository.WorkoutSessionRepository;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LocationService {
 
     private final LocationRepository locationRepo;
     private final UserRepository userRepo;
+    private final WorkoutSessionRepository workoutSessionRepo;
 
-    public LocationService(LocationRepository locationRepo, UserRepository userRepo) {
+    public LocationService(
+            LocationRepository locationRepo,
+            UserRepository userRepo,
+            WorkoutSessionRepository workoutSessionRepo
+    ) {
         this.locationRepo = locationRepo;
         this.userRepo = userRepo;
+        this.workoutSessionRepo = workoutSessionRepo;
     }
 
     public LocationResponse getLocation(Long id) {
@@ -53,6 +61,7 @@ public class LocationService {
 
     }
 
+    @Transactional
     public void deleteLocation(Long id, String userEmail) {
         User user = userRepo.findByEmail(userEmail);
         Location location = locationRepo.findById(id)
@@ -62,6 +71,7 @@ public class LocationService {
             throw new DataNotFoundException(id, "location");
         }
 
+        workoutSessionRepo.clearWorkoutLocationForUser(user.getId(), location.getId());
         locationRepo.delete(location);
     }
 

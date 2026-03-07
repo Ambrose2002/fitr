@@ -530,25 +530,16 @@ private struct WeightHistoryMeasurementsSection: View {
       }
 
       ForEach(rows) { row in
-        WeightHistoryRowCard(row: row)
-          .swipeActions(edge: .leading, allowsFullSwipe: false) {
-            Button {
-              guard !isInteractionLocked else { return }
-              onEditRow(row)
-            } label: {
-              Label("Edit", systemImage: "pencil")
-            }
-            .tint(AppColors.infoBlue)
+        WeightHistorySwipeRow(
+          row: row,
+          isInteractionLocked: isInteractionLocked,
+          onEdit: {
+            onEditRow(row)
+          },
+          onDelete: {
+            onDeleteRow(row)
           }
-          .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive) {
-              guard !isInteractionLocked else { return }
-              onDeleteRow(row)
-            } label: {
-              Label("Delete", systemImage: "trash")
-            }
-          }
-          .disabled(isInteractionLocked)
+        )
       }
 
       if hasMoreEntries {
@@ -579,6 +570,132 @@ private struct WeightHistoryMeasurementsSection: View {
         .padding(.top, 4)
       }
     }
+  }
+}
+
+private struct WeightHistorySwipeRow: View {
+  let row: WeightHistoryEntryRow
+  let isInteractionLocked: Bool
+  let onEdit: () -> Void
+  let onDelete: () -> Void
+
+  @State private var dragOffsetX: CGFloat = 0
+  @State private var didTriggerActionThisGesture = false
+
+  private let triggerThreshold: CGFloat = 72
+  private let maxVisualOffset: CGFloat = 90
+  private let cornerRadius: CGFloat = 14
+
+  private var swipeProgress: CGFloat {
+    min(abs(dragOffsetX) / maxVisualOffset, 1)
+  }
+
+  private var crossedThreshold: Bool {
+    abs(dragOffsetX) >= triggerThreshold
+  }
+
+  private var isRightSwipe: Bool {
+    dragOffsetX > 0
+  }
+
+  private var isLeftSwipe: Bool {
+    dragOffsetX < 0
+  }
+
+  private var hintTint: Color {
+    if isRightSwipe {
+      return AppColors.infoBlue
+    }
+    if isLeftSwipe {
+      return AppColors.errorRed
+    }
+    return .clear
+  }
+
+  private var hintIconName: String {
+    if isRightSwipe {
+      return "pencil"
+    }
+    if isLeftSwipe {
+      return "trash"
+    }
+    return "arrow.left.and.right"
+  }
+
+  var body: some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        .fill(hintTint.opacity(0.14 * swipeProgress))
+        .overlay(
+          RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .stroke(hintTint.opacity(0.3 * swipeProgress), lineWidth: 1)
+        )
+        .overlay(
+          HStack {
+            if isRightSwipe {
+              swipeHintIcon
+                .padding(.leading, 12)
+              Spacer(minLength: 0)
+            } else if isLeftSwipe {
+              Spacer(minLength: 0)
+              swipeHintIcon
+                .padding(.trailing, 12)
+            }
+          }
+        )
+        .opacity(swipeProgress > 0.01 ? 1 : 0)
+
+      WeightHistoryRowCard(row: row)
+        .offset(x: dragOffsetX)
+        .contentShape(Rectangle())
+    }
+    .highPriorityGesture(
+      DragGesture(minimumDistance: 10, coordinateSpace: .local)
+        .onChanged { value in
+          guard !isInteractionLocked else { return }
+          guard !didTriggerActionThisGesture else { return }
+          guard abs(value.translation.width) > abs(value.translation.height) else { return }
+          dragOffsetX = min(max(value.translation.width, -maxVisualOffset), maxVisualOffset)
+        }
+        .onEnded { value in
+          defer {
+            didTriggerActionThisGesture = false
+            withAnimation(.spring(response: 0.24, dampingFraction: 0.88)) {
+              dragOffsetX = 0
+            }
+          }
+
+          guard !isInteractionLocked else { return }
+          guard !didTriggerActionThisGesture else { return }
+          guard abs(value.translation.width) > abs(value.translation.height) else { return }
+
+          let projectedX = value.predictedEndTranslation.width
+          let translationX = value.translation.width
+
+          if projectedX >= triggerThreshold || translationX >= triggerThreshold {
+            didTriggerActionThisGesture = true
+            onEdit()
+          } else if projectedX <= -triggerThreshold || translationX <= -triggerThreshold {
+            didTriggerActionThisGesture = true
+            onDelete()
+          }
+        }
+    )
+  }
+
+  private var swipeHintIcon: some View {
+    ZStack {
+      Circle()
+        .fill(hintTint.opacity(crossedThreshold ? 0.22 : 0.14))
+        .frame(width: 24, height: 24)
+
+      Image(systemName: hintIconName)
+        .font(.system(size: 12, weight: .bold))
+        .symbolVariant(crossedThreshold ? .fill : .none)
+    }
+    .foregroundStyle(hintTint)
+    .scaleEffect(crossedThreshold ? 1.08 : 1)
+    .animation(.spring(response: 0.2, dampingFraction: 0.9), value: crossedThreshold)
   }
 }
 
