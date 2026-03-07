@@ -7,7 +7,9 @@ import com.example.fitrbackend.exception.DataNotFoundException;
 import com.example.fitrbackend.model.BodyMetric;
 import com.example.fitrbackend.model.MetricType;
 import com.example.fitrbackend.model.User;
+import com.example.fitrbackend.model.UserProfile;
 import com.example.fitrbackend.repository.BodyMetricRepository;
+import com.example.fitrbackend.repository.UserProfileRepository;
 import com.example.fitrbackend.repository.UserRepository;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -15,18 +17,22 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class BodyMetricService {
 
     private final BodyMetricRepository bodyMetricRepo;
+    private final UserProfileRepository userProfileRepo;
     private final UserRepository userRepo;
 
-    public BodyMetricService(BodyMetricRepository bodyMetricRepo, UserRepository userRepo) {
+    public BodyMetricService(BodyMetricRepository bodyMetricRepo, UserProfileRepository userProfileRepo, UserRepository userRepo) {
         this.userRepo = userRepo;
         this.bodyMetricRepo = bodyMetricRepo;
+        this.userProfileRepo = userProfileRepo;
     }
 
+    @Transactional
     public BodyMetricResponse createBodyMetric(String email, CreateBodyMetricRequest req) {
         User user = userRepo.findByEmail(email);
         if (user == null) {
@@ -40,6 +46,7 @@ public class BodyMetricService {
         }
         BodyMetric bodyMetric = new BodyMetric(user, req.getMetricType(), req.getValue());
         bodyMetricRepo.save(bodyMetric);
+        syncProfileMeasurementFromLatestMetric(user, req.getMetricType());
         return toBodyMetricResponse(bodyMetric);
     }
 
@@ -87,24 +94,25 @@ public class BodyMetricService {
             throw new DataNotFoundException("user not found: " + email);
         }
         if (metricType != null) {
-            BodyMetric bodyMetric = bodyMetricRepo.findLatestByUserAndMetricType(user, metricType);
+            BodyMetric bodyMetric = bodyMetricRepo.findTopByUserAndMetricTypeOrderByRecordedAtDescIdDesc(user, metricType);
             if (bodyMetric != null) {
                 return List.of(toBodyMetricResponse(bodyMetric));
             }
             return new ArrayList<>();
         }
         List<BodyMetricResponse> bodyMetrics = new ArrayList<>();
-        BodyMetric height = bodyMetricRepo.findLatestByUserAndMetricType(user, MetricType.HEIGHT);
+        BodyMetric height = bodyMetricRepo.findTopByUserAndMetricTypeOrderByRecordedAtDescIdDesc(user, MetricType.HEIGHT);
         if (height != null) {
             bodyMetrics.add(toBodyMetricResponse(height));
         }
-        BodyMetric weight = bodyMetricRepo.findLatestByUserAndMetricType(user, MetricType.WEIGHT);
+        BodyMetric weight = bodyMetricRepo.findTopByUserAndMetricTypeOrderByRecordedAtDescIdDesc(user, MetricType.WEIGHT);
         if (weight != null) {
             bodyMetrics.add(toBodyMetricResponse(weight));
         }
         return bodyMetrics;
     }
 
+    @Transactional
     public BodyMetricResponse updateBodyMetric(String email, long id, CreateBodyMetricRequest req) {
         User user = userRepo.findByEmail(email);
         if (user == null) {
@@ -115,6 +123,9 @@ public class BodyMetricService {
         if (!bodyMetric.getUser().getEmail().equals(email)) {
             throw new DataNotFoundException("body metric not found: " + id);
         }
+
+        MetricType previousMetricType = bodyMetric.getMetricType();
+
         if (req.getMetricType() != null) {
             bodyMetric.setMetricType(req.getMetricType());
         }
@@ -124,9 +135,14 @@ public class BodyMetricService {
 
         bodyMetric.setUpdatedAt(Instant.now());
         bodyMetricRepo.save(bodyMetric);
+        syncProfileMeasurementFromLatestMetric(user, previousMetricType);
+        if (previousMetricType != bodyMetric.getMetricType()) {
+            syncProfileMeasurementFromLatestMetric(user, bodyMetric.getMetricType());
+        }
         return toBodyMetricResponse(bodyMetric);
     }
 
+    @Transactional
     public void deleteBodyMetric(String email, long id) {
         User user = userRepo.findByEmail(email);
         if (user == null) {
@@ -137,7 +153,35 @@ public class BodyMetricService {
         if (!bodyMetric.getUser().getEmail().equals(email)) {
             throw new DataNotFoundException("body metric not found: " + id);
         }
+
+        MetricType deletedMetricType = bodyMetric.getMetricType();
         bodyMetricRepo.delete(bodyMetric);
+        syncProfileMeasurementFromLatestMetric(user, deletedMetricType);
+    }
+
+    private void syncProfileMeasurementFromLatestMetric(User user, MetricType metricType) {
+        if (metricType != MetricType.WEIGHT && metricType != MetricType.HEIGHT) {
+            return;
+        }
+
+        UserProfile profile = userProfileRepo.findByUser(user);
+        if (profile == null) {
+            return;
+        }
+
+        BodyMetric latestMetric = bodyMetricRepo.findTopByUserAndMetricTypeOrderByRecordedAtDescIdDesc(user, metricType);
+        if (latestMetric == null) {
+            // Fallback behavior: keep existing user_profile value when no metric exists.
+            return;
+        }
+
+        if (metricType == MetricType.WEIGHT) {
+            profile.setWeight(latestMetric.getValue());
+        } else if (metricType == MetricType.HEIGHT) {
+            profile.setHeight(latestMetric.getValue());
+        }
+
+        userProfileRepo.save(profile);
     }
 
     private Instant parseDate(String dateStr) {
