@@ -131,13 +131,13 @@ struct ProfileView: View {
   private var settingsSection: some View {
     VStack(spacing: 24) {
       sectionGroup(title: "ACCOUNT SETTINGS") {
-        ProfileSettingsRow(
+        ProfileSettingsNavigationRow(
           iconName: "person.crop.circle",
           iconTint: AppColors.accent,
           title: "Personal Information",
           subtitle: viewModel.rowSubtitles.personalInfo
         ) {
-          comingSoonDestination = .personalInformation
+          PersonalInformationView(viewModel: viewModel)
         }
 
         Divider()
@@ -234,7 +234,6 @@ struct ProfileView: View {
 
 private enum ComingSoonDestination: String, Identifiable {
   case edit
-  case personalInformation
 
   var id: String { rawValue }
 
@@ -242,8 +241,6 @@ private enum ComingSoonDestination: String, Identifiable {
     switch self {
     case .edit:
       return "Edit Profile"
-    case .personalInformation:
-      return "Personal Information"
     }
   }
 }

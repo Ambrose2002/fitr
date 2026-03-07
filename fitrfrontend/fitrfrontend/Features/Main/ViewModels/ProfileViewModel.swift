@@ -26,6 +26,7 @@ final class ProfileViewModel: ObservableObject {
   @Published private(set) var errorMessage: String?
   @Published private(set) var displayName = "Your Profile"
   @Published private(set) var email = "No email on file"
+  @Published private(set) var profile: UserProfileResponse?
   @Published private(set) var headerStats = HeaderStats(workoutsCount: "0", streakWeeks: "0 w")
   @Published private(set) var rowSubtitles = RowSubtitles(
     personalInfo: "Name, email, gender, goals",
@@ -176,6 +177,8 @@ final class ProfileViewModel: ObservableObject {
   }
 
   private func applyProfile(_ profile: UserProfileResponse?) {
+    self.profile = profile
+
     guard let profile else {
       displayName = "Your Profile"
       email = "No email on file"
