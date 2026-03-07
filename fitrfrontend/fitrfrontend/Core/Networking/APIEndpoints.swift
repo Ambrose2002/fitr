@@ -46,4 +46,5 @@ struct APIEndpoints {
     
     // Locations
     static let locations = "/api/locations"
+    static func location(id: Int) -> String { "/api/locations/\(id)" }
 }
