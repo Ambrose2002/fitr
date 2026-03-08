@@ -38,3 +38,17 @@ For local testing with a clean database and fresh system exercise catalog:
 2. Run Flyway migrations (including system exercise seeding):
    - `./scripts/migrate.sh`
 3. Start backend/frontend and sign up again in the app.
+
+## Container Deployment
+
+Build image:
+- `docker build -t fitrbackend:latest fitrbackend`
+
+Run container:
+- `docker run --name fitrbackend -p 8080:8080 \
+  -e SPRING_PROFILES_ACTIVE=prod \
+  -e SPRING_DATASOURCE_URL='jdbc:postgresql://<host>:5432/<db>' \
+  -e SPRING_DATASOURCE_USERNAME='<username>' \
+  -e SPRING_DATASOURCE_PASSWORD='<password>' \
+  -e JWT_KEY='<at-least-32-byte-secret>' \
+  fitrbackend:latest`

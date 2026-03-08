@@ -1,34 +1,56 @@
 server:
-  part: 8080
+  port: ${PORT:8080}
 
 spring:
   profiles:
-    active: dev
-
-  datasource:
-    url: jdbc:postgresql://localhost:5432/fitrdb
-    username: ambroseblay
-    password: 'password'
-
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  jpa:
+    hibernate:
+      ddl-auto: validate
   flyway:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+security:
+  jwt:
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 ---
 spring:
   config:
     activate:
       on-profile: dev
-  jpa:
-    hibernate:
-      ddl-auto: validate
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/fitrdb}
+    username: ${SPRING_DATASOURCE_USERNAME:ambroseblay}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
+
+security:
+  jwt:
+    key: ${JWT_KEY:dev-dev-dev-dev-dev-dev-dev-dev-key-123456}
 
 ---
 spring:
   config:
     activate:
       on-profile: prod
-  jpa:
-    hibernate:
-      ddl-auto: validate
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+security:
+  jwt:
+    key: ${JWT_KEY}

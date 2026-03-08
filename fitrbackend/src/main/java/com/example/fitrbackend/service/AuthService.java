@@ -2,7 +2,7 @@ package com.example.fitrbackend.service;
 
 import com.example.fitrbackend.model.User;
 import com.example.fitrbackend.repository.UserRepository;
-import com.example.fitrbackend.security.JwtUtil;
+import com.example.fitrbackend.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -12,10 +12,16 @@ public class AuthService {
     private final UserRepository repo;
 
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
-    public AuthService(UserRepository repo, PasswordEncoder passwordEncoder) {
+    public AuthService(
+            UserRepository repo,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService
+    ) {
         this.repo = repo;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     public boolean validateUser(String email, String password) {
@@ -28,6 +34,6 @@ public class AuthService {
     }
 
     public String generateToken(String email) {
-        return JwtUtil.generateToken(email);
+        return jwtService.generateToken(email);
     }
 }

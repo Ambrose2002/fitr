@@ -1,0 +1,8 @@
+target
+.git
+.github
+.idea
+.vscode
+*.iml
+README.md
+API_DOCUMENTATION.md
