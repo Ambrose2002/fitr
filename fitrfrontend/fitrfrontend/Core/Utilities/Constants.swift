@@ -8,7 +8,7 @@
 import Foundation
 
 struct Constants {
-    static let baseUrl : String = "http://127.0.0.1:8080"
+    static let baseUrl : String = "https://fitr-production-0d2c.up.railway.app"
 }
 // MARK: - Date Formatting
 struct DateFormatter {
