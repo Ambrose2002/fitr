@@ -372,6 +372,7 @@ final class WorkoutsViewModel: ObservableObject {
   }
 
   private func removeWorkout(id: Int64) {
+    sessionStore.runtimeViewCache.remove(.workoutDetail(id))
     allCompletedWorkouts.removeAll { $0.id == id }
     allCompletedWorkouts = Self.sortedCompletedWorkouts(
       allCompletedWorkouts.filter { $0.endTime != nil }

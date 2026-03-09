@@ -59,6 +59,12 @@ struct EnrichedPlanDay: Identifiable, Hashable {
   }
 }
 
+struct PlanDetailSnapshot {
+  let planDetail: WorkoutPlanResponse
+  let enrichedDays: [EnrichedPlanDay]
+  let isActiveToggle: Bool
+}
+
 // MARK: - Plan Detail ViewModel
 
 @MainActor
@@ -66,6 +72,8 @@ final class PlanDetailViewModel: ObservableObject {
   @Published var planDetail: WorkoutPlanResponse?
   @Published var enrichedDays: [EnrichedPlanDay] = []
   @Published var isLoading = false
+  @Published private(set) var isRefreshing = false
+  @Published private(set) var hasLoadedSnapshot = false
   @Published var errorMessage: String?
   @Published var isActiveToggle = false
   @Published var showAddDaySheet = false
@@ -73,92 +81,76 @@ final class PlanDetailViewModel: ObservableObject {
   private var workoutPlanService: WorkoutPlanService
   private var sessionStore: SessionStore
   private var planId: Int64
+  private var lastLoadedAt: Date?
+  private let freshnessInterval: TimeInterval = 60
+  private var isFetching = false
 
   init(planId: Int64, sessionStore: SessionStore) {
     self.planId = planId
     self.sessionStore = sessionStore
     self.workoutPlanService = WorkoutPlanService()
+    restoreSnapshotIfAvailable(for: planId)
   }
 
   // MARK: - Update Methods for Navigation
 
   func updatePlanId(_ id: Int64) {
+    guard id != planId else {
+      return
+    }
+
     self.planId = id
+    resetForPlanChange()
+    restoreSnapshotIfAvailable(for: id)
   }
 
   func updateSessionStore(_ store: SessionStore) {
     self.sessionStore = store
     self.workoutPlanService = WorkoutPlanService()
+    restoreSnapshotIfAvailable(for: planId)
   }
 
   // MARK: - Data Loading
 
-  func loadPlanDetail() async {
-    isLoading = true
+  func loadPlanDetail(forceRefresh: Bool = false) async {
+    guard !isFetching else {
+      return
+    }
+
+    restoreSnapshotIfNewer(for: planId)
+
+    if
+      !forceRefresh,
+      let lastLoadedAt,
+      Date().timeIntervalSince(lastLoadedAt) < freshnessInterval
+    {
+      return
+    }
+
+    let shouldBlockUI = !hasLoadedSnapshot
+    isFetching = true
+    if shouldBlockUI {
+      isLoading = true
+    } else {
+      isRefreshing = true
+    }
     errorMessage = nil
 
     defer {
-      isLoading = false
+      isFetching = false
+      if shouldBlockUI {
+        isLoading = false
+      } else {
+        isRefreshing = false
+      }
     }
 
     do {
-      // Fetch plan
       let plan = try await workoutPlanService.getPlan(id: planId)
-      self.planDetail = plan
-      self.isActiveToggle = plan.isActive
-
-      // Fetch plan days
-      let days = try await workoutPlanService.getPlanDays(planId: planId)
-
-      let exerciseLookup: [Int64: ExerciseResponse]
-      do {
-        let availableExercises = try await workoutPlanService.getAllExercises(systemOnly: false)
-        exerciseLookup = Dictionary(uniqueKeysWithValues: availableExercises.map { ($0.id, $0) })
-      } catch {
-        exerciseLookup = [:]
-      }
-
-      // Fetch exercises for each day
-      var enrichedDaysList: [EnrichedPlanDay] = []
-      for day in days {
-        do {
-          let exercises = try await workoutPlanService.getExercises(dayId: day.id)
-          let enrichedExercises = exercises.map { exercise in
-            let exerciseMeta = exerciseLookup[exercise.exerciseId]
-            return EnrichedPlanExercise(
-              id: exercise.id,
-              planDayId: exercise.planDayId,
-              exerciseId: exercise.exerciseId,
-              name: exerciseMeta?.name ?? "Exercise \(exercise.exerciseId)",
-              measurementType: exerciseMeta?.measurementType,
-              targetSets: exercise.targetSets,
-              targetReps: exercise.targetReps,
-              targetDurationSeconds: exercise.targetDurationSeconds,
-              targetDistance: exercise.targetDistance,
-              targetCalories: exercise.targetCalories,
-              targetWeight: exercise.targetWeight ?? 0
-            )
-          }
-          let enrichedDay = EnrichedPlanDay(
-            id: day.id,
-            dayNumber: day.dayNumber,
-            name: day.name,
-            exercises: enrichedExercises
-          )
-          enrichedDaysList.append(enrichedDay)
-        } catch {
-          // Add day with empty exercises
-          let enrichedDay = EnrichedPlanDay(
-            id: day.id,
-            dayNumber: day.dayNumber,
-            name: day.name,
-            exercises: []
-          )
-          enrichedDaysList.append(enrichedDay)
-        }
-      }
-
-      enrichedDays = enrichedDaysList.sorted { $0.dayNumber < $1.dayNumber }
+      let days = try await buildEnrichedDays()
+      applyLoadedData(plan: plan, days: days, loadedAt: Date())
+    } catch let apiError as APIErrorResponse {
+      errorMessage = apiError.message
     } catch {
       errorMessage = "Failed to load plan details. Please try again."
     }
@@ -174,6 +166,7 @@ final class PlanDetailViewModel: ObservableObject {
       let updatedPlan = try await workoutPlanService.updatePlan(id: plan.id, request: updateRequest)
       self.planDetail = updatedPlan
       self.isActiveToggle = updatedPlan.isActive
+      persistSnapshot(loadedAt: Date())
     } catch {
       errorMessage = "Failed to update plan status."
       // Revert toggle
@@ -208,6 +201,7 @@ final class PlanDetailViewModel: ObservableObject {
       enrichedDays.append(enrichedDay)
       enrichedDays.sort { $0.dayNumber < $1.dayNumber }
       showAddDaySheet = false
+      persistSnapshot(loadedAt: Date())
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
     } catch {
@@ -248,12 +242,15 @@ final class PlanDetailViewModel: ObservableObject {
       exercises: oldDay.exercises
     )
     enrichedDays.sort { $0.dayNumber < $1.dayNumber }
+    persistSnapshot(loadedAt: Date())
   }
 
   func deletePlanDay(id: Int64) async {
     do {
       try await workoutPlanService.deletePlanDay(planId: planId, dayId: id)
       enrichedDays.removeAll { $0.id == id }
+      sessionStore.runtimeViewCache.remove(.planDayDetail(id))
+      persistSnapshot(loadedAt: Date())
     } catch {
       errorMessage = "Failed to delete workout day."
     }
@@ -261,11 +258,17 @@ final class PlanDetailViewModel: ObservableObject {
 
   func removeDeletedDay(id: Int64) {
     enrichedDays.removeAll { $0.id == id }
+    sessionStore.runtimeViewCache.remove(.planDayDetail(id))
+    persistSnapshot(loadedAt: Date())
   }
 
   func deletePlan() async {
     do {
       try await workoutPlanService.deletePlan(id: planId)
+      for day in enrichedDays {
+        sessionStore.runtimeViewCache.remove(.planDayDetail(day.id))
+      }
+      sessionStore.runtimeViewCache.remove(.planDetail(planId))
     } catch {
       errorMessage = "Failed to delete plan."
     }
@@ -306,5 +309,133 @@ final class PlanDetailViewModel: ObservableObject {
   var averageExercisesPerDay: Double {
     guard !enrichedDays.isEmpty else { return 0 }
     return Double(totalExercisesCount) / Double(enrichedDays.count)
+  }
+
+  private func resetForPlanChange() {
+    planDetail = nil
+    enrichedDays = []
+    isActiveToggle = false
+    errorMessage = nil
+    isLoading = false
+    isRefreshing = false
+    hasLoadedSnapshot = false
+    lastLoadedAt = nil
+  }
+
+  private func buildEnrichedDays() async throws -> [EnrichedPlanDay] {
+    let days = try await workoutPlanService.getPlanDays(planId: planId)
+
+    let exerciseLookup: [Int64: ExerciseResponse]
+    do {
+      let availableExercises = try await workoutPlanService.getAllExercises(systemOnly: false)
+      exerciseLookup = Dictionary(uniqueKeysWithValues: availableExercises.map { ($0.id, $0) })
+    } catch {
+      exerciseLookup = [:]
+    }
+
+    var enrichedDaysList: [EnrichedPlanDay] = []
+    for day in days {
+      do {
+        let exercises = try await workoutPlanService.getExercises(dayId: day.id)
+        let enrichedExercises = exercises.map { exercise in
+          let exerciseMeta = exerciseLookup[exercise.exerciseId]
+          return EnrichedPlanExercise(
+            id: exercise.id,
+            planDayId: exercise.planDayId,
+            exerciseId: exercise.exerciseId,
+            name: exerciseMeta?.name ?? "Exercise \(exercise.exerciseId)",
+            measurementType: exerciseMeta?.measurementType,
+            targetSets: exercise.targetSets,
+            targetReps: exercise.targetReps,
+            targetDurationSeconds: exercise.targetDurationSeconds,
+            targetDistance: exercise.targetDistance,
+            targetCalories: exercise.targetCalories,
+            targetWeight: exercise.targetWeight ?? 0
+          )
+        }
+        enrichedDaysList.append(
+          EnrichedPlanDay(
+            id: day.id,
+            dayNumber: day.dayNumber,
+            name: day.name,
+            exercises: enrichedExercises
+          )
+        )
+      } catch {
+        enrichedDaysList.append(
+          EnrichedPlanDay(
+            id: day.id,
+            dayNumber: day.dayNumber,
+            name: day.name,
+            exercises: []
+          )
+        )
+      }
+    }
+
+    return enrichedDaysList.sorted { $0.dayNumber < $1.dayNumber }
+  }
+
+  private func applyLoadedData(
+    plan: WorkoutPlanResponse,
+    days: [EnrichedPlanDay],
+    loadedAt: Date
+  ) {
+    planDetail = plan
+    isActiveToggle = plan.isActive
+    enrichedDays = days
+    hasLoadedSnapshot = true
+    lastLoadedAt = loadedAt
+    persistSnapshot(loadedAt: loadedAt)
+  }
+
+  private func persistSnapshot(loadedAt: Date) {
+    guard let planDetail else {
+      return
+    }
+
+    hasLoadedSnapshot = true
+    lastLoadedAt = loadedAt
+    let snapshot = PlanDetailSnapshot(
+      planDetail: planDetail,
+      enrichedDays: enrichedDays,
+      isActiveToggle: isActiveToggle
+    )
+    sessionStore.runtimeViewCache.store(snapshot, for: .planDetail(planId), at: loadedAt)
+  }
+
+  private func restoreSnapshotIfAvailable(for planId: Int64) {
+    guard
+      let snapshot: RuntimeViewCacheSnapshot<PlanDetailSnapshot> = sessionStore.runtimeViewCache
+        .snapshot(for: .planDetail(planId), as: PlanDetailSnapshot.self)
+    else {
+      return
+    }
+
+    planDetail = snapshot.value.planDetail
+    enrichedDays = snapshot.value.enrichedDays
+    isActiveToggle = snapshot.value.isActiveToggle
+    hasLoadedSnapshot = true
+    lastLoadedAt = snapshot.lastLoadedAt
+    isLoading = false
+  }
+
+  private func restoreSnapshotIfNewer(for planId: Int64) {
+    guard
+      let snapshot: RuntimeViewCacheSnapshot<PlanDetailSnapshot> = sessionStore.runtimeViewCache
+        .snapshot(for: .planDetail(planId), as: PlanDetailSnapshot.self)
+    else {
+      return
+    }
+
+    if let lastLoadedAt, snapshot.lastLoadedAt <= lastLoadedAt {
+      return
+    }
+
+    planDetail = snapshot.value.planDetail
+    enrichedDays = snapshot.value.enrichedDays
+    isActiveToggle = snapshot.value.isActiveToggle
+    hasLoadedSnapshot = true
+    self.lastLoadedAt = snapshot.lastLoadedAt
   }
 }

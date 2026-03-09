@@ -86,10 +86,16 @@ struct WorkoutDetailSharePayload {
   let text: String
 }
 
+struct WorkoutDetailSnapshot {
+  let workout: WorkoutSessionResponse
+}
+
 @MainActor
 final class WorkoutDetailViewModel: ObservableObject {
   @Published var workout: WorkoutSessionResponse?
   @Published var isLoading: Bool
+  @Published private(set) var isRefreshing = false
+  @Published private(set) var hasLoadedSnapshot: Bool
   @Published var errorMessage: String?
   @Published var showEditSessionSheet = false
   @Published var editDraft = WorkoutSessionEditDraft()
@@ -107,7 +113,9 @@ final class WorkoutDetailViewModel: ObservableObject {
   private let sessionStore: SessionStore
   private let workoutsService: WorkoutsService
   private let locationsService: LocationsService
-  private var hasLoaded = false
+  private var lastLoadedAt: Date?
+  private let freshnessInterval: TimeInterval = 60
+  private var isFetching = false
   private var hasLoadedLocationsForEditing = false
   private var elapsedTimer: AnyCancellable?
 
@@ -122,8 +130,17 @@ final class WorkoutDetailViewModel: ObservableObject {
     self.mode = mode
     self.workout = initialWorkout
     self.isLoading = initialWorkout == nil
+    self.hasLoadedSnapshot = initialWorkout != nil
     self.workoutsService = WorkoutsService()
     self.locationsService = LocationsService()
+    if let cachedSnapshot = restoreSnapshotIfAvailable() {
+      applySnapshot(cachedSnapshot.value, loadedAt: cachedSnapshot.lastLoadedAt)
+      self.isLoading = false
+    } else if let initialWorkout {
+      let loadedAt = Date()
+      self.lastLoadedAt = loadedAt
+      persistSnapshot(workout: initialWorkout, loadedAt: loadedAt)
+    }
     configureElapsedTimerIfNeeded()
   }
 
@@ -259,23 +276,53 @@ final class WorkoutDetailViewModel: ObservableObject {
   }
 
   func loadIfNeeded() async {
-    guard !hasLoaded else { return }
-    hasLoaded = true
-    await reload()
+    await load()
   }
 
   func reload() async {
-    if workout == nil {
+    await load(forceRefresh: true)
+  }
+
+  func load(forceRefresh: Bool = false) async {
+    guard !isFetching else {
+      return
+    }
+
+    restoreSnapshotIfNewer()
+
+    if
+      !forceRefresh,
+      let lastLoadedAt,
+      Date().timeIntervalSince(lastLoadedAt) < freshnessInterval
+    {
+      return
+    }
+
+    let shouldBlockUI = !hasLoadedSnapshot
+    isFetching = true
+    if shouldBlockUI {
       isLoading = true
+    } else {
+      isRefreshing = true
     }
     errorMessage = nil
 
     defer {
-      isLoading = false
+      isFetching = false
+      if shouldBlockUI {
+        isLoading = false
+      } else {
+        isRefreshing = false
+      }
     }
 
     do {
-      workout = try await workoutsService.fetchWorkoutSession(id: workoutId)
+      let fetchedWorkout = try await workoutsService.fetchWorkoutSession(id: workoutId)
+      let loadedAt = Date()
+      workout = fetchedWorkout
+      hasLoadedSnapshot = true
+      lastLoadedAt = loadedAt
+      persistSnapshot(workout: fetchedWorkout, loadedAt: loadedAt)
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
     } catch {
@@ -365,6 +412,10 @@ final class WorkoutDetailViewModel: ObservableObject {
       editBaselineDraft = updatedDraft
       sessionEditErrorMessage = nil
       showEditSessionSheet = false
+      let loadedAt = Date()
+      hasLoadedSnapshot = true
+      lastLoadedAt = loadedAt
+      persistSnapshot(workout: updatedWorkout, loadedAt: loadedAt)
       return updatedWorkout
     } catch let apiError as APIErrorResponse {
       sessionEditErrorMessage = apiError.message
@@ -520,6 +571,36 @@ final class WorkoutDetailViewModel: ObservableObject {
       return "--"
     }
     return DurationFormatter.minutesString(from: Int(durationSeconds))
+  }
+
+  private func persistSnapshot(workout: WorkoutSessionResponse, loadedAt: Date) {
+    let snapshot = WorkoutDetailSnapshot(workout: workout)
+    sessionStore.runtimeViewCache.store(snapshot, for: .workoutDetail(workoutId), at: loadedAt)
+  }
+
+  private func restoreSnapshotIfAvailable() -> RuntimeViewCacheSnapshot<WorkoutDetailSnapshot>? {
+    sessionStore.runtimeViewCache.snapshot(
+      for: .workoutDetail(workoutId),
+      as: WorkoutDetailSnapshot.self
+    )
+  }
+
+  private func restoreSnapshotIfNewer() {
+    guard let snapshot = restoreSnapshotIfAvailable() else {
+      return
+    }
+
+    if let lastLoadedAt, snapshot.lastLoadedAt <= lastLoadedAt {
+      return
+    }
+
+    applySnapshot(snapshot.value, loadedAt: snapshot.lastLoadedAt)
+  }
+
+  private func applySnapshot(_ snapshot: WorkoutDetailSnapshot, loadedAt: Date) {
+    workout = snapshot.workout
+    hasLoadedSnapshot = true
+    lastLoadedAt = loadedAt
   }
 
   private func summaryDateText(for date: Date) -> String {

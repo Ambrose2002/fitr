@@ -53,6 +53,15 @@ struct WeightHistoryEntryRow: Identifiable, Hashable {
   let deltaDirection: WeightHistoryDeltaDirection
 }
 
+struct WeightHistorySnapshot {
+  let entries: [WeightHistoryEntryRow]
+  let chartPoints: [WeightHistoryChartPoint]
+  let summary: WeightHistorySummaryData
+  let loadedCountText: String
+  let hasMoreEntries: Bool
+  let currentLimit: Int
+}
+
 @MainActor
 final class WeightHistoryViewModel: ObservableObject {
   private let pageSize = 12
@@ -60,6 +69,7 @@ final class WeightHistoryViewModel: ObservableObject {
 
   @Published var isLoading = false
   @Published var isRefreshing = false
+  @Published private(set) var hasLoadedSnapshot = false
   @Published var isLoadingMore = false
   @Published var isSavingEntry = false
   @Published var errorMessage: String?
@@ -79,6 +89,9 @@ final class WeightHistoryViewModel: ObservableObject {
   private let bodyMetricsService: BodyMetricsService
   private let skipInitialFetch: Bool
   private var currentLimit: Int
+  private var lastLoadedAt: Date?
+  private let freshnessInterval: TimeInterval = 60
+  private var isFetching = false
 
   init(
     sessionStore: SessionStore,
@@ -105,48 +118,63 @@ final class WeightHistoryViewModel: ObservableObject {
       self.hasMoreEntries = initialHasMoreEntries
       self.loadedCountText = initialLoadedCountText ?? "\(self.entries.count) Loaded"
       self.currentLimit = max(pageSize, sortedEntries.count)
+      let loadedAt = Date()
+      self.hasLoadedSnapshot = true
+      self.lastLoadedAt = loadedAt
+      persistSnapshot(loadedAt: loadedAt)
+    } else {
+      restoreSnapshotIfAvailable()
     }
   }
 
   func loadInitial() async {
-    guard !skipInitialFetch else { return }
-    guard !isLoading else { return }
-
-    isLoading = true
-    errorMessage = nil
-
-    defer {
-      isLoading = false
-    }
-
-    do {
-      let result = try await fetchWeightData(limit: currentLimit)
-      apply(entriesMetrics: result.entriesMetrics, chartMetrics: result.chartMetrics)
-    } catch is CancellationError {
-      return
-    } catch let urlError as URLError where urlError.code == .cancelled {
-      return
-    } catch let apiError as APIErrorResponse {
-      errorMessage = apiError.message
-    } catch {
-      errorMessage = error.localizedDescription
-    }
+    await load(forceRefresh: false)
   }
 
   func refresh() async {
-    guard !isRefreshing else { return }
+    await load(forceRefresh: true)
+  }
+
+  func load(forceRefresh: Bool = false) async {
+    guard !skipInitialFetch else { return }
+    guard !isFetching else { return }
     guard !isLoadingMore else { return }
 
-    isRefreshing = true
+    restoreSnapshotIfNewer()
+
+    if
+      !forceRefresh,
+      let lastLoadedAt,
+      Date().timeIntervalSince(lastLoadedAt) < freshnessInterval
+    {
+      return
+    }
+
+    let shouldBlockUI = !hasLoadedSnapshot
+    isFetching = true
+    if shouldBlockUI {
+      isLoading = true
+    } else {
+      isRefreshing = true
+    }
     errorMessage = nil
 
     defer {
-      isRefreshing = false
+      isFetching = false
+      if shouldBlockUI {
+        isLoading = false
+      } else {
+        isRefreshing = false
+      }
     }
 
     do {
       let result = try await fetchWeightData(limit: currentLimit)
       apply(entriesMetrics: result.entriesMetrics, chartMetrics: result.chartMetrics)
+      let loadedAt = Date()
+      hasLoadedSnapshot = true
+      lastLoadedAt = loadedAt
+      persistSnapshot(loadedAt: loadedAt)
     } catch is CancellationError {
       return
     } catch let urlError as URLError where urlError.code == .cancelled {
@@ -174,6 +202,10 @@ final class WeightHistoryViewModel: ObservableObject {
     do {
       let result = try await fetchWeightData(limit: currentLimit)
       apply(entriesMetrics: result.entriesMetrics, chartMetrics: result.chartMetrics)
+      let loadedAt = Date()
+      hasLoadedSnapshot = true
+      lastLoadedAt = loadedAt
+      persistSnapshot(loadedAt: loadedAt)
     } catch is CancellationError {
       currentLimit = previousLimit
       return
@@ -512,6 +544,59 @@ final class WeightHistoryViewModel: ObservableObject {
       avgWeeklySubtitle: "Based on 30-day trend",
       avgWeeklyDirection: avgWeekDirection
     )
+  }
+
+  private func persistSnapshot(loadedAt: Date) {
+    let snapshot = WeightHistorySnapshot(
+      entries: entries,
+      chartPoints: chartPoints,
+      summary: summary,
+      loadedCountText: loadedCountText,
+      hasMoreEntries: hasMoreEntries,
+      currentLimit: currentLimit
+    )
+    sessionStore.runtimeViewCache.store(snapshot, for: .weightHistory, at: loadedAt)
+  }
+
+  private func restoreSnapshotIfAvailable() {
+    guard
+      let snapshot: RuntimeViewCacheSnapshot<WeightHistorySnapshot> = sessionStore.runtimeViewCache
+        .snapshot(for: .weightHistory, as: WeightHistorySnapshot.self)
+    else {
+      return
+    }
+
+    entries = snapshot.value.entries
+    chartPoints = snapshot.value.chartPoints
+    summary = snapshot.value.summary
+    loadedCountText = snapshot.value.loadedCountText
+    hasMoreEntries = snapshot.value.hasMoreEntries
+    currentLimit = max(pageSize, snapshot.value.currentLimit)
+    hasLoadedSnapshot = true
+    lastLoadedAt = snapshot.lastLoadedAt
+    isLoading = false
+  }
+
+  private func restoreSnapshotIfNewer() {
+    guard
+      let snapshot: RuntimeViewCacheSnapshot<WeightHistorySnapshot> = sessionStore.runtimeViewCache
+        .snapshot(for: .weightHistory, as: WeightHistorySnapshot.self)
+    else {
+      return
+    }
+
+    if let lastLoadedAt, snapshot.lastLoadedAt <= lastLoadedAt {
+      return
+    }
+
+    entries = snapshot.value.entries
+    chartPoints = snapshot.value.chartPoints
+    summary = snapshot.value.summary
+    loadedCountText = snapshot.value.loadedCountText
+    hasMoreEntries = snapshot.value.hasMoreEntries
+    currentLimit = max(pageSize, snapshot.value.currentLimit)
+    hasLoadedSnapshot = true
+    lastLoadedAt = snapshot.lastLoadedAt
   }
 
   private func signedValueText(for value: Double, maximumFractionDigits: Int) -> String {

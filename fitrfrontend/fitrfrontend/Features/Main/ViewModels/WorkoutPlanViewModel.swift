@@ -212,6 +212,15 @@ final class WorkoutPlanViewModel: ObservableObject {
 
     do {
       try await workoutPlanService.deletePlan(id: id)
+      if
+        let snapshot: RuntimeViewCacheSnapshot<PlanDetailSnapshot> = sessionStore.runtimeViewCache
+          .snapshot(for: .planDetail(id), as: PlanDetailSnapshot.self)
+      {
+        for day in snapshot.value.enrichedDays {
+          sessionStore.runtimeViewCache.remove(.planDayDetail(day.id))
+        }
+      }
+      sessionStore.runtimeViewCache.remove(.planDetail(id))
       self.plans.removeAll { $0.id == id }
       if selectedPlan?.id == id {
         self.selectedPlan = nil
