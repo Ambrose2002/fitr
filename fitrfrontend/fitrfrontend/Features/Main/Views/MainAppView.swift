@@ -16,6 +16,7 @@ struct MainAppView: View {
   @State private var mountedTabs: Set<AppTab> = [.home]
   @State private var pendingPlansLaunchAction: PlansLaunchAction?
   @State private var pendingWorkoutsLaunchAction: WorkoutsLaunchAction?
+  @State private var pendingProgressLaunchAction: ProgressLaunchAction?
   @StateObject private var homeViewModel: HomeViewModel
   @StateObject private var plansViewModel: WorkoutPlanViewModel
   @StateObject private var workoutsViewModel: WorkoutsViewModel
@@ -63,6 +64,13 @@ struct MainAppView: View {
               pendingPlansLaunchAction = .createPlan
               activateTab(.plans)
             },
+            onViewAllInsightsTap: {
+              activateTab(.progress)
+            },
+            onLogWeightTap: {
+              pendingProgressLaunchAction = .logWeight
+              activateTab(.progress)
+            },
             onLastWorkoutTap: { workoutId in
               pendingWorkoutsLaunchAction = .openWorkout(workoutId)
               activateTab(.workouts)
@@ -74,7 +82,8 @@ struct MainAppView: View {
           PlansView(
             sessionStore: sessionStore,
             viewModel: plansViewModel,
-            launchAction: $pendingPlansLaunchAction
+            launchAction: $pendingPlansLaunchAction,
+            onPlanMutation: handlePlanMutation
           )
         }
 
@@ -82,7 +91,8 @@ struct MainAppView: View {
           WorkoutsView(
             sessionStore: sessionStore,
             viewModel: workoutsViewModel,
-            launchAction: $pendingWorkoutsLaunchAction
+            launchAction: $pendingWorkoutsLaunchAction,
+            onWorkoutMutation: handleWorkoutMutation
           )
         }
 
@@ -90,9 +100,11 @@ struct MainAppView: View {
           ProgressMainView(
             sessionStore: sessionStore,
             viewModel: progressViewModel,
+            launchAction: $pendingProgressLaunchAction,
             onSeeFullHistoryTap: {
               activateTab(.workouts)
-            }
+            },
+            onWeightEntrySaved: handleWeightMutation
           )
         }
 
@@ -176,6 +188,13 @@ struct MainAppView: View {
         await loadSelectedTabDataIfNeeded()
       }
     }
+    .onChange(of: activeWorkoutCoordinator.activeContext) { oldValue, newValue in
+      guard oldValue != nil, newValue == nil else { return }
+      handleWorkoutMutation()
+      Task {
+        await loadSelectedTabDataIfNeeded()
+      }
+    }
     .fullScreenCover(item: $activeWorkoutCoordinator.presentedContext) { context in
       LiveWorkoutView(context: context, sessionStore: sessionStore)
         .environmentObject(sessionStore)
@@ -221,6 +240,22 @@ struct MainAppView: View {
   private func activateTab(_ tab: AppTab) {
     mountedTabs.insert(tab)
     selectedTab = tab
+  }
+
+  private func handlePlanMutation() {
+    homeViewModel.invalidateFreshness()
+  }
+
+  private func handleWorkoutMutation() {
+    homeViewModel.invalidateFreshness()
+    workoutsViewModel.invalidateFreshness()
+    progressViewModel.invalidateFreshness()
+    profileViewModel.invalidateFreshness()
+  }
+
+  private func handleWeightMutation() {
+    homeViewModel.invalidateFreshness()
+    profileViewModel.invalidateFreshness()
   }
 }
 

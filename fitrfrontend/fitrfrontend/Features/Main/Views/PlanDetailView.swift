@@ -10,11 +10,25 @@ import SwiftUI
 struct PlanDetailView: View {
   @Environment(\.dismiss) var dismiss
   @EnvironmentObject var sessionStore: SessionStore
-  @StateObject private var viewModel: PlanDetailViewModel = PlanDetailViewModel(
-    planId: 0, sessionStore: SessionStore())
+  @StateObject private var viewModel: PlanDetailViewModel
   @State private var selectedDay: EnrichedPlanDay?
 
   let planId: Int64
+  let onPlanSummaryChanged: ((WorkoutPlanResponse, Int, Int) -> Void)?
+  let onPlanDeleted: ((Int64) -> Void)?
+
+  init(
+    planId: Int64,
+    onPlanSummaryChanged: ((WorkoutPlanResponse, Int, Int) -> Void)? = nil,
+    onPlanDeleted: ((Int64) -> Void)? = nil
+  ) {
+    self.planId = planId
+    self.onPlanSummaryChanged = onPlanSummaryChanged
+    self.onPlanDeleted = onPlanDeleted
+    _viewModel = StateObject(
+      wrappedValue: PlanDetailViewModel(planId: planId, sessionStore: SessionStore())
+    )
+  }
 
   var body: some View {
     ZStack {
@@ -280,7 +294,11 @@ struct PlanDetailView: View {
           Menu {
             Button(role: .destructive) {
               Task { @MainActor in
-                await viewModel.deletePlan()
+                let didDelete = await viewModel.deletePlan()
+                guard didDelete else {
+                  return
+                }
+                onPlanDeleted?(planId)
                 dismiss()
               }
             } label: {
@@ -328,13 +346,20 @@ struct PlanDetailView: View {
       viewModel.updateSessionStore(sessionStore)
       await viewModel.loadPlanDetail()
     }
-    .onAppear {
-      Task {
-        viewModel.updatePlanId(planId)
-        viewModel.updateSessionStore(sessionStore)
-        await viewModel.loadPlanDetail()
-      }
+    .onChange(of: viewModel.planDetail) { _, _ in
+      publishPlanSummaryIfPossible()
     }
+    .onChange(of: viewModel.enrichedDays) { _, _ in
+      publishPlanSummaryIfPossible()
+    }
+  }
+
+  private func publishPlanSummaryIfPossible() {
+    guard let payload = viewModel.currentPlanSummaryPayload() else {
+      return
+    }
+
+    onPlanSummaryChanged?(payload.plan, payload.daysCount, payload.exercisesCount)
   }
 }
 

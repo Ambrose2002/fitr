@@ -14,17 +14,20 @@ enum WorkoutsLaunchAction: Equatable {
 struct WorkoutsView: View {
   @Binding private var launchAction: WorkoutsLaunchAction?
   @ObservedObject private var viewModel: WorkoutsViewModel
+  private let onWorkoutMutation: () -> Void
   @State private var navigationPath = NavigationPath()
   @State private var pendingDeleteRow: WorkoutHistoryRow?
 
   init(
     sessionStore: SessionStore,
     viewModel: WorkoutsViewModel? = nil,
-    launchAction: Binding<WorkoutsLaunchAction?> = .constant(nil)
+    launchAction: Binding<WorkoutsLaunchAction?> = .constant(nil),
+    onWorkoutMutation: @escaping () -> Void = {}
   ) {
     _launchAction = launchAction
     let resolvedViewModel = viewModel ?? WorkoutsViewModel(sessionStore: sessionStore)
     _viewModel = ObservedObject(wrappedValue: resolvedViewModel)
+    self.onWorkoutMutation = onWorkoutMutation
   }
 
   var body: some View {
@@ -51,7 +54,10 @@ struct WorkoutsView: View {
           workoutId: workoutId,
           mode: .completed,
           initialWorkout: viewModel.workoutSession(id: workoutId),
-          onWorkoutUpdated: viewModel.applyUpdatedWorkout
+          onWorkoutUpdated: { updatedWorkout in
+            viewModel.applyUpdatedWorkout(updatedWorkout)
+            onWorkoutMutation()
+          }
         )
       }
     }
@@ -81,7 +87,10 @@ struct WorkoutsView: View {
       Button("Delete Workout", role: .destructive) {
         pendingDeleteRow = nil
         Task {
-          await viewModel.deleteWorkoutFromHistory(id: row.id)
+          let didDelete = await viewModel.deleteWorkoutFromHistory(id: row.id)
+          if didDelete {
+            onWorkoutMutation()
+          }
         }
       }
       Button("Cancel", role: .cancel) {

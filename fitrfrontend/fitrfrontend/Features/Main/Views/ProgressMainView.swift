@@ -8,20 +8,33 @@
 import Charts
 import SwiftUI
 
+enum ProgressLaunchAction: Equatable {
+  case logWeight
+}
+
+private enum ProgressRoute: Hashable {
+  case weightHistory
+}
+
 struct ProgressMainView: View {
+  @Binding private var launchAction: ProgressLaunchAction?
   @ObservedObject private var viewModel: ProgressViewModel
   private let sessionStore: SessionStore
   private let onSeeFullHistoryTap: () -> Void
   private let onWeightEntrySaved: () -> Void
+  @State private var navigationPath: [ProgressRoute] = []
+  @State private var pendingWeightHistoryLaunchAction: WeightHistoryLaunchAction?
 
   init(
     sessionStore: SessionStore,
     viewModel: ProgressViewModel? = nil,
+    launchAction: Binding<ProgressLaunchAction?> = .constant(nil),
     onSeeFullHistoryTap: @escaping () -> Void = {},
     onWeightEntrySaved: @escaping () -> Void = {},
     initialDashboard: ProgressDashboardData? = nil,
     initialError: String? = nil
   ) {
+    _launchAction = launchAction
     self.sessionStore = sessionStore
     self.onSeeFullHistoryTap = onSeeFullHistoryTap
     self.onWeightEntrySaved = onWeightEntrySaved
@@ -34,7 +47,7 @@ struct ProgressMainView: View {
   }
 
   var body: some View {
-    NavigationStack {
+    NavigationStack(path: $navigationPath) {
       ScrollView {
         VStack(spacing: 24) {
           if let errorMessage = viewModel.errorMessage {
@@ -49,14 +62,11 @@ struct ProgressMainView: View {
             ProgressDashboardContent(
               dashboard: dashboard,
               isRefreshing: viewModel.isLoading || viewModel.isRefreshing,
-              sessionStore: sessionStore,
+              onOpenWeightHistory: {
+                openWeightHistory()
+              },
               onSeeFullHistoryTap: onSeeFullHistoryTap
-            ) {
-              onWeightEntrySaved()
-              Task {
-                await viewModel.refresh()
-              }
-            }
+            )
           } else if viewModel.isLoading {
             ProgressSkeletonView()
           } else {
@@ -99,6 +109,52 @@ struct ProgressMainView: View {
       .refreshable {
         await viewModel.refresh()
       }
+      .navigationDestination(for: ProgressRoute.self) { route in
+        switch route {
+        case .weightHistory:
+          WeightHistoryView(
+            sessionStore: sessionStore,
+            launchAction: $pendingWeightHistoryLaunchAction,
+            onWeightEntrySaved: handleWeightEntrySaved
+          )
+        }
+      }
+      .onAppear {
+        consumeLaunchActionIfNeeded()
+      }
+      .onChange(of: launchAction) { _, _ in
+        consumeLaunchActionIfNeeded()
+      }
+    }
+  }
+
+  private func consumeLaunchActionIfNeeded() {
+    guard let launchAction else {
+      return
+    }
+
+    switch launchAction {
+    case .logWeight:
+      openWeightHistory(launchAction: .addEntry)
+    }
+
+    self.launchAction = nil
+  }
+
+  private func openWeightHistory(launchAction: WeightHistoryLaunchAction? = nil) {
+    pendingWeightHistoryLaunchAction = launchAction
+
+    guard navigationPath.last != .weightHistory else {
+      return
+    }
+
+    navigationPath.append(.weightHistory)
+  }
+
+  private func handleWeightEntrySaved() {
+    onWeightEntrySaved()
+    Task {
+      await viewModel.refresh()
     }
   }
 }
@@ -106,16 +162,14 @@ struct ProgressMainView: View {
 private struct ProgressDashboardContent: View {
   let dashboard: ProgressDashboardData
   let isRefreshing: Bool
-  let sessionStore: SessionStore
+  let onOpenWeightHistory: () -> Void
   let onSeeFullHistoryTap: () -> Void
-  let onWeightEntrySaved: () -> Void
 
   var body: some View {
     VStack(spacing: 24) {
       BodyCompositionSection(
         data: dashboard.bodyComposition,
-        sessionStore: sessionStore,
-        onWeightEntrySaved: onWeightEntrySaved
+        onOpenWeightHistory: onOpenWeightHistory
       )
       WorkoutSummarySection(stats: dashboard.workoutSummary)
       MonthlyTrendsSection(
@@ -148,8 +202,7 @@ private struct ProgressDashboardContent: View {
 
 private struct BodyCompositionSection: View {
   let data: ProgressDashboardData.BodyCompositionData
-  let sessionStore: SessionStore
-  let onWeightEntrySaved: () -> Void
+  let onOpenWeightHistory: () -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
@@ -169,11 +222,8 @@ private struct BodyCompositionSection: View {
           .clipShape(Capsule())
       }
 
-      NavigationLink {
-        WeightHistoryView(
-          sessionStore: sessionStore,
-          onWeightEntrySaved: onWeightEntrySaved
-        )
+      Button {
+        onOpenWeightHistory()
       } label: {
         VStack(alignment: .leading, spacing: 14) {
           if let weightDisplayText = data.weightDisplayText {

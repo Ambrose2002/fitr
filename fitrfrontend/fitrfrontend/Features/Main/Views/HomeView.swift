@@ -12,6 +12,8 @@ struct HomeView: View {
   @EnvironmentObject private var activeWorkoutCoordinator: ActiveWorkoutCoordinator
   @ObservedObject private var viewModel: HomeViewModel
   private let onNewPlanTap: () -> Void
+  private let onViewAllInsightsTap: () -> Void
+  private let onLogWeightTap: () -> Void
   private let onLastWorkoutTap: (Int64) -> Void
   @State private var showActiveWorkoutConflict = false
   @State private var startWorkoutErrorMessage: String?
@@ -20,10 +22,14 @@ struct HomeView: View {
     sessionStore: SessionStore,
     viewModel: HomeViewModel? = nil,
     onNewPlanTap: @escaping () -> Void = {},
+    onViewAllInsightsTap: @escaping () -> Void = {},
+    onLogWeightTap: @escaping () -> Void = {},
     onLastWorkoutTap: @escaping (Int64) -> Void = { _ in },
     initialData: HomeScreenData? = nil
   ) {
     self.onNewPlanTap = onNewPlanTap
+    self.onViewAllInsightsTap = onViewAllInsightsTap
+    self.onLogWeightTap = onLogWeightTap
     self.onLastWorkoutTap = onLastWorkoutTap
     let resolvedViewModel = viewModel ?? HomeViewModel(
       sessionStore: sessionStore,
@@ -236,7 +242,7 @@ struct HomeView: View {
                     icon: "chart.line.uptrend.xyaxis",
                     label: "Log Weight",
                     color: AppColors.accent,
-                    action: {}
+                    action: onLogWeightTap
                   )
 
                   QuickActionButton(
@@ -271,9 +277,12 @@ struct HomeView: View {
                       .foregroundColor(.secondary)
                   }
                   Spacer()
-                  NavigationLink("View All", destination: EmptyView())
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(AppColors.accent)
+                  Button("View All") {
+                    onViewAllInsightsTap()
+                  }
+                  .font(.system(size: 12, weight: .semibold))
+                  .foregroundColor(AppColors.accent)
+                  .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 16)
 

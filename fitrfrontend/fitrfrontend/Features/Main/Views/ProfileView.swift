@@ -145,7 +145,9 @@ struct ProfileView: View {
           title: "Gym Locations",
           subtitle: viewModel.rowSubtitles.locations
         ) {
-          GymLocationsView()
+          GymLocationsView { count in
+            viewModel.applyLocationCount(count)
+          }
         }
       }
 

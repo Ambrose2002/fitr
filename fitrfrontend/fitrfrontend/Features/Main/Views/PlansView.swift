@@ -14,6 +14,7 @@ enum PlansLaunchAction: Equatable {
 struct PlansView: View {
   @ObservedObject private var viewModel: WorkoutPlanViewModel
   @Binding private var launchAction: PlansLaunchAction?
+  private let onPlanMutation: () -> Void
 
   @State private var showCreatePlan = false
   @State private var planToEdit: PlanSummary?
@@ -25,11 +26,13 @@ struct PlansView: View {
   init(
     sessionStore: SessionStore,
     viewModel: WorkoutPlanViewModel? = nil,
-    launchAction: Binding<PlansLaunchAction?> = .constant(nil)
+    launchAction: Binding<PlansLaunchAction?> = .constant(nil),
+    onPlanMutation: @escaping () -> Void = {}
   ) {
     let resolvedViewModel = viewModel ?? WorkoutPlanViewModel(sessionStore: sessionStore)
     _viewModel = ObservedObject(wrappedValue: resolvedViewModel)
     _launchAction = launchAction
+    self.onPlanMutation = onPlanMutation
   }
 
   var body: some View {
@@ -111,7 +114,7 @@ struct PlansView: View {
                 VStack(spacing: 12) {
                   ForEach(viewModel.plans) { plan in
                     NavigationLink(
-                      destination: PlanDetailView(planId: plan.id)
+                      destination: planDetailDestination(planId: plan.id)
                     ) {
                       PlanCard(
                         plan: plan,
@@ -162,7 +165,7 @@ struct PlansView: View {
         }
       }
       .navigationDestination(item: $createdPlanToOpen) { plan in
-        PlanDetailView(planId: plan.id)
+        planDetailDestination(planId: plan.id)
       }
       .navigationBarHidden(true)
       .safeAreaInset(edge: .top) {
@@ -204,6 +207,7 @@ struct PlansView: View {
         onSubmit: { name in
           let createdPlan = try await viewModel.createPlan(name: name)
           pendingCreatedPlan = createdPlan
+          onPlanMutation()
         }
       )
     }
@@ -224,6 +228,7 @@ struct PlansView: View {
         initialName: plan.name,
         onSubmit: { name in
           _ = try await viewModel.updatePlan(id: plan.id, name: name)
+          onPlanMutation()
         }
       )
     }
@@ -234,7 +239,10 @@ struct PlansView: View {
       Button("Delete", role: .destructive) {
         if let plan = planToDelete {
           Task {
-            await viewModel.deletePlan(id: plan.id)
+            let didDelete = await viewModel.deletePlan(id: plan.id)
+            if didDelete {
+              onPlanMutation()
+            }
             planToDelete = nil
           }
         }
@@ -283,6 +291,25 @@ struct PlansView: View {
 
     showCreatePlan = true
     launchAction = nil
+  }
+
+  @ViewBuilder
+  private func planDetailDestination(planId: Int64) -> some View {
+    PlanDetailView(
+      planId: planId,
+      onPlanSummaryChanged: { updatedPlan, daysCount, exercisesCount in
+        viewModel.applyPlanDetailUpdate(
+          plan: updatedPlan,
+          daysCount: daysCount,
+          exercisesCount: exercisesCount
+        )
+        onPlanMutation()
+      },
+      onPlanDeleted: { deletedPlanId in
+        viewModel.applyDeletedPlan(id: deletedPlanId)
+        onPlanMutation()
+      }
+    )
   }
 
   private func inlineErrorBanner(message: String) -> some View {
