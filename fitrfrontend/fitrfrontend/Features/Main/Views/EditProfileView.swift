@@ -18,11 +18,11 @@ struct EditProfileView: View {
   var body: some View {
     ScrollView {
       VStack(spacing: 22) {
-        if viewModel.isLoading {
+        if viewModel.isLoading || viewModel.isRefreshing {
           HStack(spacing: 10) {
             ProgressView()
               .controlSize(.small)
-            Text("Refreshing profile details...")
+            Text(viewModel.isLoading ? "Loading profile details..." : "Refreshing profile details...")
               .font(.system(size: 13, weight: .medium))
               .foregroundStyle(AppColors.textSecondary)
           }

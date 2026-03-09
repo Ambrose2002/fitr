@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct GymLocationsView: View {
+  @EnvironmentObject private var sessionStore: SessionStore
   @StateObject private var viewModel: GymLocationsViewModel
 
   init(viewModel: GymLocationsViewModel) {
@@ -65,6 +66,7 @@ struct GymLocationsView: View {
       }
     }
     .task {
+      viewModel.updateSessionStore(sessionStore)
       await viewModel.loadLocations()
     }
     .refreshable {
@@ -110,6 +112,17 @@ struct GymLocationsView: View {
         ProgressView()
           .controlSize(.small)
         Text("Loading locations...")
+          .font(.system(size: 14, weight: .medium))
+          .foregroundStyle(AppColors.textSecondary)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(12)
+      .listRowSeparator(.hidden)
+    } else if viewModel.isRefreshing {
+      HStack(spacing: 10) {
+        ProgressView()
+          .controlSize(.small)
+        Text("Refreshing locations...")
           .font(.system(size: 14, weight: .medium))
           .foregroundStyle(AppColors.textSecondary)
       }

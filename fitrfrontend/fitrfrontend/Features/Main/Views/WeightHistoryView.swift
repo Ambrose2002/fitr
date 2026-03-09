@@ -46,6 +46,17 @@ struct WeightHistoryView: View {
           )
         }
 
+        if viewModel.isRefreshing && !viewModel.entries.isEmpty {
+          HStack(spacing: 8) {
+            ProgressView()
+              .controlSize(.small)
+            Text("Refreshing weight history...")
+              .font(.system(size: 13, weight: .medium))
+              .foregroundStyle(AppColors.textSecondary)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+        }
+
         if viewModel.isLoading && viewModel.entries.isEmpty {
           WeightHistorySkeletonView()
         } else if viewModel.entries.isEmpty {

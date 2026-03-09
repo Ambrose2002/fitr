@@ -20,9 +20,9 @@ struct PlanDetailView: View {
     ZStack {
       Color(.systemBackground).ignoresSafeArea()
 
-      if viewModel.isLoading {
+      if viewModel.isLoading && !viewModel.hasLoadedSnapshot {
         ProgressView()
-      } else if let errorMessage = viewModel.errorMessage {
+      } else if let errorMessage = viewModel.errorMessage, !viewModel.hasLoadedSnapshot {
         VStack(spacing: 16) {
           Image(systemName: "exclamationmark.circle")
             .font(.system(size: 48))
@@ -43,6 +43,36 @@ struct PlanDetailView: View {
       } else if let plan = viewModel.planDetail {
         ScrollView {
           VStack(spacing: 24) {
+            if let errorMessage = viewModel.errorMessage {
+              HStack(spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                  .foregroundStyle(AppColors.warningYellow)
+                  .font(.system(size: 14, weight: .semibold))
+                Text(errorMessage)
+                  .font(.system(size: 13, weight: .medium))
+                  .foregroundStyle(AppColors.textPrimary)
+                  .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+              }
+              .padding(.horizontal, 12)
+              .padding(.vertical, 10)
+              .background(AppColors.warningYellow.opacity(0.16))
+              .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+              .padding(.horizontal, 16)
+            }
+
+            if viewModel.isRefreshing {
+              HStack(spacing: 8) {
+                ProgressView()
+                  .controlSize(.small)
+                Text("Refreshing plan…")
+                  .font(.system(size: 12, weight: .medium))
+                  .foregroundStyle(AppColors.textSecondary)
+              }
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(.horizontal, 16)
+            }
+
             // Plan Header Card
             VStack(alignment: .leading, spacing: 16) {
               HStack(alignment: .top) {
@@ -219,7 +249,7 @@ struct PlanDetailView: View {
           .padding(.vertical, 16)
         }
         .refreshable {
-          await viewModel.loadPlanDetail()
+          await viewModel.loadPlanDetail(forceRefresh: true)
         }
       }
     }
@@ -297,6 +327,13 @@ struct PlanDetailView: View {
       viewModel.updatePlanId(planId)
       viewModel.updateSessionStore(sessionStore)
       await viewModel.loadPlanDetail()
+    }
+    .onAppear {
+      Task {
+        viewModel.updatePlanId(planId)
+        viewModel.updateSessionStore(sessionStore)
+        await viewModel.loadPlanDetail()
+      }
     }
   }
 }

@@ -94,7 +94,7 @@ struct PersonalInformationView: View {
         .allowsHitTesting(false)
     }
     .task {
-      await viewModel.load(forceRefresh: true)
+      await viewModel.load()
     }
     .navigationTitle("PERSONAL INFO")
     .navigationBarTitleDisplayMode(.inline)

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct PlanDayDetailView: View {
   @Environment(\.dismiss) private var dismiss
+  @EnvironmentObject private var sessionStore: SessionStore
   @State private var orderedDays: [EnrichedPlanDay]
   @State private var selectedDayId: Int64
 
@@ -46,6 +47,7 @@ struct PlanDayDetailView: View {
               planId: planId,
               planName: planName,
               day: day,
+              sessionStore: sessionStore,
               pageIndex: index,
               pageCount: orderedDays.count,
               isActive: selectedDayId == day.id,
@@ -92,7 +94,6 @@ private struct PlanDayDetailPageView: View {
   let onDeleteDay: (Int64) -> Void
 
   @State private var editingExercise: EnrichedPlanExercise?
-  @State private var hasLoaded = false
   @State private var showActiveWorkoutConflict = false
   @State private var startWorkoutErrorMessage: String?
 
@@ -100,6 +101,7 @@ private struct PlanDayDetailPageView: View {
     planId: Int64,
     planName: String,
     day: EnrichedPlanDay,
+    sessionStore: SessionStore,
     pageIndex: Int,
     pageCount: Int,
     isActive: Bool,
@@ -111,7 +113,8 @@ private struct PlanDayDetailPageView: View {
         planId: planId,
         dayId: day.id,
         dayName: day.name,
-        dayNumber: day.dayNumber
+        dayNumber: day.dayNumber,
+        sessionStore: sessionStore
       ))
 
     self.planName = planName
@@ -214,13 +217,23 @@ private struct PlanDayDetailPageView: View {
             .clipShape(Capsule())
           }
 
-          if viewModel.isLoading {
+          if viewModel.isLoading && !viewModel.hasLoadedSnapshot {
             HStack {
               Spacer()
               ProgressView()
               Spacer()
             }
             .padding(.vertical, 24)
+          } else if viewModel.isRefreshing {
+            HStack(spacing: 8) {
+              ProgressView()
+                .controlSize(.small)
+              Text("Refreshing routine…")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AppColors.textSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 6)
           } else if viewModel.exercises.isEmpty {
             VStack(spacing: 12) {
               Image(systemName: "dumbbell")
@@ -254,6 +267,9 @@ private struct PlanDayDetailPageView: View {
         }
         .padding(.horizontal, 16)
         .padding(.top, 16)
+      }
+      .refreshable {
+        await viewModel.load(forceRefresh: true)
       }
     }
     .navigationBarBackButtonHidden(true)
@@ -454,8 +470,7 @@ private struct PlanDayDetailPageView: View {
   }
 
   private func loadIfNeeded() {
-    guard isActive, !hasLoaded else { return }
-    hasLoaded = true
+    guard isActive else { return }
     Task {
       await viewModel.load()
     }
