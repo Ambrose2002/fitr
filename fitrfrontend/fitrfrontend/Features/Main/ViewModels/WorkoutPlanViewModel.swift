@@ -55,11 +55,16 @@ final class WorkoutPlanViewModel: ObservableObject {
   @Published var plans: [PlanSummary] = []
   @Published var selectedPlan: WorkoutPlanResponse?
   @Published var planDays: [PlanDayResponse] = []
-  @Published var isLoading = false
+  @Published var isLoading = true
+  @Published var isRefreshing = false
+  @Published private(set) var hasLoadedSnapshot = false
   @Published var errorMessage: String?
 
   private let workoutPlanService: WorkoutPlanService
   private let sessionStore: SessionStore
+  private var lastLoadedAt: Date?
+  private let freshnessInterval: TimeInterval = 60
+  private var isFetching = false
 
   init(sessionStore: SessionStore) {
     self.sessionStore = sessionStore
@@ -68,12 +73,35 @@ final class WorkoutPlanViewModel: ObservableObject {
 
   // MARK: - Workout Plans
 
-  func loadPlans() async {
-    isLoading = true
+  func loadPlans(forceRefresh: Bool = false) async {
+    guard !isFetching else {
+      return
+    }
+
+    if
+      !forceRefresh,
+      let lastLoadedAt,
+      Date().timeIntervalSince(lastLoadedAt) < freshnessInterval
+    {
+      return
+    }
+
+    let shouldBlockUI = !hasLoadedSnapshot
+    isFetching = true
+    if shouldBlockUI {
+      isLoading = true
+    } else {
+      isRefreshing = true
+    }
     errorMessage = nil
 
     defer {
-      isLoading = false
+      isFetching = false
+      if shouldBlockUI {
+        isLoading = false
+      } else {
+        isRefreshing = false
+      }
     }
 
     do {
@@ -117,6 +145,8 @@ final class WorkoutPlanViewModel: ObservableObject {
       }
 
       self.plans = enrichedPlans
+      hasLoadedSnapshot = true
+      lastLoadedAt = Date()
     } catch {
       self.errorMessage = error.localizedDescription
     }
@@ -141,6 +171,8 @@ final class WorkoutPlanViewModel: ObservableObject {
     )
     self.plans.insert(summary, at: 0)
     self.selectedPlan = newPlan
+    hasLoadedSnapshot = true
+    lastLoadedAt = Date()
     return newPlan
   }
 
@@ -169,6 +201,8 @@ final class WorkoutPlanViewModel: ObservableObject {
     if selectedPlan?.id == id {
       self.selectedPlan = updatedPlan
     }
+    lastLoadedAt = Date()
+    hasLoadedSnapshot = true
 
     return updatedPlan
   }
@@ -182,6 +216,8 @@ final class WorkoutPlanViewModel: ObservableObject {
       if selectedPlan?.id == id {
         self.selectedPlan = nil
       }
+      lastLoadedAt = Date()
+      hasLoadedSnapshot = true
     } catch {
       self.errorMessage = error.localizedDescription
     }

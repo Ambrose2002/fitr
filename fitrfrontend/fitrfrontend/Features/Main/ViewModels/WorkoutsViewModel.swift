@@ -107,6 +107,8 @@ struct WorkoutHistorySection: Identifiable, Hashable {
 final class WorkoutsViewModel: ObservableObject {
   @Published var allCompletedWorkouts: [WorkoutSessionResponse] = []
   @Published var isLoading = true
+  @Published var isRefreshing = false
+  @Published private(set) var hasLoadedSnapshot = false
   @Published var errorMessage: String?
   @Published var actionErrorMessage: String?
   @Published var showFilterSheet = false
@@ -116,6 +118,9 @@ final class WorkoutsViewModel: ObservableObject {
 
   private let workoutsService: WorkoutsService
   let sessionStore: SessionStore
+  private var lastLoadedAt: Date?
+  private let freshnessInterval: TimeInterval = 60
+  private var isFetching = false
 
   init(sessionStore: SessionStore) {
     self.sessionStore = sessionStore
@@ -198,13 +203,36 @@ final class WorkoutsViewModel: ObservableObject {
     return "Showing your fitness journey since \(Self.footerMonthLabel(for: oldestWorkout.startTime))"
   }
 
-  func loadWorkoutHistory() async {
-    isLoading = true
+  func loadWorkoutHistory(forceRefresh: Bool = false) async {
+    guard !isFetching else {
+      return
+    }
+
+    if
+      !forceRefresh,
+      let lastLoadedAt,
+      Date().timeIntervalSince(lastLoadedAt) < freshnessInterval
+    {
+      return
+    }
+
+    let shouldBlockUI = !hasLoadedSnapshot
+    isFetching = true
+    if shouldBlockUI {
+      isLoading = true
+    } else {
+      isRefreshing = true
+    }
     errorMessage = nil
     actionErrorMessage = nil
 
     defer {
-      isLoading = false
+      isFetching = false
+      if shouldBlockUI {
+        isLoading = false
+      } else {
+        isRefreshing = false
+      }
     }
 
     do {
@@ -217,6 +245,8 @@ final class WorkoutsViewModel: ObservableObject {
       let sanitizedFilters = sanitize(filters: appliedFilters)
       appliedFilters = sanitizedFilters
       draftFilters = sanitize(filters: draftFilters)
+      hasLoadedSnapshot = true
+      lastLoadedAt = Date()
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
     } catch {
@@ -267,6 +297,8 @@ final class WorkoutsViewModel: ObservableObject {
     )
     appliedFilters = sanitize(filters: appliedFilters)
     draftFilters = sanitize(filters: draftFilters)
+    hasLoadedSnapshot = true
+    lastLoadedAt = Date()
   }
 
   func deleteWorkoutFromHistory(id: Int64) async {
@@ -346,6 +378,8 @@ final class WorkoutsViewModel: ObservableObject {
     )
     appliedFilters = sanitize(filters: appliedFilters)
     draftFilters = sanitize(filters: draftFilters)
+    hasLoadedSnapshot = true
+    lastLoadedAt = Date()
   }
 
   private var filteredRows: [WorkoutHistoryRow] {

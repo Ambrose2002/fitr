@@ -22,7 +22,9 @@ final class ProfileViewModel: ObservableObject {
     var appVersion: String
   }
 
-  @Published private(set) var isLoading = false
+  @Published private(set) var isLoading = true
+  @Published private(set) var isRefreshing = false
+  @Published private(set) var hasLoadedSnapshot = false
   @Published private(set) var errorMessage: String?
   @Published private(set) var displayName = "Your Profile"
   @Published private(set) var email = "No email on file"
@@ -39,8 +41,10 @@ final class ProfileViewModel: ObservableObject {
   private let profileService: ProfileService
   private let workoutsService: WorkoutsService
   private let locationsService: LocationsService
-  private var hasLoaded = false
   private var cancellables = Set<AnyCancellable>()
+  private var lastLoadedAt: Date?
+  private let freshnessInterval: TimeInterval = 60
+  private var isFetching = false
 
   private static let groupedIntegerFormatter: NumberFormatter = {
     let formatter = NumberFormatter()
@@ -83,9 +87,18 @@ final class ProfileViewModel: ObservableObject {
       .receive(on: RunLoop.main)
       .sink { [weak self] profile in
         self?.applyProfile(profile)
+        if profile != nil {
+          self?.hasLoadedSnapshot = true
+          self?.lastLoadedAt = Date()
+        }
       }
       .store(in: &cancellables)
     applyProfile(sessionStore.userProfile)
+    if sessionStore.userProfile != nil {
+      hasLoadedSnapshot = true
+      lastLoadedAt = Date()
+      isLoading = false
+    }
   }
 
   convenience init(sessionStore: SessionStore) {
@@ -98,20 +111,37 @@ final class ProfileViewModel: ObservableObject {
   }
 
   func load(forceRefresh: Bool = false) async {
-    if isLoading {
+    guard !isFetching else {
       return
     }
 
-    if hasLoaded && !forceRefresh {
+    if
+      !forceRefresh,
+      let lastLoadedAt,
+      Date().timeIntervalSince(lastLoadedAt) < freshnessInterval
+    {
       return
     }
 
-    isLoading = true
+    let shouldBlockUI = !hasLoadedSnapshot
+    isFetching = true
+    if shouldBlockUI {
+      isLoading = true
+    } else {
+      isRefreshing = true
+    }
     errorMessage = nil
-    hasLoaded = true
-
     if let cachedProfile = sessionStore.userProfile {
       applyProfile(cachedProfile)
+    }
+
+    defer {
+      isFetching = false
+      if shouldBlockUI {
+        isLoading = false
+      } else {
+        isRefreshing = false
+      }
     }
 
     async let profileRequest = fetchProfile()
@@ -151,8 +181,10 @@ final class ProfileViewModel: ObservableObject {
     if encounteredError {
       errorMessage = "Some profile details couldn't be refreshed."
     }
-
-    isLoading = false
+    if !encounteredError {
+      lastLoadedAt = Date()
+      hasLoadedSnapshot = true
+    }
   }
 
   func logout() {

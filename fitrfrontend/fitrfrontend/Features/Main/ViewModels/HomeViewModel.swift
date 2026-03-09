@@ -12,11 +12,15 @@ import Foundation
 final class HomeViewModel: ObservableObject {
   @Published var homeData: HomeScreenData?
   @Published var isLoading = true
+  @Published var isRefreshing = false
   @Published var errorMessage: String?
 
   private let homeService: HomeService
   private let sessionStore: SessionStore
   private let skipFetch: Bool
+  private var lastLoadedAt: Date?
+  private let freshnessInterval: TimeInterval = 60
+  private var isFetching = false
 
   init(sessionStore: SessionStore, initialData: HomeScreenData? = nil) {
     self.sessionStore = sessionStore
@@ -26,6 +30,7 @@ final class HomeViewModel: ObservableObject {
     if let initialData = initialData {
       self.homeData = initialData
       self.isLoading = false
+      self.lastLoadedAt = Date()
     }
   }
 
@@ -35,11 +40,32 @@ final class HomeViewModel: ObservableObject {
       return
     }
 
-    isLoading = true
+    guard !isFetching else { return }
+
+    if
+      !forceRefresh,
+      let lastLoadedAt,
+      Date().timeIntervalSince(lastLoadedAt) < freshnessInterval
+    {
+      return
+    }
+
+    let shouldBlockUI = homeData == nil
+    isFetching = true
+    if shouldBlockUI {
+      isLoading = true
+    } else {
+      isRefreshing = true
+    }
     errorMessage = nil
 
     defer {
-      isLoading = false
+      isFetching = false
+      if shouldBlockUI {
+        isLoading = false
+      } else {
+        isRefreshing = false
+      }
     }
 
     do {
@@ -65,6 +91,8 @@ final class HomeViewModel: ObservableObject {
         weeklyExerciseVariety: data.weeklyExerciseVariety,
         lastSessionExerciseStats: data.lastSessionExerciseStats
       )
+      errorMessage = nil
+      lastLoadedAt = Date()
     } catch {
       self.errorMessage = error.localizedDescription
     }
