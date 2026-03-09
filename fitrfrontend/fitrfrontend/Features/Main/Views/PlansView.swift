@@ -386,7 +386,7 @@ struct PlanNameSheet: View {
   let helperText: String
   let confirmTitle: String
   let initialName: String
-  let onSubmit: (String) async throws -> Void
+  let onSubmit: @MainActor (String) async throws -> Void
 
   @State private var planName: String
   @State private var errorMessage = ""
@@ -399,7 +399,7 @@ struct PlanNameSheet: View {
     helperText: String,
     confirmTitle: String,
     initialName: String,
-    onSubmit: @escaping (String) async throws -> Void
+    onSubmit: @escaping @MainActor (String) async throws -> Void
   ) {
     _isPresented = isPresented
     self.title = title
@@ -482,7 +482,7 @@ struct PlanNameSheet: View {
             .autocorrectionDisabled()
             .submitLabel(.done)
             .onSubmit {
-              Task {
+              Task { @MainActor in
                 await submit()
               }
             }
@@ -518,7 +518,7 @@ struct PlanNameSheet: View {
         Spacer()
 
         Button {
-          Task {
+          Task { @MainActor in
             await submit()
           }
         } label: {

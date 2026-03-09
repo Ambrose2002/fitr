@@ -124,6 +124,9 @@ final class WorkoutPlanViewModel: ObservableObject {
 
   func createPlan(name: String) async throws -> WorkoutPlanResponse {
     let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmedName.isEmpty else {
+      throw APIErrorResponse(message: "Plan name is required.", timestamp: "", status: 400)
+    }
     let request = CreateWorkoutPlanRequest(name: trimmedName)
 
     let newPlan = try await workoutPlanService.createPlan(request: request)

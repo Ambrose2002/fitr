@@ -747,7 +747,7 @@ struct AddPlanDayExerciseSheet: View {
 
   let exercises: [ExerciseResponse]
   let unavailableExerciseIds: Set<Int64>
-  let onAdd: (ExerciseResponse, PlanExerciseTargets) async -> Void
+  let onAdd: @MainActor (ExerciseResponse, PlanExerciseTargets) async -> Void
 
   @State private var searchText = ""
   @State private var selectedExercise: ExerciseResponse?
@@ -906,7 +906,7 @@ struct AddPlanDayExerciseTargetsSheet: View {
   @EnvironmentObject private var sessionStore: SessionStore
 
   let exercise: ExerciseResponse
-  let onAdd: (PlanExerciseTargets) async -> Void
+  let onAdd: @MainActor (PlanExerciseTargets) async -> Void
 
   @State private var targetSets = ""
   @State private var targetReps = ""
@@ -995,7 +995,7 @@ struct AddPlanDayExerciseTargetsSheet: View {
               calories: floatValue(targetCalories, maximum: maxCalories),
               weight: weightValue
             )
-            Task {
+            Task { @MainActor in
               await onAdd(targets)
               dismiss()
             }

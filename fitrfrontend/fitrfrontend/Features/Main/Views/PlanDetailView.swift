@@ -249,7 +249,7 @@ struct PlanDetailView: View {
 
           Menu {
             Button(role: .destructive) {
-              Task {
+              Task { @MainActor in
                 await viewModel.deletePlan()
                 dismiss()
               }
@@ -306,7 +306,7 @@ struct PlanDetailView: View {
 struct TrainingDayCard: View {
   let day: EnrichedPlanDay
   let availableDayNumbers: [Int]
-  let onEdit: (String, Int) async throws -> Void
+  let onEdit: @MainActor (String, Int) async throws -> Void
   let onDelete: () -> Void
   let onTap: () -> Void
 
@@ -517,7 +517,7 @@ struct EditWorkoutDaySheet: View {
   let dayName: String
   let currentDayNumber: Int
   let availableDayNumbers: [Int]
-  let onSave: (String, Int) async throws -> Void
+  let onSave: @MainActor (String, Int) async throws -> Void
 
   @State private var editedName: String = ""
   @State private var selectedDayNumber: Int?
@@ -528,7 +528,7 @@ struct EditWorkoutDaySheet: View {
     dayName: String,
     currentDayNumber: Int,
     availableDayNumbers: [Int],
-    onSave: @escaping (String, Int) async throws -> Void
+    onSave: @escaping @MainActor (String, Int) async throws -> Void
   ) {
     self.dayName = dayName
     self.currentDayNumber = currentDayNumber
@@ -577,7 +577,7 @@ struct EditWorkoutDaySheet: View {
           primaryTitle: isSubmitting ? "Saving..." : "Save Changes",
           onCancel: { dismiss() },
           primaryAction: {
-            Task {
+            Task { @MainActor in
               await submit()
             }
           },
