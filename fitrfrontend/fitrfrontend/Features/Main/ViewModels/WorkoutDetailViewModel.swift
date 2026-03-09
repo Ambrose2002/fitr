@@ -326,6 +326,9 @@ final class WorkoutDetailViewModel: ObservableObject {
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
     } catch {
+      if error.isCancellation {
+        return
+      }
       errorMessage = error.localizedDescription
     }
   }
@@ -367,6 +370,9 @@ final class WorkoutDetailViewModel: ObservableObject {
       availableLocations = try await locationsService.fetchLocations()
       hasLoadedLocationsForEditing = true
     } catch {
+      if error.isCancellation {
+        return
+      }
       locationLoadErrorMessage = "Couldn't load saved locations. You can still update title and notes."
     }
   }

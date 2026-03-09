@@ -134,6 +134,9 @@ final class GymLocationsViewModel: ObservableObject {
       locations = sortLocations(fetchedLocations)
       persistSnapshot(loadedAt: Date())
     } catch {
+      if error.isCancellation {
+        return
+      }
       errorMessage = resolveErrorMessage(error, fallback: "Couldn't load your saved locations.")
     }
   }

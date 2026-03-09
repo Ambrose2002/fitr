@@ -250,6 +250,9 @@ final class WorkoutsViewModel: ObservableObject {
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
     } catch {
+      if error.isCancellation {
+        return
+      }
       errorMessage = error.localizedDescription
     }
   }

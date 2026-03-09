@@ -148,7 +148,7 @@ final class WorkoutPlanViewModel: ObservableObject {
       hasLoadedSnapshot = true
       lastLoadedAt = Date()
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -228,7 +228,7 @@ final class WorkoutPlanViewModel: ObservableObject {
       lastLoadedAt = Date()
       hasLoadedSnapshot = true
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -237,7 +237,7 @@ final class WorkoutPlanViewModel: ObservableObject {
       do {
         self.selectedPlan = try await workoutPlanService.getPlan(id: id)
       } catch {
-        self.errorMessage = error.localizedDescription
+        setErrorIfNotCancellation(error)
       }
     }
   }
@@ -255,7 +255,7 @@ final class WorkoutPlanViewModel: ObservableObject {
     do {
       self.planDays = try await workoutPlanService.getPlanDays(planId: planId)
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -268,7 +268,7 @@ final class WorkoutPlanViewModel: ObservableObject {
       let newDay = try await workoutPlanService.addPlanDay(planId: planId, request: request)
       self.planDays.append(newDay)
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -287,7 +287,7 @@ final class WorkoutPlanViewModel: ObservableObject {
         }
       }
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -300,7 +300,7 @@ final class WorkoutPlanViewModel: ObservableObject {
         self.planDays.removeAll { $0.id == dayId }
       }
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -331,7 +331,7 @@ final class WorkoutPlanViewModel: ObservableObject {
     do {
       _ = try await workoutPlanService.addExerciseToDay(dayId: dayId, request: request)
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -364,7 +364,7 @@ final class WorkoutPlanViewModel: ObservableObject {
         request: request
       )
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -374,7 +374,20 @@ final class WorkoutPlanViewModel: ObservableObject {
     do {
       try await workoutPlanService.deleteDayExercise(dayId: dayId, exerciseId: exerciseId)
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
+  }
+
+  private func setErrorIfNotCancellation(_ error: Error) {
+    guard !error.isCancellation else {
+      return
+    }
+
+    if let apiError = error as? APIErrorResponse {
+      errorMessage = apiError.message
+      return
+    }
+
+    errorMessage = error.localizedDescription
   }
 }

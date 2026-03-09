@@ -147,6 +147,9 @@ final class PlanDayDetailViewModel: ObservableObject {
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
     } catch {
+      if error.isCancellation {
+        return
+      }
       errorMessage = "Failed to load plan day exercises."
     }
   }

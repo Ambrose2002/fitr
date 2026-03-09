@@ -10,6 +10,12 @@ internal import Combine
 
 @MainActor
 final class ProfileViewModel: ObservableObject {
+  private enum FetchOutcome<Value> {
+    case success(Value)
+    case failure(Error)
+    case cancelled
+  }
+
   struct HeaderStats {
     var workoutsCount: String
     var streakWeeks: String
@@ -151,37 +157,45 @@ final class ProfileViewModel: ObservableObject {
     let (profileResult, workoutsResult, locationsResult) = await (
       profileRequest, workoutsRequest, locationsRequest)
 
-    var encounteredError = false
+    let hadCachedProfile = sessionStore.userProfile != nil || hasLoadedSnapshot
+    var didRefreshPrimaryProfile = false
 
     switch profileResult {
     case .success(let profile):
       sessionStore.updateUserProfile(profile)
       applyProfile(profile)
-    case .failure:
-      encounteredError = true
-      if sessionStore.userProfile == nil {
+      didRefreshPrimaryProfile = true
+    case .failure(let error):
+      if !hadCachedProfile {
         applyProfile(nil)
+        errorMessage = resolveErrorMessage(
+          error,
+          fallback: "Couldn't refresh your profile right now."
+        )
       }
+    case .cancelled:
+      break
     }
 
     switch workoutsResult {
     case .success(let workouts):
       applyWorkoutStats(from: workouts)
     case .failure:
-      encounteredError = true
+      break
+    case .cancelled:
+      break
     }
 
     switch locationsResult {
     case .success(let locations):
       applyLocationSummary(locations.count)
     case .failure:
-      encounteredError = true
+      break
+    case .cancelled:
+      break
     }
 
-    if encounteredError {
-      errorMessage = "Some profile details couldn't be refreshed."
-    }
-    if !encounteredError {
+    if didRefreshPrimaryProfile {
       lastLoadedAt = Date()
       hasLoadedSnapshot = true
     }
@@ -191,28 +205,36 @@ final class ProfileViewModel: ObservableObject {
     sessionStore.logout()
   }
 
-  private func fetchProfile() async -> Result<UserProfileResponse, Error> {
+  private func fetchProfile() async -> FetchOutcome<UserProfileResponse> {
     do {
       return .success(try await profileService.getProfile())
     } catch {
-      return .failure(error)
+      return error.isCancellation ? .cancelled : .failure(error)
     }
   }
 
-  private func fetchWorkouts() async -> Result<[WorkoutSessionResponse], Error> {
+  private func fetchWorkouts() async -> FetchOutcome<[WorkoutSessionResponse]> {
     do {
       return .success(try await workoutsService.fetchWorkoutHistory())
     } catch {
-      return .failure(error)
+      return error.isCancellation ? .cancelled : .failure(error)
     }
   }
 
-  private func fetchLocations() async -> Result<[LocationResponse], Error> {
+  private func fetchLocations() async -> FetchOutcome<[LocationResponse]> {
     do {
       return .success(try await locationsService.fetchLocations())
     } catch {
-      return .failure(error)
+      return error.isCancellation ? .cancelled : .failure(error)
     }
+  }
+
+  private func resolveErrorMessage(_ error: Error, fallback: String) -> String {
+    if let apiError = error as? APIErrorResponse {
+      return apiError.message
+    }
+
+    return fallback
   }
 
   private func applyProfile(_ profile: UserProfileResponse?) {

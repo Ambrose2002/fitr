@@ -152,6 +152,9 @@ final class PlanDetailViewModel: ObservableObject {
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
     } catch {
+      if error.isCancellation {
+        return
+      }
       errorMessage = "Failed to load plan details. Please try again."
     }
   }

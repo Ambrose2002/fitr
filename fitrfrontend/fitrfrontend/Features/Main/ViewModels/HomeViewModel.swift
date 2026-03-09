@@ -94,6 +94,9 @@ final class HomeViewModel: ObservableObject {
       errorMessage = nil
       lastLoadedAt = Date()
     } catch {
+      if error.isCancellation {
+        return
+      }
       self.errorMessage = error.localizedDescription
     }
   }

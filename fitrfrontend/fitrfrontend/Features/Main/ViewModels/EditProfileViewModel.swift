@@ -132,6 +132,9 @@ final class EditProfileViewModel: ObservableObject {
         errorMessage = "Couldn't refresh profile details."
       }
     } catch {
+      if error.isCancellation {
+        return
+      }
       if !hasLoadedSnapshot {
         errorMessage = "Failed to load profile details."
       } else {

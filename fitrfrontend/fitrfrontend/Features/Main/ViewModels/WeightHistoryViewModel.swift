@@ -182,6 +182,9 @@ final class WeightHistoryViewModel: ObservableObject {
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
     } catch {
+      if error.isCancellation {
+        return
+      }
       errorMessage = error.localizedDescription
     }
   }
@@ -216,6 +219,10 @@ final class WeightHistoryViewModel: ObservableObject {
       currentLimit = previousLimit
       errorMessage = apiError.message
     } catch {
+      if error.isCancellation {
+        currentLimit = previousLimit
+        return
+      }
       currentLimit = previousLimit
       errorMessage = error.localizedDescription
     }
@@ -289,6 +296,9 @@ final class WeightHistoryViewModel: ObservableObject {
       addEntryErrorMessage = apiError.message
       return false
     } catch {
+      if error.isCancellation {
+        return false
+      }
       addEntryErrorMessage = error.localizedDescription
       return false
     }
@@ -361,6 +371,9 @@ final class WeightHistoryViewModel: ObservableObject {
       entryMutationErrorMessage = apiError.message
       return false
     } catch {
+      if error.isCancellation {
+        return false
+      }
       entryMutationErrorMessage = error.localizedDescription
       return false
     }
@@ -383,6 +396,9 @@ final class WeightHistoryViewModel: ObservableObject {
       entryMutationErrorMessage = apiError.message
       return false
     } catch {
+      if error.isCancellation {
+        return false
+      }
       entryMutationErrorMessage = error.localizedDescription
       return false
     }
