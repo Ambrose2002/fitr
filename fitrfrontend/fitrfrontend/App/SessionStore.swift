@@ -9,6 +9,56 @@ internal import Combine
 import Foundation
 import KeychainSwift
 
+enum RuntimeViewCacheKey: Hashable {
+  case planDetail(Int64)
+  case planDayDetail(Int64)
+  case workoutDetail(Int64)
+  case gymLocations
+  case weightHistory
+  case editProfile
+}
+
+struct RuntimeViewCacheSnapshot<Value> {
+  let value: Value
+  let lastLoadedAt: Date
+}
+
+final class RuntimeViewCache {
+  private struct Entry {
+    var value: Any
+    var lastLoadedAt: Date
+  }
+
+  private var storage: [RuntimeViewCacheKey: Entry] = [:]
+
+  func store<Value>(
+    _ value: Value,
+    for key: RuntimeViewCacheKey,
+    at loadedAt: Date = Date()
+  ) {
+    storage[key] = Entry(value: value, lastLoadedAt: loadedAt)
+  }
+
+  func snapshot<Value>(
+    for key: RuntimeViewCacheKey,
+    as _: Value.Type = Value.self
+  ) -> RuntimeViewCacheSnapshot<Value>? {
+    guard let entry = storage[key], let typedValue = entry.value as? Value else {
+      return nil
+    }
+
+    return RuntimeViewCacheSnapshot(value: typedValue, lastLoadedAt: entry.lastLoadedAt)
+  }
+
+  func remove(_ key: RuntimeViewCacheKey) {
+    storage.removeValue(forKey: key)
+  }
+
+  func clear() {
+    storage.removeAll()
+  }
+}
+
 final class SessionStore: ObservableObject {
   enum AuthState {
     case loading
@@ -20,6 +70,7 @@ final class SessionStore: ObservableObject {
   private let profileService = ProfileService()
   private let userDefaults = UserDefaults.standard
   private let profileStorageKey = "cachedUserProfile"
+  let runtimeViewCache = RuntimeViewCache()
 
   @Published private(set) var authState: AuthState = .loading
   @Published var hasCreatedProfile: Bool = false
@@ -51,11 +102,13 @@ final class SessionStore: ObservableObject {
       // Check if profile exists on the backend
       checkProfileOnBackend()
     } else {
+      runtimeViewCache.clear()
       authState = .unauthenticated
     }
   }
 
   func login(_ loginResponse: LoginResponse) {
+    runtimeViewCache.clear()
     self.accessToken = loginResponse.token
     authState = .authenticated
     // Check if profile exists on the backend
@@ -67,6 +120,7 @@ final class SessionStore: ObservableObject {
     hasCreatedProfile = false
     isCheckingProfile = false
     userProfile = nil
+    runtimeViewCache.clear()
     clearUserProfileStorage()
     authState = .unauthenticated
   }
