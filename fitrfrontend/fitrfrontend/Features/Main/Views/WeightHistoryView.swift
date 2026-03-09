@@ -8,13 +8,19 @@
 import Charts
 import SwiftUI
 
+enum WeightHistoryLaunchAction: Equatable {
+  case addEntry
+}
+
 struct WeightHistoryView: View {
+  @Binding private var launchAction: WeightHistoryLaunchAction?
   @StateObject private var viewModel: WeightHistoryViewModel
   @State private var deleteFailureMessage: String?
   private let onWeightEntrySaved: () -> Void
 
   init(
     sessionStore: SessionStore,
+    launchAction: Binding<WeightHistoryLaunchAction?> = .constant(nil),
     onWeightEntrySaved: @escaping () -> Void = {},
     initialEntries: [BodyMetricResponse]? = nil,
     initialChartMetrics: [BodyMetricResponse]? = nil,
@@ -22,6 +28,7 @@ struct WeightHistoryView: View {
     initialHasMoreEntries: Bool = false,
     initialLoadedCountText: String? = nil
   ) {
+    _launchAction = launchAction
     self.onWeightEntrySaved = onWeightEntrySaved
     _viewModel = StateObject(
       wrappedValue: WeightHistoryViewModel(
@@ -36,50 +43,146 @@ struct WeightHistoryView: View {
   }
 
   var body: some View {
-    ScrollView {
-      VStack(spacing: 20) {
-        if let errorMessage = viewModel.errorMessage {
-          WeightHistoryInlineErrorCard(
-            message: errorMessage,
-            canRetry: !viewModel.isLoading && !viewModel.isRefreshing,
-            retry: { Task { await viewModel.refresh() } }
-          )
-        }
-
-        if viewModel.isLoading && viewModel.entries.isEmpty {
+    Group {
+      if viewModel.isLoading && viewModel.entries.isEmpty {
+        ScrollView {
           WeightHistorySkeletonView()
-        } else if viewModel.entries.isEmpty {
-          WeightHistoryEmptyState {
-            viewModel.showAddSheet = true
+            .padding(.horizontal, 16)
+            .padding(.vertical, 18)
+        }
+      } else if viewModel.entries.isEmpty {
+        ScrollView {
+          VStack(spacing: 20) {
+            if let errorMessage = viewModel.errorMessage {
+              WeightHistoryInlineErrorCard(
+                message: errorMessage,
+                canRetry: !viewModel.isLoading && !viewModel.isRefreshing,
+                retry: { Task { await viewModel.refresh() } }
+              )
+            }
+
+            WeightHistoryEmptyState {
+              viewModel.showAddSheet = true
+            }
           }
-        } else {
+          .padding(.horizontal, 16)
+          .padding(.vertical, 18)
+        }
+      }
+      else {
+        List {
+          if let errorMessage = viewModel.errorMessage {
+            WeightHistoryInlineErrorCard(
+              message: errorMessage,
+              canRetry: !viewModel.isLoading && !viewModel.isRefreshing,
+              retry: { Task { await viewModel.refresh() } }
+            )
+            .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 6, trailing: 16))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+          }
+
+          if viewModel.isRefreshing {
+            HStack(spacing: 8) {
+              ProgressView()
+                .controlSize(.small)
+              Text("Refreshing weight history...")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(AppColors.textSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+          }
+
           WeightHistoryTrendSection(
             summary: viewModel.summary,
             points: viewModel.chartPoints,
             weightUnitLabel: viewModel.weightUnitLabel
           )
+          .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 10, trailing: 16))
+          .listRowSeparator(.hidden)
+          .listRowBackground(Color.clear)
 
-          WeightHistoryMeasurementsSection(
-            rows: viewModel.entries,
-            loadedCountText: viewModel.loadedCountText,
-            isLoadingMore: viewModel.isLoadingMore,
-            hasMoreEntries: viewModel.hasMoreEntries,
-            isInteractionLocked: viewModel.showEditSheet || viewModel.pendingDeleteEntry != nil,
-            onEditRow: { row in
-              viewModel.entryMutationErrorMessage = nil
-              viewModel.editingEntry = row
-              viewModel.showEditSheet = true
-            },
-            onDeleteRow: { row in
-              viewModel.entryMutationErrorMessage = nil
-              viewModel.pendingDeleteEntry = row
-            },
-            onLoadMore: { Task { await viewModel.loadMoreEntries() } }
-          )
+          HStack {
+            Text("All Measurements")
+              .font(.system(size: 30, weight: .bold))
+              .foregroundStyle(AppColors.textPrimary)
+
+            Spacer()
+
+            Text(viewModel.loadedCountText)
+              .font(.system(size: 15, weight: .bold))
+              .foregroundStyle(AppColors.textSecondary)
+          }
+          .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 8, trailing: 16))
+          .listRowSeparator(.hidden)
+          .listRowBackground(Color.clear)
+
+          ForEach(viewModel.entries) { row in
+            WeightHistoryRowCard(row: row)
+              .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                Button {
+                  presentEdit(for: row)
+                } label: {
+                  Label("Edit", systemImage: "pencil")
+                }
+                .tint(AppColors.infoBlue)
+              }
+              .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button(role: .destructive) {
+                  requestDelete(for: row)
+                } label: {
+                  Label("Delete", systemImage: "trash")
+                }
+              }
+              .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 12, trailing: 16))
+              .listRowSeparator(.hidden)
+              .listRowBackground(Color.clear)
+          }
+
+          if viewModel.hasMoreEntries {
+            Button {
+              Task {
+                await viewModel.loadMoreEntries()
+              }
+            } label: {
+              HStack {
+                if viewModel.isLoadingMore {
+                  ProgressView()
+                    .controlSize(.small)
+                    .tint(AppColors.textSecondary)
+                }
+                Text(viewModel.isLoadingMore ? "Loading..." : "Load Previous Entries")
+                  .font(.system(size: 16, weight: .semibold))
+                  .foregroundStyle(AppColors.textPrimary)
+              }
+              .frame(maxWidth: .infinity)
+              .frame(height: 56)
+              .background(AppColors.surface)
+              .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+              .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                  .stroke(AppColors.borderGray, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+              )
+            }
+            .buttonStyle(.plain)
+            .disabled(viewModel.isLoadingMore)
+            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 8, trailing: 16))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+          }
+
+          Color.clear
+            .frame(height: 92)
+            .listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
       }
-      .padding(.horizontal, 16)
-      .padding(.vertical, 18)
     }
     .safeAreaInset(edge: .bottom) {
       Color.clear
@@ -104,6 +207,12 @@ struct WeightHistoryView: View {
     }
     .task {
       await viewModel.loadInitial()
+    }
+    .onAppear {
+      consumeLaunchActionIfNeeded()
+    }
+    .onChange(of: launchAction) { _, _ in
+      consumeLaunchActionIfNeeded()
     }
     .refreshable {
       await viewModel.refresh()
@@ -209,6 +318,31 @@ struct WeightHistoryView: View {
     } message: {
       Text(deleteFailureMessage ?? "Please try again.")
     }
+  }
+
+  private func consumeLaunchActionIfNeeded() {
+    guard let launchAction else {
+      return
+    }
+
+    switch launchAction {
+    case .addEntry:
+      viewModel.addEntryErrorMessage = nil
+      viewModel.showAddSheet = true
+    }
+
+    self.launchAction = nil
+  }
+
+  private func presentEdit(for row: WeightHistoryEntryRow) {
+    viewModel.entryMutationErrorMessage = nil
+    viewModel.editingEntry = row
+    viewModel.showEditSheet = true
+  }
+
+  private func requestDelete(for row: WeightHistoryEntryRow) {
+    viewModel.entryMutationErrorMessage = nil
+    viewModel.pendingDeleteEntry = row
   }
 
   private func inputText(for value: Double) -> String {
@@ -501,260 +635,6 @@ private struct WeightHistoryKpiCard: View {
       return AppColors.successGreen
     case .flat:
       return AppColors.textPrimary
-    }
-  }
-}
-
-private struct WeightHistoryMeasurementsSection: View {
-  let rows: [WeightHistoryEntryRow]
-  let loadedCountText: String
-  let isLoadingMore: Bool
-  let hasMoreEntries: Bool
-  let isInteractionLocked: Bool
-  let onEditRow: (WeightHistoryEntryRow) -> Void
-  let onDeleteRow: (WeightHistoryEntryRow) -> Void
-  let onLoadMore: () -> Void
-  @State private var currentlyOpenRowID: WeightHistoryEntryRow.ID?
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      HStack {
-        Text("All Measurements")
-          .font(.system(size: 30, weight: .bold))
-          .foregroundStyle(AppColors.textPrimary)
-
-        Spacer()
-
-        Text(loadedCountText)
-          .font(.system(size: 15, weight: .bold))
-          .foregroundStyle(AppColors.textSecondary)
-      }
-
-      ForEach(rows) { row in
-        WeightHistorySwipeRow(
-          row: row,
-          isInteractionLocked: isInteractionLocked,
-          currentlyOpenRowID: $currentlyOpenRowID,
-          onEdit: {
-            onEditRow(row)
-          },
-          onDelete: {
-            onDeleteRow(row)
-          }
-        )
-      }
-
-      if hasMoreEntries {
-        Button {
-          onLoadMore()
-        } label: {
-          HStack {
-            if isLoadingMore {
-              ProgressView()
-                .controlSize(.small)
-                .tint(AppColors.textSecondary)
-            }
-            Text(isLoadingMore ? "Loading..." : "Load Previous Entries")
-              .font(.system(size: 16, weight: .semibold))
-              .foregroundStyle(AppColors.textPrimary)
-          }
-          .frame(maxWidth: .infinity)
-          .frame(height: 56)
-          .background(AppColors.surface)
-          .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-          .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-              .stroke(AppColors.borderGray, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-          )
-        }
-        .buttonStyle(.plain)
-        .disabled(isLoadingMore)
-        .padding(.top, 4)
-      }
-    }
-    .onChange(of: isInteractionLocked) { _, locked in
-      if locked {
-        currentlyOpenRowID = nil
-      }
-    }
-    .onChange(of: rows) { _, newRows in
-      guard let openID = currentlyOpenRowID else { return }
-      if !newRows.contains(where: { $0.id == openID }) {
-        currentlyOpenRowID = nil
-      }
-    }
-  }
-}
-
-private enum WeightHistorySwipeSide {
-  case leading
-  case trailing
-}
-
-private struct WeightHistorySwipeRow: View {
-  let row: WeightHistoryEntryRow
-  let isInteractionLocked: Bool
-  @Binding var currentlyOpenRowID: WeightHistoryEntryRow.ID?
-  let onEdit: () -> Void
-  let onDelete: () -> Void
-
-  @State private var dragOffsetX: CGFloat = 0
-  @State private var isDraggingHorizontally = false
-  @State private var openSide: WeightHistorySwipeSide?
-
-  private let revealWidth: CGFloat = 112
-  private let triggerThreshold: CGFloat = 64
-  private let maxVisualOffset: CGFloat = 128
-  private let cornerRadius: CGFloat = 14
-
-  private var baseOffsetX: CGFloat {
-    switch openSide {
-    case .leading:
-      return revealWidth
-    case .trailing:
-      return -revealWidth
-    case nil:
-      return 0
-    }
-  }
-
-  private var resolvedOffsetX: CGFloat {
-    let rawOffset = baseOffsetX + dragOffsetX
-    return min(max(rawOffset, -maxVisualOffset), maxVisualOffset)
-  }
-
-  private var editRevealProgress: CGFloat {
-    min(max(resolvedOffsetX / revealWidth, 0), 1)
-  }
-
-  private var deleteRevealProgress: CGFloat {
-    min(max(-resolvedOffsetX / revealWidth, 0), 1)
-  }
-
-  private var isOpen: Bool {
-    openSide != nil
-  }
-
-  private var isEditActionVisible: Bool {
-    editRevealProgress > 0.97
-  }
-
-  private var isDeleteActionVisible: Bool {
-    deleteRevealProgress > 0.97
-  }
-
-  var body: some View {
-    ZStack {
-      HStack(spacing: 0) {
-        Button {
-          guard !isInteractionLocked else { return }
-          closeRow()
-          onEdit()
-        } label: {
-          Label("Edit", systemImage: "pencil")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(.white)
-            .frame(width: revealWidth, height: 58)
-            .background(AppColors.infoBlue)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .opacity(editRevealProgress)
-        .scaleEffect(editRevealProgress > 0 ? 1 : 0.92, anchor: .leading)
-        .allowsHitTesting(isEditActionVisible && !isInteractionLocked)
-
-        Spacer(minLength: 0)
-
-        Button(role: .destructive) {
-          guard !isInteractionLocked else { return }
-          closeRow()
-          onDelete()
-        } label: {
-          Label("Delete", systemImage: "trash")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(.white)
-            .frame(width: revealWidth, height: 58)
-            .background(AppColors.errorRed)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .opacity(deleteRevealProgress)
-        .scaleEffect(deleteRevealProgress > 0 ? 1 : 0.92, anchor: .trailing)
-        .allowsHitTesting(isDeleteActionVisible && !isInteractionLocked)
-      }
-      .padding(.horizontal, 2)
-      .padding(.vertical, 2)
-
-      WeightHistoryRowCard(row: row)
-        .offset(x: resolvedOffsetX)
-        .contentShape(Rectangle())
-        .onTapGesture {
-          guard isOpen else { return }
-          closeRow()
-        }
-    }
-    .highPriorityGesture(
-      DragGesture(minimumDistance: 10, coordinateSpace: .local)
-        .onChanged { value in
-          guard !isInteractionLocked else { return }
-          if !isDraggingHorizontally {
-            guard abs(value.translation.width) > abs(value.translation.height) else { return }
-            isDraggingHorizontally = true
-            if currentlyOpenRowID != row.id {
-              currentlyOpenRowID = row.id
-            }
-          }
-
-          guard isDraggingHorizontally else { return }
-          let proposedOffset = baseOffsetX + value.translation.width
-          let clampedOffset = min(max(proposedOffset, -maxVisualOffset), maxVisualOffset)
-          dragOffsetX = clampedOffset - baseOffsetX
-        }
-        .onEnded { value in
-          guard !isInteractionLocked else { return }
-          guard isDraggingHorizontally else { return }
-          isDraggingHorizontally = false
-
-          let projectedX = baseOffsetX + value.predictedEndTranslation.width
-          let translationX = baseOffsetX + value.translation.width
-
-          if projectedX >= triggerThreshold || translationX >= triggerThreshold {
-            openRow(.leading)
-          } else if projectedX <= -triggerThreshold || translationX <= -triggerThreshold {
-            openRow(.trailing)
-          } else {
-            closeRow()
-          }
-        }
-    )
-    .onChange(of: currentlyOpenRowID) { _, newOpenID in
-      if newOpenID != row.id {
-        closeRow(updateOpenRowID: false)
-      }
-    }
-    .onChange(of: isInteractionLocked) { _, locked in
-      if locked {
-        closeRow()
-      }
-    }
-  }
-
-  private func openRow(_ side: WeightHistorySwipeSide) {
-    withAnimation(.spring(response: 0.24, dampingFraction: 0.88)) {
-      openSide = side
-      dragOffsetX = 0
-      currentlyOpenRowID = row.id
-    }
-  }
-
-  private func closeRow(updateOpenRowID: Bool = true) {
-    withAnimation(.spring(response: 0.24, dampingFraction: 0.88)) {
-      openSide = nil
-      dragOffsetX = 0
-    }
-
-    if updateOpenRowID, currentlyOpenRowID == row.id {
-      currentlyOpenRowID = nil
     }
   }
 }

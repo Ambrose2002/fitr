@@ -12,9 +12,9 @@ enum PlansLaunchAction: Equatable {
 }
 
 struct PlansView: View {
-  @EnvironmentObject var sessionStore: SessionStore
-  @StateObject private var viewModel: WorkoutPlanViewModel
+  @ObservedObject private var viewModel: WorkoutPlanViewModel
   @Binding private var launchAction: PlansLaunchAction?
+  private let onPlanMutation: () -> Void
 
   @State private var showCreatePlan = false
   @State private var planToEdit: PlanSummary?
@@ -25,18 +25,22 @@ struct PlansView: View {
 
   init(
     sessionStore: SessionStore,
-    launchAction: Binding<PlansLaunchAction?> = .constant(nil)
+    viewModel: WorkoutPlanViewModel? = nil,
+    launchAction: Binding<PlansLaunchAction?> = .constant(nil),
+    onPlanMutation: @escaping () -> Void = {}
   ) {
-    _viewModel = StateObject(wrappedValue: WorkoutPlanViewModel(sessionStore: sessionStore))
+    let resolvedViewModel = viewModel ?? WorkoutPlanViewModel(sessionStore: sessionStore)
+    _viewModel = ObservedObject(wrappedValue: resolvedViewModel)
     _launchAction = launchAction
+    self.onPlanMutation = onPlanMutation
   }
 
   var body: some View {
     NavigationStack {
       ZStack {
-        if viewModel.isLoading {
+        if viewModel.isLoading && !viewModel.hasLoadedSnapshot {
           loadingState
-        } else if let errorMessage = viewModel.errorMessage {
+        } else if let errorMessage = viewModel.errorMessage, !viewModel.hasLoadedSnapshot {
           VStack(spacing: 16) {
             Image(systemName: "exclamationmark.circle")
               .font(.system(size: 48))
@@ -48,7 +52,7 @@ struct PlansView: View {
               .foregroundColor(.secondary)
             Button("Retry") {
               Task {
-                await viewModel.loadPlans()
+                await viewModel.loadPlans(forceRefresh: true)
               }
             }
             .buttonStyle(.bordered)
@@ -68,6 +72,11 @@ struct PlansView: View {
               }
               .frame(maxWidth: .infinity, alignment: .leading)
               .padding(.horizontal, 16)
+
+              if let errorMessage = viewModel.errorMessage {
+                inlineErrorBanner(message: errorMessage)
+                  .padding(.horizontal, 16)
+              }
 
               // Plans List
               if viewModel.plans.isEmpty {
@@ -105,7 +114,7 @@ struct PlansView: View {
                 VStack(spacing: 12) {
                   ForEach(viewModel.plans) { plan in
                     NavigationLink(
-                      destination: PlanDetailView(planId: plan.id)
+                      destination: planDetailDestination(planId: plan.id)
                     ) {
                       PlanCard(
                         plan: plan,
@@ -128,12 +137,12 @@ struct PlansView: View {
             .padding(.vertical, 16)
           }
           .refreshable {
-            await viewModel.loadPlans()
+            await viewModel.loadPlans(forceRefresh: true)
           }
         }
 
         // Floating Action Button
-        if !viewModel.isLoading {
+        if !(viewModel.isLoading && !viewModel.hasLoadedSnapshot) {
           VStack {
             Spacer()
             HStack {
@@ -156,7 +165,7 @@ struct PlansView: View {
         }
       }
       .navigationDestination(item: $createdPlanToOpen) { plan in
-        PlanDetailView(planId: plan.id)
+        planDetailDestination(planId: plan.id)
       }
       .navigationBarHidden(true)
       .safeAreaInset(edge: .top) {
@@ -198,6 +207,7 @@ struct PlansView: View {
         onSubmit: { name in
           let createdPlan = try await viewModel.createPlan(name: name)
           pendingCreatedPlan = createdPlan
+          onPlanMutation()
         }
       )
     }
@@ -218,6 +228,7 @@ struct PlansView: View {
         initialName: plan.name,
         onSubmit: { name in
           _ = try await viewModel.updatePlan(id: plan.id, name: name)
+          onPlanMutation()
         }
       )
     }
@@ -228,7 +239,10 @@ struct PlansView: View {
       Button("Delete", role: .destructive) {
         if let plan = planToDelete {
           Task {
-            await viewModel.deletePlan(id: plan.id)
+            let didDelete = await viewModel.deletePlan(id: plan.id)
+            if didDelete {
+              onPlanMutation()
+            }
             planToDelete = nil
           }
         }
@@ -238,12 +252,21 @@ struct PlansView: View {
         Text("Are you sure you want to delete \"\(plan.name)\"? This action cannot be undone.")
       }
     }
-    .task {
-      await viewModel.loadPlans()
+    .onAppear {
       consumeLaunchActionIfNeeded()
     }
     .onChange(of: launchAction) { _, _ in
       consumeLaunchActionIfNeeded()
+    }
+    .onChange(of: viewModel.isLoading) { _, isLoading in
+      if !isLoading {
+        consumeLaunchActionIfNeeded()
+      }
+    }
+    .onChange(of: viewModel.isRefreshing) { _, isRefreshing in
+      if !isRefreshing {
+        consumeLaunchActionIfNeeded()
+      }
     }
   }
 
@@ -262,12 +285,55 @@ struct PlansView: View {
       return
     }
 
-    guard !viewModel.isLoading else {
+    guard !viewModel.isLoading, !viewModel.isRefreshing else {
       return
     }
 
     showCreatePlan = true
     launchAction = nil
+  }
+
+  @ViewBuilder
+  private func planDetailDestination(planId: Int64) -> some View {
+    PlanDetailView(
+      planId: planId,
+      onPlanSummaryChanged: { updatedPlan, daysCount, exercisesCount in
+        viewModel.applyPlanDetailUpdate(
+          plan: updatedPlan,
+          daysCount: daysCount,
+          exercisesCount: exercisesCount
+        )
+        onPlanMutation()
+      },
+      onPlanDeleted: { deletedPlanId in
+        viewModel.applyDeletedPlan(id: deletedPlanId)
+        onPlanMutation()
+      }
+    )
+  }
+
+  private func inlineErrorBanner(message: String) -> some View {
+    HStack(spacing: 8) {
+      Image(systemName: "wifi.exclamationmark")
+        .font(.system(size: 13, weight: .semibold))
+      Text(message)
+        .font(.system(size: 12, weight: .medium))
+        .lineLimit(2)
+      Spacer(minLength: 0)
+      if viewModel.isRefreshing {
+        ProgressView()
+          .controlSize(.mini)
+      }
+    }
+    .foregroundStyle(AppColors.warningYellow)
+    .padding(.horizontal, 12)
+    .padding(.vertical, 10)
+    .background(AppColors.warningYellow.opacity(0.12))
+    .overlay(
+      RoundedRectangle(cornerRadius: 10, style: .continuous)
+        .stroke(AppColors.warningYellow.opacity(0.45), lineWidth: 1)
+    )
+    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
   }
 
   private var loadingState: some View {

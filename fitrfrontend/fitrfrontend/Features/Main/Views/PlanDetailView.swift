@@ -10,19 +10,33 @@ import SwiftUI
 struct PlanDetailView: View {
   @Environment(\.dismiss) var dismiss
   @EnvironmentObject var sessionStore: SessionStore
-  @StateObject private var viewModel: PlanDetailViewModel = PlanDetailViewModel(
-    planId: 0, sessionStore: SessionStore())
+  @StateObject private var viewModel: PlanDetailViewModel
   @State private var selectedDay: EnrichedPlanDay?
 
   let planId: Int64
+  let onPlanSummaryChanged: ((WorkoutPlanResponse, Int, Int) -> Void)?
+  let onPlanDeleted: ((Int64) -> Void)?
+
+  init(
+    planId: Int64,
+    onPlanSummaryChanged: ((WorkoutPlanResponse, Int, Int) -> Void)? = nil,
+    onPlanDeleted: ((Int64) -> Void)? = nil
+  ) {
+    self.planId = planId
+    self.onPlanSummaryChanged = onPlanSummaryChanged
+    self.onPlanDeleted = onPlanDeleted
+    _viewModel = StateObject(
+      wrappedValue: PlanDetailViewModel(planId: planId, sessionStore: SessionStore())
+    )
+  }
 
   var body: some View {
     ZStack {
       Color(.systemBackground).ignoresSafeArea()
 
-      if viewModel.isLoading {
+      if viewModel.isLoading && !viewModel.hasLoadedSnapshot {
         ProgressView()
-      } else if let errorMessage = viewModel.errorMessage {
+      } else if let errorMessage = viewModel.errorMessage, !viewModel.hasLoadedSnapshot {
         VStack(spacing: 16) {
           Image(systemName: "exclamationmark.circle")
             .font(.system(size: 48))
@@ -43,6 +57,36 @@ struct PlanDetailView: View {
       } else if let plan = viewModel.planDetail {
         ScrollView {
           VStack(spacing: 24) {
+            if let errorMessage = viewModel.errorMessage {
+              HStack(spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                  .foregroundStyle(AppColors.warningYellow)
+                  .font(.system(size: 14, weight: .semibold))
+                Text(errorMessage)
+                  .font(.system(size: 13, weight: .medium))
+                  .foregroundStyle(AppColors.textPrimary)
+                  .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+              }
+              .padding(.horizontal, 12)
+              .padding(.vertical, 10)
+              .background(AppColors.warningYellow.opacity(0.16))
+              .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+              .padding(.horizontal, 16)
+            }
+
+            if viewModel.isRefreshing {
+              HStack(spacing: 8) {
+                ProgressView()
+                  .controlSize(.small)
+                Text("Refreshing plan…")
+                  .font(.system(size: 12, weight: .medium))
+                  .foregroundStyle(AppColors.textSecondary)
+              }
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(.horizontal, 16)
+            }
+
             // Plan Header Card
             VStack(alignment: .leading, spacing: 16) {
               HStack(alignment: .top) {
@@ -219,7 +263,7 @@ struct PlanDetailView: View {
           .padding(.vertical, 16)
         }
         .refreshable {
-          await viewModel.loadPlanDetail()
+          await viewModel.loadPlanDetail(forceRefresh: true)
         }
       }
     }
@@ -250,7 +294,11 @@ struct PlanDetailView: View {
           Menu {
             Button(role: .destructive) {
               Task { @MainActor in
-                await viewModel.deletePlan()
+                let didDelete = await viewModel.deletePlan()
+                guard didDelete else {
+                  return
+                }
+                onPlanDeleted?(planId)
                 dismiss()
               }
             } label: {
@@ -298,6 +346,20 @@ struct PlanDetailView: View {
       viewModel.updateSessionStore(sessionStore)
       await viewModel.loadPlanDetail()
     }
+    .onChange(of: viewModel.planDetail) { _, _ in
+      publishPlanSummaryIfPossible()
+    }
+    .onChange(of: viewModel.enrichedDays) { _, _ in
+      publishPlanSummaryIfPossible()
+    }
+  }
+
+  private func publishPlanSummaryIfPossible() {
+    guard let payload = viewModel.currentPlanSummaryPayload() else {
+      return
+    }
+
+    onPlanSummaryChanged?(payload.plan, payload.daysCount, payload.exercisesCount)
   }
 }
 

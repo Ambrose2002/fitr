@@ -309,6 +309,9 @@ final class LiveWorkoutViewModel: ObservableObject {
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
     } catch {
+      if error.isCancellation {
+        return
+      }
       errorMessage = "Failed to load the active workout."
     }
 
@@ -323,6 +326,9 @@ final class LiveWorkoutViewModel: ObservableObject {
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
     } catch {
+      if error.isCancellation {
+        return
+      }
       errorMessage = "Failed to refresh the active workout."
     }
   }
@@ -656,6 +662,9 @@ final class LiveWorkoutViewModel: ObservableObject {
       availableLocations = try await locationsService.fetchLocations()
       hasLoadedLocationsForEditing = true
     } catch {
+      if error.isCancellation {
+        return
+      }
       locationLoadErrorMessage = "Couldn't load saved locations. You can still update title and notes."
     }
   }

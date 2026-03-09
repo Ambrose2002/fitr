@@ -102,14 +102,17 @@ struct ProgressDashboardData {
 final class ProgressViewModel: ObservableObject {
   private static let streakLookbackDays = 730
 
-  @Published var isLoading = false
+  @Published var isLoading = true
+  @Published var isRefreshing = false
   @Published var errorMessage: String?
   @Published var dashboard: ProgressDashboardData?
 
   private let workoutsService: WorkoutsService
   private let bodyMetricsService: BodyMetricsService
   private let sessionStore: SessionStore
-  private var hasResolvedInitialState = false
+  private var lastLoadedAt: Date?
+  private let freshnessInterval: TimeInterval = 60
+  private var isFetching = false
 
   init(
     sessionStore: SessionStore,
@@ -121,20 +124,38 @@ final class ProgressViewModel: ObservableObject {
     self.bodyMetricsService = BodyMetricsService()
     self.dashboard = initialDashboard
     self.errorMessage = initialError
-    self.hasResolvedInitialState = initialDashboard != nil || initialError != nil
+    self.lastLoadedAt = initialDashboard != nil ? Date() : nil
+    if initialDashboard != nil || initialError != nil {
+      self.isLoading = false
+    }
   }
 
   func loadDashboard(forceRefresh: Bool = false) async {
-    guard !isLoading else { return }
-    if hasResolvedInitialState && dashboard != nil && !forceRefresh {
+    guard !isFetching else { return }
+    if
+      !forceRefresh,
+      let lastLoadedAt,
+      Date().timeIntervalSince(lastLoadedAt) < freshnessInterval
+    {
       return
     }
 
-    isLoading = true
+    let shouldBlockUI = dashboard == nil
+    isFetching = true
+    if shouldBlockUI {
+      isLoading = true
+    } else {
+      isRefreshing = true
+    }
     errorMessage = nil
 
     defer {
-      isLoading = false
+      isFetching = false
+      if shouldBlockUI {
+        isLoading = false
+      } else {
+        isRefreshing = false
+      }
     }
 
     let calendar = Calendar.current
@@ -176,22 +197,27 @@ final class ProgressViewModel: ObservableObject {
         weightMetrics: sortedWeightMetrics,
         latestMetrics: latestMetrics
       )
-      hasResolvedInitialState = true
+      lastLoadedAt = Date()
     } catch is CancellationError {
       return
     } catch let urlError as URLError where urlError.code == .cancelled {
       return
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
-      hasResolvedInitialState = true
     } catch {
+      if error.isCancellation {
+        return
+      }
       errorMessage = error.localizedDescription
-      hasResolvedInitialState = true
     }
   }
 
   func refresh() async {
     await loadDashboard(forceRefresh: true)
+  }
+
+  func invalidateFreshness() {
+    lastLoadedAt = nil
   }
 
   private func buildDashboard(

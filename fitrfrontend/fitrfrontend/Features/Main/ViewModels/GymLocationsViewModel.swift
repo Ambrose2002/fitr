@@ -8,6 +8,10 @@
 import Foundation
 internal import Combine
 
+struct GymLocationsSnapshot {
+  let locations: [LocationResponse]
+}
+
 @MainActor
 final class GymLocationsViewModel: ObservableObject {
   enum FormMode {
@@ -18,6 +22,8 @@ final class GymLocationsViewModel: ObservableObject {
   @Published var locations: [LocationResponse] = []
   @Published var searchText = ""
   @Published var isLoading = false
+  @Published private(set) var isRefreshing = false
+  @Published private(set) var hasLoadedSnapshot = false
   @Published var isSaving = false
   @Published var isDeleting = false
   @Published var errorMessage: String?
@@ -29,9 +35,12 @@ final class GymLocationsViewModel: ObservableObject {
 
   @Published var deleteTarget: LocationResponse?
 
-  private var hasLoaded = false
+  private var sessionStore: SessionStore?
   private var formMode: FormMode = .add
   private let locationsService: LocationsService
+  private var lastLoadedAt: Date?
+  private let freshnessInterval: TimeInterval = 60
+  private var isFetching = false
 
   init(locationsService: LocationsService) {
     self.locationsService = locationsService
@@ -82,27 +91,52 @@ final class GymLocationsViewModel: ObservableObject {
       && !formAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
 
+  func updateSessionStore(_ store: SessionStore) {
+    self.sessionStore = store
+    restoreSnapshotIfAvailable()
+  }
+
   func loadLocations(forceRefresh: Bool = false) async {
-    if isLoading {
+    if isFetching {
       return
     }
 
-    if hasLoaded && !forceRefresh {
+    restoreSnapshotIfNewer()
+
+    if
+      !forceRefresh,
+      let lastLoadedAt,
+      Date().timeIntervalSince(lastLoadedAt) < freshnessInterval
+    {
       return
     }
 
-    isLoading = true
+    let shouldBlockUI = !hasLoadedSnapshot
+    isFetching = true
+    if shouldBlockUI {
+      isLoading = true
+    } else {
+      isRefreshing = true
+    }
     errorMessage = nil
-    hasLoaded = true
 
     defer {
-      isLoading = false
+      isFetching = false
+      if shouldBlockUI {
+        isLoading = false
+      } else {
+        isRefreshing = false
+      }
     }
 
     do {
       let fetchedLocations = try await locationsService.fetchLocations()
       locations = sortLocations(fetchedLocations)
+      persistSnapshot(loadedAt: Date())
     } catch {
+      if error.isCancellation {
+        return
+      }
       errorMessage = resolveErrorMessage(error, fallback: "Couldn't load your saved locations.")
     }
   }
@@ -172,6 +206,7 @@ final class GymLocationsViewModel: ObservableObject {
       errorMessage = nil
       showFormSheet = false
       formErrorMessage = nil
+      persistSnapshot(loadedAt: Date())
     } catch {
       formErrorMessage = resolveErrorMessage(error, fallback: "Couldn't save that location.")
     }
@@ -193,9 +228,54 @@ final class GymLocationsViewModel: ObservableObject {
       try await locationsService.deleteLocation(id: location.id)
       locations.removeAll { $0.id == location.id }
       errorMessage = nil
+      persistSnapshot(loadedAt: Date())
     } catch {
       errorMessage = resolveErrorMessage(error, fallback: "Couldn't delete that location.")
     }
+  }
+
+  private func persistSnapshot(loadedAt: Date) {
+    guard let sessionStore else {
+      return
+    }
+
+    let snapshot = GymLocationsSnapshot(locations: locations)
+    hasLoadedSnapshot = true
+    lastLoadedAt = loadedAt
+    sessionStore.runtimeViewCache.store(snapshot, for: .gymLocations, at: loadedAt)
+  }
+
+  private func restoreSnapshotIfAvailable() {
+    guard
+      let sessionStore,
+      let snapshot: RuntimeViewCacheSnapshot<GymLocationsSnapshot> = sessionStore.runtimeViewCache
+        .snapshot(for: .gymLocations, as: GymLocationsSnapshot.self)
+    else {
+      return
+    }
+
+    locations = snapshot.value.locations
+    hasLoadedSnapshot = true
+    lastLoadedAt = snapshot.lastLoadedAt
+    isLoading = false
+  }
+
+  private func restoreSnapshotIfNewer() {
+    guard
+      let sessionStore,
+      let snapshot: RuntimeViewCacheSnapshot<GymLocationsSnapshot> = sessionStore.runtimeViewCache
+        .snapshot(for: .gymLocations, as: GymLocationsSnapshot.self)
+    else {
+      return
+    }
+
+    if let lastLoadedAt, snapshot.lastLoadedAt <= lastLoadedAt {
+      return
+    }
+
+    locations = snapshot.value.locations
+    hasLoadedSnapshot = true
+    lastLoadedAt = snapshot.lastLoadedAt
   }
 
   private func sortLocations(_ source: [LocationResponse]) -> [LocationResponse] {

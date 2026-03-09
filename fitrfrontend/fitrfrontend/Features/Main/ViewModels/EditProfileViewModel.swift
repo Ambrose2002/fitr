@@ -8,6 +8,10 @@
 import Foundation
 internal import Combine
 
+struct EditProfileSnapshot {
+  let profile: UserProfileResponse
+}
+
 @MainActor
 final class EditProfileViewModel: ObservableObject {
   enum SaveResult {
@@ -31,6 +35,8 @@ final class EditProfileViewModel: ObservableObject {
   @Published var height: Float = 180
   @Published var weight: Float = 75
   @Published private(set) var isLoading = false
+  @Published private(set) var isRefreshing = false
+  @Published private(set) var hasLoadedSnapshot = false
   @Published private(set) var isSaving = false
   @Published var errorMessage: String?
 
@@ -51,6 +57,9 @@ final class EditProfileViewModel: ObservableObject {
   private var baseline: FormSnapshot?
   private var latestProfile: UserProfileResponse?
   private var isApplyingProfile = false
+  private var lastLoadedAt: Date?
+  private let freshnessInterval: TimeInterval = 60
+  private var isFetching = false
 
   init(
     sessionStore: SessionStore,
@@ -59,8 +68,16 @@ final class EditProfileViewModel: ObservableObject {
     self.sessionStore = sessionStore
     self.profileService = profileService
 
-    if let cachedProfile = sessionStore.userProfile {
+    if let cachedSnapshot = restoreSnapshotIfAvailable() {
+      applyProfile(cachedSnapshot.value.profile)
+      hasLoadedSnapshot = true
+      lastLoadedAt = cachedSnapshot.lastLoadedAt
+    } else if let cachedProfile = sessionStore.userProfile {
       applyProfile(cachedProfile)
+      let loadedAt = Date()
+      hasLoadedSnapshot = true
+      lastLoadedAt = loadedAt
+      persistSnapshot(profile: cachedProfile, loadedAt: loadedAt)
     }
   }
 
@@ -68,26 +85,60 @@ final class EditProfileViewModel: ObservableObject {
     self.init(sessionStore: sessionStore, profileService: ProfileService())
   }
 
-  func loadLatestProfile() async {
-    if isLoading {
+  func loadLatestProfile(forceRefresh: Bool = false) async {
+    if isFetching {
       return
     }
 
-    isLoading = true
+    restoreSnapshotIfNewer()
+
+    if
+      !forceRefresh,
+      let lastLoadedAt,
+      Date().timeIntervalSince(lastLoadedAt) < freshnessInterval
+    {
+      return
+    }
+
+    let shouldBlockUI = !hasLoadedSnapshot
+    isFetching = true
+    if shouldBlockUI {
+      isLoading = true
+    } else {
+      isRefreshing = true
+    }
     errorMessage = nil
-    defer { isLoading = false }
+    defer {
+      isFetching = false
+      if shouldBlockUI {
+        isLoading = false
+      } else {
+        isRefreshing = false
+      }
+    }
 
     do {
       let profile = try await profileService.getProfile()
       sessionStore.updateUserProfile(profile)
       applyProfile(profile)
+      let loadedAt = Date()
+      hasLoadedSnapshot = true
+      lastLoadedAt = loadedAt
+      persistSnapshot(profile: profile, loadedAt: loadedAt)
     } catch let apiError as APIErrorResponse {
-      if latestProfile == nil {
+      if !hasLoadedSnapshot {
         errorMessage = apiError.message
+      } else {
+        errorMessage = "Couldn't refresh profile details."
       }
     } catch {
-      if latestProfile == nil {
+      if error.isCancellation {
+        return
+      }
+      if !hasLoadedSnapshot {
         errorMessage = "Failed to load profile details."
+      } else {
+        errorMessage = "Couldn't refresh profile details."
       }
     }
   }
@@ -214,6 +265,10 @@ final class EditProfileViewModel: ObservableObject {
 
       sessionStore.updateUserProfile(finalProfile)
       applyProfile(finalProfile)
+      let loadedAt = Date()
+      hasLoadedSnapshot = true
+      lastLoadedAt = loadedAt
+      persistSnapshot(profile: finalProfile, loadedAt: loadedAt)
       return .saved
     } catch let apiError as APIErrorResponse {
       errorMessage = apiError.message
@@ -330,6 +385,32 @@ final class EditProfileViewModel: ObservableObject {
       preferredDistanceUnit: latestProfile.preferredDistanceUnit,
       createdAt: latestProfile.createdAt
     )
+  }
+
+  private func persistSnapshot(profile: UserProfileResponse, loadedAt: Date) {
+    sessionStore.runtimeViewCache.store(
+      EditProfileSnapshot(profile: profile),
+      for: .editProfile,
+      at: loadedAt
+    )
+  }
+
+  private func restoreSnapshotIfAvailable() -> RuntimeViewCacheSnapshot<EditProfileSnapshot>? {
+    sessionStore.runtimeViewCache.snapshot(for: .editProfile, as: EditProfileSnapshot.self)
+  }
+
+  private func restoreSnapshotIfNewer() {
+    guard let cachedSnapshot = restoreSnapshotIfAvailable() else {
+      return
+    }
+
+    if let lastLoadedAt, cachedSnapshot.lastLoadedAt <= lastLoadedAt {
+      return
+    }
+
+    applyProfile(cachedSnapshot.value.profile)
+    hasLoadedSnapshot = true
+    lastLoadedAt = cachedSnapshot.lastLoadedAt
   }
 }
 

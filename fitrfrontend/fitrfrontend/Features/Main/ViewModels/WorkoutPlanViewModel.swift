@@ -55,11 +55,16 @@ final class WorkoutPlanViewModel: ObservableObject {
   @Published var plans: [PlanSummary] = []
   @Published var selectedPlan: WorkoutPlanResponse?
   @Published var planDays: [PlanDayResponse] = []
-  @Published var isLoading = false
+  @Published var isLoading = true
+  @Published var isRefreshing = false
+  @Published private(set) var hasLoadedSnapshot = false
   @Published var errorMessage: String?
 
   private let workoutPlanService: WorkoutPlanService
   private let sessionStore: SessionStore
+  private var lastLoadedAt: Date?
+  private let freshnessInterval: TimeInterval = 60
+  private var isFetching = false
 
   init(sessionStore: SessionStore) {
     self.sessionStore = sessionStore
@@ -68,12 +73,35 @@ final class WorkoutPlanViewModel: ObservableObject {
 
   // MARK: - Workout Plans
 
-  func loadPlans() async {
-    isLoading = true
+  func loadPlans(forceRefresh: Bool = false) async {
+    guard !isFetching else {
+      return
+    }
+
+    if
+      !forceRefresh,
+      let lastLoadedAt,
+      Date().timeIntervalSince(lastLoadedAt) < freshnessInterval
+    {
+      return
+    }
+
+    let shouldBlockUI = !hasLoadedSnapshot
+    isFetching = true
+    if shouldBlockUI {
+      isLoading = true
+    } else {
+      isRefreshing = true
+    }
     errorMessage = nil
 
     defer {
-      isLoading = false
+      isFetching = false
+      if shouldBlockUI {
+        isLoading = false
+      } else {
+        isRefreshing = false
+      }
     }
 
     do {
@@ -117,8 +145,10 @@ final class WorkoutPlanViewModel: ObservableObject {
       }
 
       self.plans = enrichedPlans
+      hasLoadedSnapshot = true
+      lastLoadedAt = Date()
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -141,6 +171,8 @@ final class WorkoutPlanViewModel: ObservableObject {
     )
     self.plans.insert(summary, at: 0)
     self.selectedPlan = newPlan
+    hasLoadedSnapshot = true
+    lastLoadedAt = Date()
     return newPlan
   }
 
@@ -169,22 +201,92 @@ final class WorkoutPlanViewModel: ObservableObject {
     if selectedPlan?.id == id {
       self.selectedPlan = updatedPlan
     }
+    lastLoadedAt = Date()
+    hasLoadedSnapshot = true
 
     return updatedPlan
   }
 
-  func deletePlan(id: Int64) async {
+  func applyPlanDetailUpdate(
+    plan: WorkoutPlanResponse,
+    daysCount: Int,
+    exercisesCount: Int
+  ) {
+    let averageExercisesPerDay =
+      daysCount == 0 ? 0 : Double(exercisesCount) / Double(daysCount)
+
+    if let index = plans.firstIndex(where: { $0.id == plan.id }) {
+      plans[index] = PlanSummary(
+        id: plan.id,
+        name: plan.name,
+        createdAt: plan.createdAt,
+        isActive: plan.isActive,
+        daysCount: daysCount,
+        exercisesCount: exercisesCount,
+        averageExercisesPerDay: averageExercisesPerDay
+      )
+    } else {
+      plans.insert(
+        PlanSummary(
+          id: plan.id,
+          name: plan.name,
+          createdAt: plan.createdAt,
+          isActive: plan.isActive,
+          daysCount: daysCount,
+          exercisesCount: exercisesCount,
+          averageExercisesPerDay: averageExercisesPerDay
+        ),
+        at: 0
+      )
+    }
+
+    if selectedPlan?.id == plan.id {
+      selectedPlan = plan
+    }
+
+    hasLoadedSnapshot = true
+    lastLoadedAt = Date()
+  }
+
+  func applyDeletedPlan(id: Int64) {
+    plans.removeAll { $0.id == id }
+    if selectedPlan?.id == id {
+      selectedPlan = nil
+    }
+
+    hasLoadedSnapshot = true
+    lastLoadedAt = Date()
+  }
+
+  func deletePlan(id: Int64) async -> Bool {
     errorMessage = nil
 
     do {
       try await workoutPlanService.deletePlan(id: id)
+      if
+        let snapshot: RuntimeViewCacheSnapshot<PlanDetailSnapshot> = sessionStore.runtimeViewCache
+          .snapshot(for: .planDetail(id), as: PlanDetailSnapshot.self)
+      {
+        for day in snapshot.value.enrichedDays {
+          sessionStore.runtimeViewCache.remove(.planDayDetail(day.id))
+        }
+      }
+      sessionStore.runtimeViewCache.remove(.planDetail(id))
       self.plans.removeAll { $0.id == id }
       if selectedPlan?.id == id {
         self.selectedPlan = nil
       }
+      lastLoadedAt = Date()
+      hasLoadedSnapshot = true
+      return true
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
+      return false
     }
+  }
+
+  func invalidateFreshness() {
+    lastLoadedAt = nil
   }
 
   func selectPlan(id: Int64) {
@@ -192,7 +294,7 @@ final class WorkoutPlanViewModel: ObservableObject {
       do {
         self.selectedPlan = try await workoutPlanService.getPlan(id: id)
       } catch {
-        self.errorMessage = error.localizedDescription
+        setErrorIfNotCancellation(error)
       }
     }
   }
@@ -210,7 +312,7 @@ final class WorkoutPlanViewModel: ObservableObject {
     do {
       self.planDays = try await workoutPlanService.getPlanDays(planId: planId)
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -223,7 +325,7 @@ final class WorkoutPlanViewModel: ObservableObject {
       let newDay = try await workoutPlanService.addPlanDay(planId: planId, request: request)
       self.planDays.append(newDay)
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -242,7 +344,7 @@ final class WorkoutPlanViewModel: ObservableObject {
         }
       }
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -255,7 +357,7 @@ final class WorkoutPlanViewModel: ObservableObject {
         self.planDays.removeAll { $0.id == dayId }
       }
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -286,7 +388,7 @@ final class WorkoutPlanViewModel: ObservableObject {
     do {
       _ = try await workoutPlanService.addExerciseToDay(dayId: dayId, request: request)
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -319,7 +421,7 @@ final class WorkoutPlanViewModel: ObservableObject {
         request: request
       )
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
   }
 
@@ -329,7 +431,20 @@ final class WorkoutPlanViewModel: ObservableObject {
     do {
       try await workoutPlanService.deleteDayExercise(dayId: dayId, exerciseId: exerciseId)
     } catch {
-      self.errorMessage = error.localizedDescription
+      setErrorIfNotCancellation(error)
     }
+  }
+
+  private func setErrorIfNotCancellation(_ error: Error) {
+    guard !error.isCancellation else {
+      return
+    }
+
+    if let apiError = error as? APIErrorResponse {
+      errorMessage = apiError.message
+      return
+    }
+
+    errorMessage = error.localizedDescription
   }
 }

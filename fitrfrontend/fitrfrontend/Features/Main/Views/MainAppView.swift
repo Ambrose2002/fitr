@@ -8,11 +8,29 @@
 import SwiftUI
 
 struct MainAppView: View {
+  @Environment(\.scenePhase) private var scenePhase
+  @EnvironmentObject private var activeWorkoutCoordinator: ActiveWorkoutCoordinator
+  private let sessionStore: SessionStore
+
   @State private var selectedTab: AppTab = .home
+  @State private var mountedTabs: Set<AppTab> = [.home]
   @State private var pendingPlansLaunchAction: PlansLaunchAction?
   @State private var pendingWorkoutsLaunchAction: WorkoutsLaunchAction?
-  @EnvironmentObject var sessionStore: SessionStore
-  @EnvironmentObject private var activeWorkoutCoordinator: ActiveWorkoutCoordinator
+  @State private var pendingProgressLaunchAction: ProgressLaunchAction?
+  @StateObject private var homeViewModel: HomeViewModel
+  @StateObject private var plansViewModel: WorkoutPlanViewModel
+  @StateObject private var workoutsViewModel: WorkoutsViewModel
+  @StateObject private var progressViewModel: ProgressViewModel
+  @StateObject private var profileViewModel: ProfileViewModel
+
+  init(sessionStore: SessionStore) {
+    self.sessionStore = sessionStore
+    _homeViewModel = StateObject(wrappedValue: HomeViewModel(sessionStore: sessionStore))
+    _plansViewModel = StateObject(wrappedValue: WorkoutPlanViewModel(sessionStore: sessionStore))
+    _workoutsViewModel = StateObject(wrappedValue: WorkoutsViewModel(sessionStore: sessionStore))
+    _progressViewModel = StateObject(wrappedValue: ProgressViewModel(sessionStore: sessionStore))
+    _profileViewModel = StateObject(wrappedValue: ProfileViewModel(sessionStore: sessionStore))
+  }
 
   enum AppTab: String, CaseIterable, Identifiable {
     case home = "Home"
@@ -37,39 +55,64 @@ struct MainAppView: View {
   var body: some View {
     ZStack(alignment: .bottom) {
       // Main content area
-      Group {
-        switch selectedTab {
-        case .home:
+      ZStack {
+        mountedTab(.home) {
           HomeView(
             sessionStore: sessionStore,
+            viewModel: homeViewModel,
             onNewPlanTap: {
               pendingPlansLaunchAction = .createPlan
-              selectedTab = .plans
+              activateTab(.plans)
+            },
+            onViewAllInsightsTap: {
+              activateTab(.progress)
+            },
+            onLogWeightTap: {
+              pendingProgressLaunchAction = .logWeight
+              activateTab(.progress)
             },
             onLastWorkoutTap: { workoutId in
               pendingWorkoutsLaunchAction = .openWorkout(workoutId)
-              selectedTab = .workouts
+              activateTab(.workouts)
             }
           )
-        case .plans:
+        }
+
+        mountedTab(.plans) {
           PlansView(
             sessionStore: sessionStore,
-            launchAction: $pendingPlansLaunchAction
+            viewModel: plansViewModel,
+            launchAction: $pendingPlansLaunchAction,
+            onPlanMutation: handlePlanMutation
           )
-        case .workouts:
+        }
+
+        mountedTab(.workouts) {
           WorkoutsView(
             sessionStore: sessionStore,
-            launchAction: $pendingWorkoutsLaunchAction
+            viewModel: workoutsViewModel,
+            launchAction: $pendingWorkoutsLaunchAction,
+            onWorkoutMutation: handleWorkoutMutation
           )
-        case .progress:
+        }
+
+        mountedTab(.progress) {
           ProgressMainView(
             sessionStore: sessionStore,
+            viewModel: progressViewModel,
+            launchAction: $pendingProgressLaunchAction,
             onSeeFullHistoryTap: {
-              selectedTab = .workouts
-            }
+              activateTab(.workouts)
+            },
+            onWeightEntrySaved: handleWeightMutation
           )
-        case .profile:
-          ProfileView(sessionStore: sessionStore)
+        }
+
+        mountedTab(.profile) {
+          ProfileView(
+            sessionStore: sessionStore,
+            viewModel: profileViewModel
+          )
         }
       }
 
@@ -108,7 +151,7 @@ struct MainAppView: View {
         HStack(spacing: 0) {
           ForEach(AppTab.allCases) { tab in
             Button {
-              selectedTab = tab
+              activateTab(tab)
             } label: {
               VStack(spacing: 4) {
                 tab.systemImage
@@ -131,12 +174,88 @@ struct MainAppView: View {
     }
     .task {
       await activeWorkoutCoordinator.restoreRemoteActiveWorkoutIfNeeded()
+      await loadSelectedTabDataIfNeeded()
+    }
+    .onChange(of: selectedTab) { _, newTab in
+      mountedTabs.insert(newTab)
+      Task {
+        await loadDataIfNeeded(for: newTab)
+      }
+    }
+    .onChange(of: scenePhase) { _, phase in
+      guard phase == .active else { return }
+      Task {
+        await loadSelectedTabDataIfNeeded()
+      }
+    }
+    .onChange(of: activeWorkoutCoordinator.activeContext) { oldValue, newValue in
+      guard oldValue != nil, newValue == nil else { return }
+      handleWorkoutMutation()
+      Task {
+        await loadSelectedTabDataIfNeeded()
+      }
     }
     .fullScreenCover(item: $activeWorkoutCoordinator.presentedContext) { context in
       LiveWorkoutView(context: context, sessionStore: sessionStore)
         .environmentObject(sessionStore)
         .environmentObject(activeWorkoutCoordinator)
     }
+  }
+
+  @ViewBuilder
+  private func mountedTab<Content: View>(
+    _ tab: AppTab,
+    @ViewBuilder content: () -> Content
+  ) -> some View {
+    if mountedTabs.contains(tab) {
+      content()
+        .opacity(selectedTab == tab ? 1 : 0)
+        .allowsHitTesting(selectedTab == tab)
+        .accessibilityHidden(selectedTab != tab)
+        .zIndex(selectedTab == tab ? 1 : 0)
+    }
+  }
+
+  @MainActor
+  private func loadSelectedTabDataIfNeeded() async {
+    await loadDataIfNeeded(for: selectedTab)
+  }
+
+  @MainActor
+  private func loadDataIfNeeded(for tab: AppTab) async {
+    switch tab {
+    case .home:
+      await homeViewModel.loadHomeData()
+    case .plans:
+      await plansViewModel.loadPlans()
+    case .workouts:
+      await workoutsViewModel.loadWorkoutHistory()
+    case .progress:
+      await progressViewModel.loadDashboard()
+    case .profile:
+      await profileViewModel.load()
+    }
+  }
+
+  private func activateTab(_ tab: AppTab) {
+    mountedTabs.insert(tab)
+    selectedTab = tab
+  }
+
+  private func handlePlanMutation() {
+    homeViewModel.invalidateFreshness()
+  }
+
+  private func handleWorkoutMutation() {
+    homeViewModel.invalidateFreshness()
+    workoutsViewModel.invalidateFreshness()
+    progressViewModel.invalidateFreshness()
+    profileViewModel.invalidateFreshness()
+  }
+
+  private func handleWeightMutation() {
+    homeViewModel.invalidateFreshness()
+    profileViewModel.invalidateFreshness()
   }
 }
 

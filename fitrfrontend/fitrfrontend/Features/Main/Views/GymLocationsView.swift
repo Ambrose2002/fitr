@@ -8,14 +8,21 @@
 import SwiftUI
 
 struct GymLocationsView: View {
+  @EnvironmentObject private var sessionStore: SessionStore
   @StateObject private var viewModel: GymLocationsViewModel
+  private let onLocationsChanged: ((Int) -> Void)?
 
-  init(viewModel: GymLocationsViewModel) {
+  init(
+    viewModel: GymLocationsViewModel,
+    onLocationsChanged: ((Int) -> Void)? = nil
+  ) {
     _viewModel = StateObject(wrappedValue: viewModel)
+    self.onLocationsChanged = onLocationsChanged
   }
 
-  init() {
+  init(onLocationsChanged: ((Int) -> Void)? = nil) {
     _viewModel = StateObject(wrappedValue: GymLocationsViewModel())
+    self.onLocationsChanged = onLocationsChanged
   }
 
   var body: some View {
@@ -65,7 +72,11 @@ struct GymLocationsView: View {
       }
     }
     .task {
+      viewModel.updateSessionStore(sessionStore)
       await viewModel.loadLocations()
+    }
+    .onReceive(viewModel.$locations) { locations in
+      onLocationsChanged?(locations.count)
     }
     .refreshable {
       await viewModel.loadLocations(forceRefresh: true)
@@ -110,6 +121,17 @@ struct GymLocationsView: View {
         ProgressView()
           .controlSize(.small)
         Text("Loading locations...")
+          .font(.system(size: 14, weight: .medium))
+          .foregroundStyle(AppColors.textSecondary)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(12)
+      .listRowSeparator(.hidden)
+    } else if viewModel.isRefreshing {
+      HStack(spacing: 10) {
+        ProgressView()
+          .controlSize(.small)
+        Text("Refreshing locations...")
           .font(.system(size: 14, weight: .medium))
           .foregroundStyle(AppColors.textSecondary)
       }

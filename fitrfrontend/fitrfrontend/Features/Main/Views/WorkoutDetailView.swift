@@ -35,9 +35,9 @@ struct WorkoutDetailView: View {
       Color(.systemBackground)
         .ignoresSafeArea()
 
-      if viewModel.isLoading && viewModel.workout == nil {
+      if viewModel.isLoading && !viewModel.hasLoadedSnapshot {
         loadingState
-      } else if let errorMessage = viewModel.errorMessage, viewModel.workout == nil {
+      } else if let errorMessage = viewModel.errorMessage, !viewModel.hasLoadedSnapshot {
         errorState(message: errorMessage)
       } else {
         content
@@ -77,6 +77,17 @@ struct WorkoutDetailView: View {
   private var content: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 22) {
+        if viewModel.isRefreshing {
+          HStack(spacing: 8) {
+            ProgressView()
+              .controlSize(.small)
+            Text("Refreshing workout…")
+              .font(.system(size: 12, weight: .medium))
+              .foregroundStyle(AppColors.textSecondary)
+          }
+          .padding(.horizontal, 16)
+        }
+
         if let errorMessage = viewModel.errorMessage, viewModel.workout != nil {
           inlineErrorBanner(message: errorMessage)
             .padding(.horizontal, 16)
