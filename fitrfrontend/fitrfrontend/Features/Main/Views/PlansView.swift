@@ -35,7 +35,7 @@ struct PlansView: View {
     NavigationStack {
       ZStack {
         if viewModel.isLoading {
-          ProgressView()
+          loadingState
         } else if let errorMessage = viewModel.errorMessage {
           VStack(spacing: 16) {
             Image(systemName: "exclamationmark.circle")
@@ -269,6 +269,37 @@ struct PlansView: View {
     showCreatePlan = true
     launchAction = nil
   }
+
+  private var loadingState: some View {
+    ScrollView {
+      VStack(spacing: 24) {
+        VStack(alignment: .leading, spacing: 10) {
+          RoundedRectangle(cornerRadius: 8)
+            .fill(Color(.systemGray5))
+            .frame(width: 190, height: 30)
+
+          RoundedRectangle(cornerRadius: 6)
+            .fill(Color(.systemGray5))
+            .frame(height: 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+
+        VStack(spacing: 12) {
+          ForEach(0..<3, id: \.self) { _ in
+            PlanCardSkeleton()
+          }
+        }
+        .padding(.horizontal, 16)
+
+        Spacer(minLength: 92)
+      }
+      .padding(.vertical, 16)
+      .redacted(reason: .placeholder)
+      .shimmer()
+    }
+  }
 }
 
 // MARK: - Plan Card Component
@@ -374,6 +405,45 @@ struct PlanCard: View {
         )
     )
     .cornerRadius(12)
+  }
+}
+
+private struct PlanCardSkeleton: View {
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(alignment: .top) {
+        VStack(alignment: .leading, spacing: 8) {
+          RoundedRectangle(cornerRadius: 6)
+            .fill(Color(.systemGray5))
+            .frame(width: 180, height: 18)
+
+          RoundedRectangle(cornerRadius: 6)
+            .fill(Color(.systemGray5))
+            .frame(width: 120, height: 12)
+        }
+
+        Spacer()
+
+        RoundedRectangle(cornerRadius: 8)
+          .fill(Color(.systemGray5))
+          .frame(width: 32, height: 32)
+      }
+
+      HStack(spacing: 8) {
+        ForEach(0..<3, id: \.self) { _ in
+          RoundedRectangle(cornerRadius: 10)
+            .fill(Color(.systemGray5))
+            .frame(height: 56)
+        }
+      }
+    }
+    .padding(16)
+    .background(Color(.systemGray6))
+    .overlay(
+      RoundedRectangle(cornerRadius: 16)
+        .stroke(Color(.systemGray4), lineWidth: 1)
+    )
+    .cornerRadius(16)
   }
 }
 
