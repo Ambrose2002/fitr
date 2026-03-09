@@ -44,7 +44,7 @@ struct EditProfileView: View {
         }
 
         Button {
-          Task {
+          Task { @MainActor in
             let result = await viewModel.saveChanges()
             switch result {
             case .saved, .noChanges:

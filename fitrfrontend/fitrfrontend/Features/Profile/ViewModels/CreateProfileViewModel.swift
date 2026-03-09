@@ -6,6 +6,7 @@
 //
 internal import Combine
 
+@MainActor
 class CreateProfileViewModel: ObservableObject {
 
   @Published var isLoading: Bool = false

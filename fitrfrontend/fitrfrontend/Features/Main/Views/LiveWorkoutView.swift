@@ -698,7 +698,7 @@ private struct LiveWorkoutExercisePickerSheet: View {
 
   let exercises: [ExerciseResponse]
   let existingExerciseIds: Set<Int64>
-  let onAdd: (ExerciseResponse) async -> Void
+  let onAdd: @MainActor (ExerciseResponse) async -> Void
 
   @State private var searchText = ""
   @State private var selectedExercise: ExerciseResponse?
@@ -786,7 +786,7 @@ private struct LiveWorkoutExercisePickerSheet: View {
               return
             }
 
-            Task {
+            Task { @MainActor in
               await onAdd(selectedExercise)
               dismiss()
             }

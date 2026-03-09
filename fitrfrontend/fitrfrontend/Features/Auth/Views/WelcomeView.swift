@@ -52,7 +52,7 @@ struct WelcomeView: View {
                         Text("Log In to Account")
                     }
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(AppColors.surface)
+                    .foregroundColor(AppColors.textOnAccent)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
                     .background(AppColors.primaryTeal)
@@ -66,7 +66,7 @@ struct WelcomeView: View {
                         Text("New to Fitr? Sign Up")
                     }
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .foregroundColor(AppColors.textPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
                     .background(Color(.systemGray6))

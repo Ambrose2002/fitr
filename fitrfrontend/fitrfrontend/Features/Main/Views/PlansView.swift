@@ -35,7 +35,7 @@ struct PlansView: View {
     NavigationStack {
       ZStack {
         if viewModel.isLoading {
-          ProgressView()
+          loadingState
         } else if let errorMessage = viewModel.errorMessage {
           VStack(spacing: 16) {
             Image(systemName: "exclamationmark.circle")
@@ -61,7 +61,7 @@ struct PlansView: View {
               VStack(alignment: .leading, spacing: 4) {
                 Text("Your Programs")
                   .font(.system(size: 28, weight: .bold))
-                  .foregroundColor(.black)
+                  .foregroundColor(AppColors.textPrimary)
                 Text("Manage your training blocks and active schedules.")
                   .font(.system(size: 14))
                   .foregroundColor(.secondary)
@@ -74,7 +74,7 @@ struct PlansView: View {
                 VStack(spacing: 16) {
                   Image(systemName: "doc.text")
                     .font(.system(size: 48))
-                    .foregroundColor(.gray)
+                    .foregroundColor(AppColors.textSecondary)
                   Text("No workout plans yet")
                     .font(.headline)
                   Text("Create your first plan to get started")
@@ -90,7 +90,7 @@ struct PlansView: View {
                       Text("Create Your First Plan")
                         .font(.system(size: 15, weight: .semibold))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(AppColors.textOnAccent)
                     .frame(maxWidth: .infinity)
                     .frame(height: 48)
                     .background(AppColors.accent)
@@ -143,7 +143,7 @@ struct PlansView: View {
               } label: {
                 Image(systemName: "plus")
                   .font(.system(size: 20, weight: .semibold))
-                  .foregroundColor(.white)
+                  .foregroundColor(AppColors.textOnAccent)
                   .frame(width: 56, height: 56)
                   .background(AppColors.accent)
                   .cornerRadius(28)
@@ -269,6 +269,37 @@ struct PlansView: View {
     showCreatePlan = true
     launchAction = nil
   }
+
+  private var loadingState: some View {
+    ScrollView {
+      VStack(spacing: 24) {
+        VStack(alignment: .leading, spacing: 10) {
+          RoundedRectangle(cornerRadius: 8)
+            .fill(Color(.systemGray5))
+            .frame(width: 190, height: 30)
+
+          RoundedRectangle(cornerRadius: 6)
+            .fill(Color(.systemGray5))
+            .frame(height: 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+
+        VStack(spacing: 12) {
+          ForEach(0..<3, id: \.self) { _ in
+            PlanCardSkeleton()
+          }
+        }
+        .padding(.horizontal, 16)
+
+        Spacer(minLength: 92)
+      }
+      .padding(.vertical, 16)
+      .redacted(reason: .placeholder)
+      .shimmer()
+    }
+  }
 }
 
 // MARK: - Plan Card Component
@@ -377,6 +408,45 @@ struct PlanCard: View {
   }
 }
 
+private struct PlanCardSkeleton: View {
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(alignment: .top) {
+        VStack(alignment: .leading, spacing: 8) {
+          RoundedRectangle(cornerRadius: 6)
+            .fill(Color(.systemGray5))
+            .frame(width: 180, height: 18)
+
+          RoundedRectangle(cornerRadius: 6)
+            .fill(Color(.systemGray5))
+            .frame(width: 120, height: 12)
+        }
+
+        Spacer()
+
+        RoundedRectangle(cornerRadius: 8)
+          .fill(Color(.systemGray5))
+          .frame(width: 32, height: 32)
+      }
+
+      HStack(spacing: 8) {
+        ForEach(0..<3, id: \.self) { _ in
+          RoundedRectangle(cornerRadius: 10)
+            .fill(Color(.systemGray5))
+            .frame(height: 56)
+        }
+      }
+    }
+    .padding(16)
+    .background(Color(.systemGray6))
+    .overlay(
+      RoundedRectangle(cornerRadius: 16)
+        .stroke(Color(.systemGray4), lineWidth: 1)
+    )
+    .cornerRadius(16)
+  }
+}
+
 // MARK: - Plan Name Sheet
 
 struct PlanNameSheet: View {
@@ -386,7 +456,7 @@ struct PlanNameSheet: View {
   let helperText: String
   let confirmTitle: String
   let initialName: String
-  let onSubmit: (String) async throws -> Void
+  let onSubmit: @MainActor (String) async throws -> Void
 
   @State private var planName: String
   @State private var errorMessage = ""
@@ -399,7 +469,7 @@ struct PlanNameSheet: View {
     helperText: String,
     confirmTitle: String,
     initialName: String,
-    onSubmit: @escaping (String) async throws -> Void
+    onSubmit: @escaping @MainActor (String) async throws -> Void
   ) {
     _isPresented = isPresented
     self.title = title
@@ -482,7 +552,7 @@ struct PlanNameSheet: View {
             .autocorrectionDisabled()
             .submitLabel(.done)
             .onSubmit {
-              Task {
+              Task { @MainActor in
                 await submit()
               }
             }
@@ -518,7 +588,7 @@ struct PlanNameSheet: View {
         Spacer()
 
         Button {
-          Task {
+          Task { @MainActor in
             await submit()
           }
         } label: {
@@ -526,14 +596,14 @@ struct PlanNameSheet: View {
             if isSubmitting {
               ProgressView()
                 .progressViewStyle(.circular)
-                .tint(.white)
+                .tint(AppColors.textOnAccent)
                 .scaleEffect(0.85)
             }
 
             Text(submissionTitle)
               .font(.system(size: 16, weight: .semibold))
           }
-          .foregroundColor(.white)
+          .foregroundColor(AppColors.textOnAccent)
           .frame(maxWidth: .infinity)
           .frame(height: 50)
           .background(canSubmit ? AppColors.accent : AppColors.accent.opacity(0.4))
