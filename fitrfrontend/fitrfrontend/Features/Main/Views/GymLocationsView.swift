@@ -7,6 +7,14 @@
 
 import SwiftUI
 
+private enum GymLocationsLayout {
+  static let horizontalInset: CGFloat = 16
+  static let cardCornerRadius: CGFloat = 12
+  static let infoCornerRadius: CGFloat = 12
+  static let errorCornerRadius: CGFloat = 10
+  static let searchCornerRadius: CGFloat = 12
+}
+
 struct GymLocationsView: View {
   @EnvironmentObject private var sessionStore: SessionStore
   @StateObject private var viewModel: GymLocationsViewModel
@@ -30,13 +38,11 @@ struct GymLocationsView: View {
       Section {
         searchField
       }
-      .listRowBackground(Color.clear)
 
       if let errorMessage = viewModel.errorMessage {
         Section {
           inlineErrorRow(message: errorMessage)
         }
-        .listRowBackground(Color.clear)
       }
 
       Section {
@@ -48,14 +54,12 @@ struct GymLocationsView: View {
           .foregroundStyle(AppColors.textSecondary)
           .tracking(1)
       }
-      .listRowBackground(Color.clear)
 
       Section {
         infoCard
       }
-      .listRowBackground(Color.clear)
     }
-    .listStyle(.insetGrouped)
+    .listStyle(.plain)
     .scrollContentBackground(.hidden)
     .background(AppColors.background.ignoresSafeArea())
     .navigationTitle("GYM LOCATIONS")
@@ -126,6 +130,15 @@ struct GymLocationsView: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(12)
+      .listRowInsets(
+        EdgeInsets(
+          top: 6,
+          leading: GymLocationsLayout.horizontalInset,
+          bottom: 6,
+          trailing: GymLocationsLayout.horizontalInset
+        )
+      )
+      .listRowBackground(Color.clear)
       .listRowSeparator(.hidden)
     } else if viewModel.isRefreshing {
       HStack(spacing: 10) {
@@ -137,18 +150,45 @@ struct GymLocationsView: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(12)
+      .listRowInsets(
+        EdgeInsets(
+          top: 6,
+          leading: GymLocationsLayout.horizontalInset,
+          bottom: 6,
+          trailing: GymLocationsLayout.horizontalInset
+        )
+      )
+      .listRowBackground(Color.clear)
       .listRowSeparator(.hidden)
     } else if viewModel.locations.isEmpty {
       Text("No saved locations yet. Add your first gym location.")
         .font(.system(size: 14, weight: .medium))
         .foregroundStyle(AppColors.textSecondary)
         .padding(.vertical, 8)
+        .listRowInsets(
+          EdgeInsets(
+            top: 6,
+            leading: GymLocationsLayout.horizontalInset,
+            bottom: 6,
+            trailing: GymLocationsLayout.horizontalInset
+          )
+        )
+        .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
     } else if viewModel.filteredLocations.isEmpty {
       Text("No locations match your search.")
         .font(.system(size: 14, weight: .medium))
         .foregroundStyle(AppColors.textSecondary)
         .padding(.vertical, 8)
+        .listRowInsets(
+          EdgeInsets(
+            top: 6,
+            leading: GymLocationsLayout.horizontalInset,
+            bottom: 6,
+            trailing: GymLocationsLayout.horizontalInset
+          )
+        )
+        .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
     } else {
       ForEach(viewModel.filteredLocations) { location in
@@ -168,7 +208,15 @@ struct GymLocationsView: View {
               Label("Delete", systemImage: "trash")
             }
           }
-          .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+          .listRowInsets(
+            EdgeInsets(
+              top: 6,
+              leading: GymLocationsLayout.horizontalInset,
+              bottom: 6,
+              trailing: GymLocationsLayout.horizontalInset
+            )
+          )
+          .listRowBackground(Color.clear)
           .listRowSeparator(.hidden)
       }
     }
@@ -187,13 +235,23 @@ struct GymLocationsView: View {
     }
     .padding(.horizontal, 12)
     .frame(height: 44)
-    .background(Color(.systemGray6))
-    .overlay(
-      RoundedRectangle(cornerRadius: 12, style: .continuous)
-        .stroke(AppColors.borderGray, lineWidth: 1)
+    .background(
+      RoundedRectangle(cornerRadius: GymLocationsLayout.searchCornerRadius, style: .continuous)
+        .fill(Color(.systemGray6))
     )
-    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+    .overlay(
+      RoundedRectangle(cornerRadius: GymLocationsLayout.searchCornerRadius, style: .continuous)
+        .strokeBorder(AppColors.borderGray, lineWidth: 1)
+    )
+    .listRowInsets(
+      EdgeInsets(
+        top: 8,
+        leading: GymLocationsLayout.horizontalInset,
+        bottom: 8,
+        trailing: GymLocationsLayout.horizontalInset
+      )
+    )
+    .listRowBackground(Color.clear)
     .listRowSeparator(.hidden)
   }
 
@@ -220,6 +278,15 @@ struct GymLocationsView: View {
     }
     .buttonStyle(.plain)
     .padding(.top, 8)
+    .listRowInsets(
+      EdgeInsets(
+        top: 0,
+        leading: GymLocationsLayout.horizontalInset,
+        bottom: 8,
+        trailing: GymLocationsLayout.horizontalInset
+      )
+    )
+    .listRowBackground(Color.clear)
     .listRowSeparator(.hidden)
   }
 
@@ -240,8 +307,16 @@ struct GymLocationsView: View {
     }
     .padding(14)
     .background(AppColors.accent.opacity(0.13))
-    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 12, trailing: 0))
+    .clipShape(RoundedRectangle(cornerRadius: GymLocationsLayout.infoCornerRadius, style: .continuous))
+    .listRowInsets(
+      EdgeInsets(
+        top: 8,
+        leading: GymLocationsLayout.horizontalInset,
+        bottom: 12,
+        trailing: GymLocationsLayout.horizontalInset
+      )
+    )
+    .listRowBackground(Color.clear)
     .listRowSeparator(.hidden)
   }
 
@@ -258,8 +333,16 @@ struct GymLocationsView: View {
     .padding(.vertical, 10)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(AppColors.errorRed.opacity(0.1))
-    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
+    .clipShape(RoundedRectangle(cornerRadius: GymLocationsLayout.errorCornerRadius, style: .continuous))
+    .listRowInsets(
+      EdgeInsets(
+        top: 0,
+        leading: GymLocationsLayout.horizontalInset,
+        bottom: 8,
+        trailing: GymLocationsLayout.horizontalInset
+      )
+    )
+    .listRowBackground(Color.clear)
     .listRowSeparator(.hidden)
   }
 }
@@ -298,11 +381,13 @@ private struct GymLocationCard: View {
       Spacer(minLength: 0)
     }
     .padding(14)
-    .background(AppColors.surface)
-    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    .background(
+      RoundedRectangle(cornerRadius: GymLocationsLayout.cardCornerRadius, style: .continuous)
+        .fill(AppColors.surface)
+    )
     .overlay(
-      RoundedRectangle(cornerRadius: 12, style: .continuous)
-        .stroke(AppColors.borderGray, lineWidth: 1)
+      RoundedRectangle(cornerRadius: GymLocationsLayout.cardCornerRadius, style: .continuous)
+        .strokeBorder(AppColors.borderGray, lineWidth: 1)
     )
   }
 }
