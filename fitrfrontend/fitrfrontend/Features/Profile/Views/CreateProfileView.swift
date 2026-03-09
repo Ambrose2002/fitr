@@ -137,7 +137,7 @@ struct CreateProfileView: View {
         VStack(spacing: 3) {
           Text("Create Your Profile")
             .font(.system(size: 24, weight: .bold))
-            .foregroundColor(.black)
+            .foregroundColor(AppColors.textPrimary)
             .frame(maxWidth: .infinity, alignment: .leading)
 
           Text(
@@ -326,6 +326,7 @@ struct CreateProfileView: View {
     }
     .padding(.horizontal, 16)
     .padding(.top, 24)
+    .background(AppColors.background.ignoresSafeArea())
     .overlay {
       // Loading overlay
       if viewModel.isLoading {

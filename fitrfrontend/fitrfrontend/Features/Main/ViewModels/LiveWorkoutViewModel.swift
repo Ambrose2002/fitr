@@ -263,6 +263,14 @@ final class LiveWorkoutViewModel: ObservableObject {
     sessionStore.userProfile?.preferredDistanceUnit ?? .km
   }
 
+  var finishSheetSelectedLocationId: Int64? {
+    workout?.workoutLocationId ?? context.locationId
+  }
+
+  var finishSheetInitialNotes: String {
+    workout?.notes ?? ""
+  }
+
   func attachCoordinator(_ coordinator: ActiveWorkoutCoordinator) {
     activeWorkoutCoordinator = coordinator
   }
@@ -599,6 +607,16 @@ final class LiveWorkoutViewModel: ObservableObject {
     clearScreenErrorMessage()
     clearSetEditorMutationError()
     showAddExerciseSheet = true
+  }
+
+  func presentFinishSheet() {
+    clearScreenErrorMessage()
+    clearSetEditorMutationError()
+    showFinishSheet = true
+
+    Task {
+      await loadLocationsForEditingIfNeeded()
+    }
   }
 
   func presentEditSession() {

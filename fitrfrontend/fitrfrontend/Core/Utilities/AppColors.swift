@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 /// Semantic color definitions for the Fitr app
 /// Based on the design system from Visily mockups
@@ -50,39 +51,33 @@ struct AppColors {
     
     // MARK: - Background Colors
     
-    /// Light background color - Off-white/Light gray
-    /// Hex: #F9FAFB
-    /// RGB: (249, 250, 251)
-    /// Usage: App backgrounds, card backgrounds, screen backgrounds
-    static let backgroundLight = Color(red: 249/255, green: 250/255, blue: 251/255)
+    /// Light/Dark aware app background
+    static let backgroundLight = dynamicColor(
+        light: (249.0 / 255.0, 250.0 / 255.0, 251.0 / 255.0),
+        dark: (10.0 / 255.0, 14.0 / 255.0, 22.0 / 255.0)
+    )
     
-    /// Card/Panel background - Pure white
-    /// Hex: #FFFFFF
-    /// RGB: (255, 255, 255)
-    /// Usage: Card/panel backgrounds, elevated surfaces
-    static let cardWhite = Color.white
+    /// Light/Dark aware surface color
+    static let cardWhite = dynamicColor(
+        light: (1.0, 1.0, 1.0),
+        dark: (21.0 / 255.0, 27.0 / 255.0, 38.0 / 255.0)
+    )
     
     // MARK: - Text Colors
     
-    /// Primary text color - Dark gray
-    /// Hex: #1F2937
-    /// RGB: (31, 41, 55)
-    /// Usage: Primary text, headings, body text
-    static let textPrimary = Color(red: 31/255, green: 41/255, blue: 55/255)
+    /// Primary text color (light/dark aware)
+    static let textPrimary = Color(uiColor: .label)
     
-    /// Secondary text color - Medium gray
-    /// Hex: #6B7280
-    /// RGB: (107, 114, 128)
-    /// Usage: Secondary text, captions, placeholder text, descriptions
-    static let textSecondary = Color(red: 107/255, green: 114/255, blue: 128/255)
+    /// Secondary text color (light/dark aware)
+    static let textSecondary = Color(uiColor: .secondaryLabel)
     
     // MARK: - Border & Divider Colors
     
-    /// Border/Divider color - Light gray
-    /// Hex: #E5E7EB
-    /// RGB: (229, 231, 235)
-    /// Usage: Borders, dividers, separators, input field borders
-    static let borderGray = Color(red: 229/255, green: 231/255, blue: 235/255)
+    /// Border/Divider color (light/dark aware)
+    static let borderGray = dynamicColor(
+        light: (229.0 / 255.0, 231.0 / 255.0, 235.0 / 255.0),
+        dark: (54.0 / 255.0, 64.0 / 255.0, 80.0 / 255.0)
+    )
     
     // MARK: - Convenience Extensions
     
@@ -97,6 +92,23 @@ struct AppColors {
     
     /// Standard card/surface color
     static let surface = cardWhite
+
+    private static func dynamicColor(
+        light: (Double, Double, Double),
+        dark: (Double, Double, Double)
+    ) -> Color {
+        Color(
+            UIColor { traitCollection in
+                let components = traitCollection.userInterfaceStyle == .dark ? dark : light
+                return UIColor(
+                    red: components.0,
+                    green: components.1,
+                    blue: components.2,
+                    alpha: 1.0
+                )
+            }
+        )
+    }
 }
 
 // MARK: - Color Extension for Hex Support

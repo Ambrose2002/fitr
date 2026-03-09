@@ -26,9 +26,9 @@ struct LoginView: View {
                 VStack(spacing: 16) {
                     AppIcons.appIcon
                         .font(.system(size: 40))
-                        .foregroundColor(.white)
+                        .foregroundColor(AppColors.background)
                         .frame(width: 80, height: 80)
-                        .background(Color.black)
+                        .background(AppColors.textPrimary)
                         .cornerRadius(11)
                     Text("Fitr")
                         .font(.system(size: 22, weight: .bold))
@@ -127,7 +127,7 @@ struct LoginView: View {
                             
                     }
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppColors.surface)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
                     .background(AppColors.primaryTeal)
@@ -155,7 +155,7 @@ struct LoginView: View {
                 
                 HStack(spacing: 4) {
                     Text("Don't have an account?")
-                        .foregroundColor(.black)
+                        .foregroundColor(AppColors.textPrimary)
                     NavigationLink {
                         SignUpView(sessionStore: loginViewModel.sessionStore)
                     } label: {
@@ -170,6 +170,7 @@ struct LoginView: View {
             }
             
         }
+        .background(AppColors.background.ignoresSafeArea())
         .padding(.horizontal, 24)
         .padding(.bottom, 40)
         .overlay {
@@ -210,4 +211,3 @@ struct LoginView: View {
 //#Preview {
 //    LoginView(sessionStore: SessionStore())
 //}
-

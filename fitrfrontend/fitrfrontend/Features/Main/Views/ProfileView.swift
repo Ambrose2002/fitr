@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct ProfileView: View {
+  @EnvironmentObject private var appearanceSettings: AppearanceSettings
+  @Environment(\.colorScheme) private var colorScheme
   @StateObject private var viewModel: ProfileViewModel
   private let sessionStore: SessionStore
 
@@ -156,6 +158,36 @@ struct ProfileView: View {
           title: "Units & Preferences",
           subtitle: viewModel.rowSubtitles.units
         )
+
+        Divider()
+          .padding(.leading, 64)
+
+        Text("APPEARANCE")
+          .font(.system(size: 11, weight: .bold))
+          .foregroundStyle(AppColors.textSecondary)
+          .tracking(0.8)
+          .padding(.horizontal, 16)
+          .padding(.top, 12)
+
+        ProfileSettingsToggleRow(
+          iconName: "iphone.radiowaves.left.and.right",
+          iconTint: AppColors.accent,
+          title: "Use System",
+          subtitle: "Follow your iPhone appearance",
+          isOn: useSystemThemeBinding
+        )
+
+        Divider()
+          .padding(.leading, 64)
+
+        ProfileSettingsToggleRow(
+          iconName: "moon.fill",
+          iconTint: AppColors.accent,
+          title: "Dark Mode",
+          subtitle: "Manual appearance",
+          isOn: darkModeBinding,
+          isDisabled: appearanceSettings.useSystem
+        )
       }
 
       sectionGroup(title: "SYSTEM") {
@@ -225,6 +257,32 @@ struct ProfileView: View {
     .frame(maxWidth: .infinity)
     .padding(.top, 44)
     .padding(.bottom, 50)
+  }
+
+  private var useSystemThemeBinding: Binding<Bool> {
+    Binding(
+      get: { appearanceSettings.useSystem },
+      set: { isOn in
+        appearanceSettings.setUseSystem(isOn, currentVisualScheme: colorScheme)
+      }
+    )
+  }
+
+  private var darkModeBinding: Binding<Bool> {
+    Binding(
+      get: {
+        if appearanceSettings.useSystem {
+          return colorScheme == .dark
+        }
+        return appearanceSettings.isDarkModeEnabled
+      },
+      set: { isDarkMode in
+        guard !appearanceSettings.useSystem else {
+          return
+        }
+        appearanceSettings.setDarkMode(isDarkMode)
+      }
+    )
   }
 }
 
@@ -306,6 +364,51 @@ private struct ProfileSettingsStaticRow: View {
       isDestructive: isDestructive,
       showsChevron: false
     )
+  }
+}
+
+private struct ProfileSettingsToggleRow: View {
+  let iconName: String
+  let iconTint: Color
+  let title: String
+  let subtitle: String?
+  @Binding var isOn: Bool
+  var isDisabled: Bool = false
+
+  var body: some View {
+    HStack(spacing: 12) {
+      Image(systemName: iconName)
+        .font(.system(size: 16, weight: .semibold))
+        .foregroundStyle(iconTint)
+        .frame(width: 38, height: 38)
+        .background(iconTint.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+
+      VStack(alignment: .leading, spacing: 2) {
+        Text(title)
+          .font(.system(size: 17, weight: .semibold))
+          .foregroundStyle(AppColors.textPrimary)
+
+        if let subtitle, !subtitle.isEmpty {
+          Text(subtitle)
+            .font(.system(size: 13))
+            .foregroundStyle(AppColors.textSecondary)
+            .lineLimit(2)
+        }
+      }
+
+      Spacer()
+
+      Toggle("", isOn: $isOn)
+        .labelsHidden()
+        .disabled(isDisabled)
+        .tint(AppColors.accent)
+    }
+    .opacity(isDisabled ? 0.7 : 1)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.horizontal, 16)
+    .padding(.vertical, 14)
+    .contentShape(Rectangle())
   }
 }
 
