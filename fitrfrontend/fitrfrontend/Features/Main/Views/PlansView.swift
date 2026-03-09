@@ -12,8 +12,7 @@ enum PlansLaunchAction: Equatable {
 }
 
 struct PlansView: View {
-  @EnvironmentObject var sessionStore: SessionStore
-  @StateObject private var viewModel: WorkoutPlanViewModel
+  @ObservedObject private var viewModel: WorkoutPlanViewModel
   @Binding private var launchAction: PlansLaunchAction?
 
   @State private var showCreatePlan = false
@@ -25,18 +24,20 @@ struct PlansView: View {
 
   init(
     sessionStore: SessionStore,
+    viewModel: WorkoutPlanViewModel? = nil,
     launchAction: Binding<PlansLaunchAction?> = .constant(nil)
   ) {
-    _viewModel = StateObject(wrappedValue: WorkoutPlanViewModel(sessionStore: sessionStore))
+    let resolvedViewModel = viewModel ?? WorkoutPlanViewModel(sessionStore: sessionStore)
+    _viewModel = ObservedObject(wrappedValue: resolvedViewModel)
     _launchAction = launchAction
   }
 
   var body: some View {
     NavigationStack {
       ZStack {
-        if viewModel.isLoading {
+        if viewModel.isLoading && !viewModel.hasLoadedSnapshot {
           loadingState
-        } else if let errorMessage = viewModel.errorMessage {
+        } else if let errorMessage = viewModel.errorMessage, !viewModel.hasLoadedSnapshot {
           VStack(spacing: 16) {
             Image(systemName: "exclamationmark.circle")
               .font(.system(size: 48))
@@ -48,7 +49,7 @@ struct PlansView: View {
               .foregroundColor(.secondary)
             Button("Retry") {
               Task {
-                await viewModel.loadPlans()
+                await viewModel.loadPlans(forceRefresh: true)
               }
             }
             .buttonStyle(.bordered)
@@ -68,6 +69,11 @@ struct PlansView: View {
               }
               .frame(maxWidth: .infinity, alignment: .leading)
               .padding(.horizontal, 16)
+
+              if let errorMessage = viewModel.errorMessage {
+                inlineErrorBanner(message: errorMessage)
+                  .padding(.horizontal, 16)
+              }
 
               // Plans List
               if viewModel.plans.isEmpty {
@@ -128,12 +134,12 @@ struct PlansView: View {
             .padding(.vertical, 16)
           }
           .refreshable {
-            await viewModel.loadPlans()
+            await viewModel.loadPlans(forceRefresh: true)
           }
         }
 
         // Floating Action Button
-        if !viewModel.isLoading {
+        if !(viewModel.isLoading && !viewModel.hasLoadedSnapshot) {
           VStack {
             Spacer()
             HStack {
@@ -238,12 +244,21 @@ struct PlansView: View {
         Text("Are you sure you want to delete \"\(plan.name)\"? This action cannot be undone.")
       }
     }
-    .task {
-      await viewModel.loadPlans()
+    .onAppear {
       consumeLaunchActionIfNeeded()
     }
     .onChange(of: launchAction) { _, _ in
       consumeLaunchActionIfNeeded()
+    }
+    .onChange(of: viewModel.isLoading) { _, isLoading in
+      if !isLoading {
+        consumeLaunchActionIfNeeded()
+      }
+    }
+    .onChange(of: viewModel.isRefreshing) { _, isRefreshing in
+      if !isRefreshing {
+        consumeLaunchActionIfNeeded()
+      }
     }
   }
 
@@ -262,12 +277,36 @@ struct PlansView: View {
       return
     }
 
-    guard !viewModel.isLoading else {
+    guard !viewModel.isLoading, !viewModel.isRefreshing else {
       return
     }
 
     showCreatePlan = true
     launchAction = nil
+  }
+
+  private func inlineErrorBanner(message: String) -> some View {
+    HStack(spacing: 8) {
+      Image(systemName: "wifi.exclamationmark")
+        .font(.system(size: 13, weight: .semibold))
+      Text(message)
+        .font(.system(size: 12, weight: .medium))
+        .lineLimit(2)
+      Spacer(minLength: 0)
+      if viewModel.isRefreshing {
+        ProgressView()
+          .controlSize(.mini)
+      }
+    }
+    .foregroundStyle(AppColors.warningYellow)
+    .padding(.horizontal, 12)
+    .padding(.vertical, 10)
+    .background(AppColors.warningYellow.opacity(0.12))
+    .overlay(
+      RoundedRectangle(cornerRadius: 10, style: .continuous)
+        .stroke(AppColors.warningYellow.opacity(0.45), lineWidth: 1)
+    )
+    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
   }
 
   private var loadingState: some View {

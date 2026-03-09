@@ -13,16 +13,18 @@ enum WorkoutsLaunchAction: Equatable {
 
 struct WorkoutsView: View {
   @Binding private var launchAction: WorkoutsLaunchAction?
-  @StateObject private var viewModel: WorkoutsViewModel
+  @ObservedObject private var viewModel: WorkoutsViewModel
   @State private var navigationPath = NavigationPath()
   @State private var pendingDeleteRow: WorkoutHistoryRow?
 
   init(
     sessionStore: SessionStore,
+    viewModel: WorkoutsViewModel? = nil,
     launchAction: Binding<WorkoutsLaunchAction?> = .constant(nil)
   ) {
     _launchAction = launchAction
-    _viewModel = StateObject(wrappedValue: WorkoutsViewModel(sessionStore: sessionStore))
+    let resolvedViewModel = viewModel ?? WorkoutsViewModel(sessionStore: sessionStore)
+    _viewModel = ObservedObject(wrappedValue: resolvedViewModel)
   }
 
   var body: some View {
@@ -31,9 +33,9 @@ struct WorkoutsView: View {
         Color(.systemBackground)
           .ignoresSafeArea()
 
-        if viewModel.isLoading && !viewModel.hasWorkouts {
+        if viewModel.isLoading && !viewModel.hasLoadedSnapshot {
           loadingState
-        } else if let errorMessage = viewModel.errorMessage, !viewModel.hasWorkouts {
+        } else if let errorMessage = viewModel.errorMessage, !viewModel.hasLoadedSnapshot {
           errorState(message: errorMessage)
         } else {
           content
@@ -106,8 +108,7 @@ struct WorkoutsView: View {
     .onChange(of: launchAction) { _, _ in
       consumeLaunchActionIfNeeded()
     }
-    .task {
-      await viewModel.loadWorkoutHistory()
+    .onAppear {
       consumeLaunchActionIfNeeded()
     }
   }
@@ -133,6 +134,11 @@ struct WorkoutsView: View {
     Group {
       if !viewModel.hasWorkouts {
         contentScrollView {
+          if let errorMessage = viewModel.errorMessage {
+            inlineErrorCard(message: errorMessage)
+              .padding(.horizontal, 16)
+          }
+
           emptyState(
             iconName: "figure.strengthtraining.traditional",
             title: "No workout history yet",
@@ -142,6 +148,11 @@ struct WorkoutsView: View {
         }
       } else if !viewModel.hasFilteredResults {
         contentScrollView {
+          if let errorMessage = viewModel.errorMessage {
+            inlineErrorCard(message: errorMessage)
+              .padding(.horizontal, 16)
+          }
+
           emptyState(
             iconName: "line.3.horizontal.decrease.circle",
             title: "No workouts match your filters",
@@ -159,6 +170,13 @@ struct WorkoutsView: View {
 
   private var historyListContent: some View {
     List {
+      if let errorMessage = viewModel.errorMessage {
+        inlineErrorCard(message: errorMessage)
+          .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16))
+          .listRowSeparator(.hidden)
+          .listRowBackground(Color.clear)
+      }
+
       WorkoutHistorySummaryCard(
         label: viewModel.summaryLabel,
         countText: viewModel.summaryCountText
@@ -208,7 +226,7 @@ struct WorkoutsView: View {
     .scrollContentBackground(.hidden)
     .background(Color(.systemBackground))
     .refreshable {
-      await viewModel.loadWorkoutHistory()
+      await viewModel.loadWorkoutHistory(forceRefresh: true)
     }
   }
 
@@ -231,7 +249,7 @@ struct WorkoutsView: View {
       .padding(.bottom, 8)
     }
     .refreshable {
-      await viewModel.loadWorkoutHistory()
+      await viewModel.loadWorkoutHistory(forceRefresh: true)
     }
   }
 
@@ -299,13 +317,37 @@ struct WorkoutsView: View {
 
       Button("Retry") {
         Task {
-          await viewModel.loadWorkoutHistory()
+          await viewModel.loadWorkoutHistory(forceRefresh: true)
         }
       }
       .buttonStyle(.bordered)
       .tint(AppColors.accent)
     }
     .padding(24)
+  }
+
+  private func inlineErrorCard(message: String) -> some View {
+    HStack(spacing: 8) {
+      Image(systemName: "wifi.exclamationmark")
+        .font(.system(size: 13, weight: .semibold))
+      Text(message)
+        .font(.system(size: 12, weight: .medium))
+        .lineLimit(2)
+      Spacer(minLength: 0)
+      if viewModel.isRefreshing {
+        ProgressView()
+          .controlSize(.mini)
+      }
+    }
+    .foregroundStyle(AppColors.warningYellow)
+    .padding(.horizontal, 12)
+    .padding(.vertical, 10)
+    .background(AppColors.warningYellow.opacity(0.12))
+    .overlay(
+      RoundedRectangle(cornerRadius: 10, style: .continuous)
+        .stroke(AppColors.warningYellow.opacity(0.45), lineWidth: 1)
+    )
+    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
   }
 
   private func emptyState(

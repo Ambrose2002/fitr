@@ -30,7 +30,7 @@ struct RootView: View {
           .padding()
         )
       } else if sessionStore.hasCreatedProfile {
-        content = AnyView(MainAppView())
+        content = AnyView(MainAppView(sessionStore: sessionStore))
       } else {
         content = AnyView(CreateProfileView(sessionStore: sessionStore))
       }

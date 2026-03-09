@@ -9,9 +9,8 @@ import SwiftUI
 
 // MARK: - HomeView
 struct HomeView: View {
-  @EnvironmentObject var sessionStore: SessionStore
   @EnvironmentObject private var activeWorkoutCoordinator: ActiveWorkoutCoordinator
-  @StateObject private var viewModel: HomeViewModel
+  @ObservedObject private var viewModel: HomeViewModel
   private let onNewPlanTap: () -> Void
   private let onLastWorkoutTap: (Int64) -> Void
   @State private var showActiveWorkoutConflict = false
@@ -19,20 +18,24 @@ struct HomeView: View {
 
   init(
     sessionStore: SessionStore,
+    viewModel: HomeViewModel? = nil,
     onNewPlanTap: @escaping () -> Void = {},
     onLastWorkoutTap: @escaping (Int64) -> Void = { _ in },
     initialData: HomeScreenData? = nil
   ) {
     self.onNewPlanTap = onNewPlanTap
     self.onLastWorkoutTap = onLastWorkoutTap
-    _viewModel = StateObject(
-      wrappedValue: HomeViewModel(sessionStore: sessionStore, initialData: initialData))
+    let resolvedViewModel = viewModel ?? HomeViewModel(
+      sessionStore: sessionStore,
+      initialData: initialData
+    )
+    _viewModel = ObservedObject(wrappedValue: resolvedViewModel)
   }
 
   var body: some View {
     NavigationStack {
       ZStack {
-        if viewModel.isLoading {
+        if viewModel.isLoading && viewModel.homeData == nil {
           ScrollView {
             VStack(spacing: 24) {
               // Skeleton greeting
@@ -71,7 +74,7 @@ struct HomeView: View {
             .padding(.vertical, 16)
           }
           .shimmer()
-        } else if let errorMessage = viewModel.errorMessage {
+        } else if let errorMessage = viewModel.errorMessage, viewModel.homeData == nil {
           VStack(spacing: 16) {
             Image(systemName: "exclamationmark.circle")
               .font(.system(size: 48))
@@ -83,7 +86,7 @@ struct HomeView: View {
               .foregroundColor(.secondary)
             Button("Retry") {
               Task {
-                await viewModel.loadHomeData()
+                await viewModel.loadHomeData(forceRefresh: true)
               }
             }
             .buttonStyle(.bordered)
@@ -103,6 +106,11 @@ struct HomeView: View {
               }
               .frame(maxWidth: .infinity, alignment: .leading)
               .padding(.horizontal, 16)
+
+              if let errorMessage = viewModel.errorMessage {
+                homeInlineError(message: errorMessage)
+                  .padding(.horizontal, 16)
+              }
 
               // Last Session Card
               if let lastWorkout = data.lastWorkout {
@@ -493,9 +501,6 @@ struct HomeView: View {
           Divider()
         }
       }
-      .task {
-        await viewModel.loadHomeData()
-      }
       .confirmationDialog(
         "An active workout is already in progress.",
         isPresented: $showActiveWorkoutConflict
@@ -534,6 +539,30 @@ struct HomeView: View {
       }
 
     }
+  }
+
+  private func homeInlineError(message: String) -> some View {
+    HStack(spacing: 8) {
+      Image(systemName: "wifi.exclamationmark")
+        .font(.system(size: 13, weight: .semibold))
+      Text(message)
+        .font(.system(size: 12, weight: .medium))
+        .lineLimit(2)
+      Spacer(minLength: 0)
+      if viewModel.isRefreshing {
+        ProgressView()
+          .controlSize(.mini)
+      }
+    }
+    .foregroundStyle(AppColors.warningYellow)
+    .padding(.horizontal, 12)
+    .padding(.vertical, 10)
+    .background(AppColors.warningYellow.opacity(0.12))
+    .overlay(
+      RoundedRectangle(cornerRadius: 10, style: .continuous)
+        .stroke(AppColors.warningYellow.opacity(0.45), lineWidth: 1)
+    )
+    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
   }
 
   private func handleNewSessionTapped() {

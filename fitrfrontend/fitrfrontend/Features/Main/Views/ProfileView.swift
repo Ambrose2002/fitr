@@ -10,12 +10,13 @@ import SwiftUI
 struct ProfileView: View {
   @EnvironmentObject private var appearanceSettings: AppearanceSettings
   @Environment(\.colorScheme) private var colorScheme
-  @StateObject private var viewModel: ProfileViewModel
+  @ObservedObject private var viewModel: ProfileViewModel
   private let sessionStore: SessionStore
 
-  init(sessionStore: SessionStore) {
+  init(sessionStore: SessionStore, viewModel: ProfileViewModel? = nil) {
     self.sessionStore = sessionStore
-    _viewModel = StateObject(wrappedValue: ProfileViewModel(sessionStore: sessionStore))
+    let resolvedViewModel = viewModel ?? ProfileViewModel(sessionStore: sessionStore)
+    _viewModel = ObservedObject(wrappedValue: resolvedViewModel)
   }
 
   var body: some View {
@@ -45,9 +46,6 @@ struct ProfileView: View {
               .foregroundStyle(AppColors.accent)
           }
         }
-      }
-      .task {
-        await viewModel.load()
       }
       .refreshable {
         await viewModel.load(forceRefresh: true)
@@ -83,7 +81,7 @@ struct ProfileView: View {
       }
       .padding(.top, 6)
 
-      if viewModel.isLoading {
+      if viewModel.isLoading || viewModel.isRefreshing {
         ProgressView()
           .controlSize(.small)
           .padding(.top, 2)

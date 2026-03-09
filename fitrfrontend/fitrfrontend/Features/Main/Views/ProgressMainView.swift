@@ -9,13 +9,14 @@ import Charts
 import SwiftUI
 
 struct ProgressMainView: View {
-  @StateObject private var viewModel: ProgressViewModel
+  @ObservedObject private var viewModel: ProgressViewModel
   private let sessionStore: SessionStore
   private let onSeeFullHistoryTap: () -> Void
   private let onWeightEntrySaved: () -> Void
 
   init(
     sessionStore: SessionStore,
+    viewModel: ProgressViewModel? = nil,
     onSeeFullHistoryTap: @escaping () -> Void = {},
     onWeightEntrySaved: @escaping () -> Void = {},
     initialDashboard: ProgressDashboardData? = nil,
@@ -24,13 +25,12 @@ struct ProgressMainView: View {
     self.sessionStore = sessionStore
     self.onSeeFullHistoryTap = onSeeFullHistoryTap
     self.onWeightEntrySaved = onWeightEntrySaved
-    _viewModel = StateObject(
-      wrappedValue: ProgressViewModel(
+    let resolvedViewModel = viewModel ?? ProgressViewModel(
         sessionStore: sessionStore,
         initialDashboard: initialDashboard,
         initialError: initialError
-      )
     )
+    _viewModel = ObservedObject(wrappedValue: resolvedViewModel)
   }
 
   var body: some View {
@@ -40,7 +40,7 @@ struct ProgressMainView: View {
           if let errorMessage = viewModel.errorMessage {
             ProgressInlineErrorCard(
               message: errorMessage,
-              canRetry: !viewModel.isLoading,
+              canRetry: !(viewModel.isLoading || viewModel.isRefreshing),
               retry: { Task { await viewModel.refresh() } }
             )
           }
@@ -48,7 +48,7 @@ struct ProgressMainView: View {
           if let dashboard = viewModel.dashboard {
             ProgressDashboardContent(
               dashboard: dashboard,
-              isRefreshing: viewModel.isLoading,
+              isRefreshing: viewModel.isLoading || viewModel.isRefreshing,
               sessionStore: sessionStore,
               onSeeFullHistoryTap: onSeeFullHistoryTap
             ) {
@@ -78,7 +78,7 @@ struct ProgressMainView: View {
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
-          if viewModel.isLoading {
+          if viewModel.isLoading || viewModel.isRefreshing {
             ProgressView()
               .controlSize(.small)
           } else {
@@ -95,9 +95,6 @@ struct ProgressMainView: View {
             .accessibilityLabel("Refresh progress")
           }
         }
-      }
-      .task {
-        await viewModel.loadDashboard()
       }
       .refreshable {
         await viewModel.refresh()
