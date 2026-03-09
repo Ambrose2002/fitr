@@ -377,7 +377,11 @@ final class ActiveWorkoutCoordinator: ObservableObject {
     setActiveContext(updatedContext, shouldPresent: false)
   }
 
-  func finishActiveWorkout(notes: String?, title: String?) async throws -> WorkoutSessionResponse {
+  func finishActiveWorkout(
+    notes: String?,
+    title: String?,
+    locationId: Int64?
+  ) async throws -> WorkoutSessionResponse {
     guard let activeContext else {
       throw URLError(.badURL)
     }
@@ -390,7 +394,7 @@ final class ActiveWorkoutCoordinator: ObservableObject {
     let response = try await workoutsService.updateWorkoutSession(
       id: activeContext.workoutId,
       request: CreateWorkoutSessionRequest(
-        locationId: activeContext.locationId,
+        locationId: locationId,
         notes: notes,
         endTime: ISO8601DateFormatter().string(from: effectiveEndDate),
         title: title

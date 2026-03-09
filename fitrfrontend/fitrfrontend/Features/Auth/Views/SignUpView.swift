@@ -30,7 +30,10 @@ struct SignUpView: View {
             VStack (spacing: 40){
                 VStack(spacing: 16) {
                     AppIcons.appIcon
-                        .circularIcon(backgroundColor: .black)
+                        .circularIcon(
+                            backgroundColor: AppColors.textPrimary,
+                            foregroundColor: AppColors.background
+                        )
 //                        .font(.system(size: 40))
 //                        .foregroundColor(.white)
 //                        .frame(width: 80, height: 80)
@@ -210,7 +213,7 @@ struct SignUpView: View {
                             
                     }
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppColors.surface)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
                     .background(allPasswordRulesPass ? AppColors.primaryTeal : AppColors.primaryTeal.opacity(0.5))
@@ -239,7 +242,7 @@ struct SignUpView: View {
                 
                 HStack(spacing: 4) {
                     Text("Already have an account?")
-                        .foregroundColor(.black)
+                        .foregroundColor(AppColors.textPrimary)
                     NavigationLink {
                         LoginView(sessionStore: signUpViewModel.sessionStore)
                     } label: {
@@ -254,6 +257,7 @@ struct SignUpView: View {
             }
             
         }
+        .background(AppColors.background.ignoresSafeArea())
         .padding(.horizontal, 24)
         .padding(.bottom, 40)
         .overlay {
@@ -294,4 +298,3 @@ struct SignUpView: View {
 //#Preview {
 //    SignUpView(sessionStore: SessionStore())
 //}
-

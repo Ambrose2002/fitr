@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct LiveWorkoutView: View {
+  @Environment(\.colorScheme) private var colorScheme
   @EnvironmentObject private var sessionStore: SessionStore
   @EnvironmentObject private var activeWorkoutCoordinator: ActiveWorkoutCoordinator
   @StateObject private var viewModel: LiveWorkoutViewModel
@@ -23,12 +24,12 @@ struct LiveWorkoutView: View {
 
   var body: some View {
     ZStack {
-      Color.black
+      liveBackgroundColor
         .ignoresSafeArea()
 
       if viewModel.isLoading && viewModel.workout == nil {
         ProgressView()
-          .tint(.white)
+          .tint(AppColors.accent)
       } else {
         content
       }
@@ -111,11 +112,16 @@ struct LiveWorkoutView: View {
     .sheet(isPresented: $viewModel.showFinishSheet) {
       LiveWorkoutFinishSheet(
         title: viewModel.titleText,
+        initialNotes: viewModel.finishSheetInitialNotes,
+        initialLocationId: viewModel.finishSheetSelectedLocationId,
         completedExerciseCount: viewModel.completedExerciseCount,
         skippedPlannedSetCount: viewModel.skippedPlannedSetCount,
         addedExerciseCount: viewModel.addedExerciseCount,
+        availableLocations: viewModel.availableLocations,
+        isLoadingLocations: viewModel.isLoadingLocations,
+        locationLoadErrorMessage: viewModel.locationLoadErrorMessage,
         isSubmitting: isFinishingWorkout
-      ) { submittedTitle, submittedNotes in
+      ) { submittedTitle, submittedNotes, selectedLocationId in
         guard !isFinishingWorkout else {
           return
         }
@@ -138,7 +144,8 @@ struct LiveWorkoutView: View {
           do {
             _ = try await activeWorkoutCoordinator.finishActiveWorkout(
               notes: submittedNotes,
-              title: submittedTitle
+              title: submittedTitle,
+              locationId: selectedLocationId
             )
             shouldDismissLiveWorkoutAfterFinish = true
             isFinishingWorkout = false
@@ -251,7 +258,7 @@ struct LiveWorkoutView: View {
         } label: {
           Image(systemName: "chevron.left")
             .font(.system(size: 18, weight: .semibold))
-            .foregroundColor(.white)
+            .foregroundColor(chromePrimaryTextColor)
             .frame(width: 40, height: 40)
         }
         .buttonStyle(.plain)
@@ -260,7 +267,7 @@ struct LiveWorkoutView: View {
 
         Text("ACTIVE WORKOUT")
           .font(.system(size: 16, weight: .black))
-          .foregroundColor(Color.white.opacity(0.75))
+          .foregroundColor(chromeSecondaryTextColor)
 
         Spacer()
 
@@ -279,16 +286,16 @@ struct LiveWorkoutView: View {
         } label: {
           Image(systemName: "ellipsis")
             .font(.system(size: 18, weight: .semibold))
-            .foregroundColor(.white)
+            .foregroundColor(chromePrimaryTextColor)
             .frame(width: 40, height: 40)
         }
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
-      .background(Color.black)
+      .background(chromeBackgroundColor)
 
       Divider()
-        .overlay(Color.white.opacity(0.08))
+        .overlay(AppColors.borderGray.opacity(0.7))
     }
   }
 
@@ -359,12 +366,12 @@ struct LiveWorkoutView: View {
       VStack(alignment: .leading, spacing: 4) {
         Text(viewModel.planSummaryTitle)
           .font(.system(size: 24, weight: .black))
-          .foregroundColor(.white)
+          .foregroundColor(AppColors.textPrimary)
           .lineLimit(2)
 
         Text(viewModel.planSummarySubtitle)
           .font(.system(size: 13, weight: .medium))
-          .foregroundColor(Color.white.opacity(0.72))
+          .foregroundColor(AppColors.textSecondary)
       }
 
       Spacer()
@@ -374,10 +381,14 @@ struct LiveWorkoutView: View {
           showPlanSheet = true
         }
         .font(.system(size: 13, weight: .bold))
-        .foregroundColor(.white)
+        .foregroundColor(chromePrimaryTextColor)
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(Color.white.opacity(0.1))
+        .background(chromeMutedBackgroundColor)
+        .overlay(
+          Capsule()
+            .stroke(chromeMutedStrokeColor, lineWidth: 1)
+        )
         .clipShape(Capsule())
       }
     }
@@ -394,20 +405,20 @@ struct LiveWorkoutView: View {
           Text("Add Exercise")
             .font(.system(size: 15, weight: .semibold))
         }
-        .foregroundColor(.white)
+        .foregroundColor(chromePrimaryTextColor)
         .frame(maxWidth: .infinity)
         .frame(height: 52)
-        .background(Color.white.opacity(0.03))
+        .background(chromeMutedBackgroundColor)
         .overlay(
           RoundedRectangle(cornerRadius: 14)
-            .stroke(Color.white.opacity(0.18), lineWidth: 1)
+            .stroke(chromeMutedStrokeColor, lineWidth: 1)
         )
         .cornerRadius(14)
       }
       .buttonStyle(.plain)
 
       Button {
-        viewModel.showFinishSheet = true
+        viewModel.presentFinishSheet()
       } label: {
         Text("Finish Workout")
           .font(.system(size: 18, weight: .black))
@@ -422,7 +433,7 @@ struct LiveWorkoutView: View {
     .padding(.horizontal, 16)
     .padding(.top, 12)
     .padding(.bottom, 12)
-    .background(Color.black.opacity(0.96))
+    .background(chromeBackgroundColor.opacity(colorScheme == .dark ? 0.96 : 1))
   }
 
   private func errorBanner(message: String) -> some View {
@@ -433,17 +444,55 @@ struct LiveWorkoutView: View {
 
       Text(message)
         .font(.system(size: 12, weight: .semibold))
-        .foregroundColor(.white)
+        .foregroundColor(AppColors.textPrimary)
 
       Spacer()
     }
     .padding(12)
-    .background(Color.white.opacity(0.06))
+    .background(errorBannerBackgroundColor)
     .overlay(
       RoundedRectangle(cornerRadius: 12)
-        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        .stroke(errorBannerBorderColor, lineWidth: 1)
     )
     .cornerRadius(12)
+  }
+
+  private var liveBackgroundColor: Color {
+    if colorScheme == .dark {
+      return Color(red: 6.0 / 255.0, green: 10.0 / 255.0, blue: 16.0 / 255.0)
+    }
+    return AppColors.background
+  }
+
+  private var chromeBackgroundColor: Color {
+    if colorScheme == .dark {
+      return Color(red: 8.0 / 255.0, green: 13.0 / 255.0, blue: 21.0 / 255.0)
+    }
+    return AppColors.surface
+  }
+
+  private var chromePrimaryTextColor: Color {
+    colorScheme == .dark ? AppColors.surface : AppColors.textPrimary
+  }
+
+  private var chromeSecondaryTextColor: Color {
+    colorScheme == .dark ? AppColors.surface.opacity(0.75) : AppColors.textSecondary
+  }
+
+  private var chromeMutedBackgroundColor: Color {
+    colorScheme == .dark ? AppColors.surface.opacity(0.08) : AppColors.borderGray.opacity(0.25)
+  }
+
+  private var chromeMutedStrokeColor: Color {
+    colorScheme == .dark ? AppColors.surface.opacity(0.2) : AppColors.borderGray
+  }
+
+  private var errorBannerBackgroundColor: Color {
+    colorScheme == .dark ? AppColors.surface.opacity(0.06) : AppColors.errorRed.opacity(0.08)
+  }
+
+  private var errorBannerBorderColor: Color {
+    colorScheme == .dark ? AppColors.surface.opacity(0.1) : AppColors.errorRed.opacity(0.24)
   }
 }
 
@@ -756,27 +805,41 @@ private struct LiveWorkoutFinishSheet: View {
   let completedExerciseCount: Int
   let skippedPlannedSetCount: Int
   let addedExerciseCount: Int
+  let availableLocations: [LocationResponse]
+  let isLoadingLocations: Bool
+  let locationLoadErrorMessage: String?
   let isSubmitting: Bool
-  let onFinish: (String, String?) -> Void
+  let onFinish: (String, String?, Int64?) -> Void
 
   @State private var editedTitle: String
-  @State private var notes: String = ""
+  @State private var notes: String
+  @State private var selectedLocationId: Int64?
 
   init(
     title: String,
+    initialNotes: String,
+    initialLocationId: Int64?,
     completedExerciseCount: Int,
     skippedPlannedSetCount: Int,
     addedExerciseCount: Int,
+    availableLocations: [LocationResponse],
+    isLoadingLocations: Bool,
+    locationLoadErrorMessage: String?,
     isSubmitting: Bool,
-    onFinish: @escaping (String, String?) -> Void
+    onFinish: @escaping (String, String?, Int64?) -> Void
   ) {
     self.title = title
     self.completedExerciseCount = completedExerciseCount
     self.skippedPlannedSetCount = skippedPlannedSetCount
     self.addedExerciseCount = addedExerciseCount
+    self.availableLocations = availableLocations
+    self.isLoadingLocations = isLoadingLocations
+    self.locationLoadErrorMessage = locationLoadErrorMessage
     self.isSubmitting = isSubmitting
     self.onFinish = onFinish
     _editedTitle = State(initialValue: title)
+    _notes = State(initialValue: initialNotes)
+    _selectedLocationId = State(initialValue: initialLocationId)
   }
 
   var body: some View {
@@ -807,10 +870,63 @@ private struct LiveWorkoutFinishSheet: View {
               .font(.system(size: 13, weight: .bold))
               .foregroundColor(AppColors.textPrimary)
             TextEditor(text: $notes)
+              .disabled(isSubmitting)
               .frame(minHeight: 120)
               .padding(8)
               .background(Color(.systemGray6))
               .cornerRadius(12)
+          }
+
+          VStack(alignment: .leading, spacing: 10) {
+            HStack {
+              Text("Location")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(AppColors.textPrimary)
+
+              if isLoadingLocations {
+                Spacer()
+
+                ProgressView()
+                  .controlSize(.small)
+              }
+            }
+
+            if let locationLoadErrorMessage {
+              inlineMessage(
+                message: locationLoadErrorMessage,
+                tint: AppColors.warningYellow
+              )
+            }
+
+            if !isLoadingLocations && availableLocations.isEmpty {
+              Text("No saved locations yet.")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(AppColors.textSecondary)
+                .padding(.vertical, 4)
+            }
+
+            if !availableLocations.isEmpty {
+              VStack(spacing: 8) {
+                locationOptionRow(
+                  title: "No location",
+                  subtitle: nil,
+                  isSelected: selectedLocationId == nil
+                ) {
+                  selectedLocationId = nil
+                }
+
+                ForEach(availableLocations) { location in
+                  locationOptionRow(
+                    title: location.name,
+                    subtitle: location.address.trimmingCharacters(in: .whitespacesAndNewlines)
+                      .isEmpty ? nil : location.address,
+                    isSelected: selectedLocationId == location.id
+                  ) {
+                    selectedLocationId = location.id
+                  }
+                }
+              }
+            }
           }
         }
         .padding(16)
@@ -825,12 +941,15 @@ private struct LiveWorkoutFinishSheet: View {
         }
         ToolbarItem(placement: .confirmationAction) {
           Button("Finish") {
+            let trimmedTitle = editedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
             onFinish(
-              editedTitle.trimmingCharacters(in: .whitespacesAndNewlines),
-              notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes
+              trimmedTitle,
+              trimmedNotes.isEmpty ? nil : trimmedNotes,
+              selectedLocationId
             )
           }
-          .disabled(isSubmitting)
+          .disabled(isSubmitting || editedTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
       }
     }
@@ -849,6 +968,68 @@ private struct LiveWorkoutFinishSheet: View {
         .foregroundColor(AppColors.textPrimary)
     }
     .padding(.vertical, 4)
+  }
+
+  private func inlineMessage(message: String, tint: Color) -> some View {
+    HStack(spacing: 8) {
+      Image(systemName: "exclamationmark.triangle.fill")
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundColor(tint)
+
+      Text(message)
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundColor(AppColors.textPrimary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .padding(12)
+    .background(tint.opacity(0.08))
+    .cornerRadius(12)
+  }
+
+  @ViewBuilder
+  private func locationOptionRow(
+    title: String,
+    subtitle: String?,
+    isSelected: Bool,
+    action: @escaping () -> Void
+  ) -> some View {
+    Button {
+      guard !isSubmitting else {
+        return
+      }
+
+      action()
+    } label: {
+      HStack(spacing: 12) {
+        Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
+          .font(.system(size: 16, weight: .semibold))
+          .foregroundColor(isSelected ? AppColors.accent : AppColors.textSecondary)
+
+        VStack(alignment: .leading, spacing: 4) {
+          Text(title)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundColor(AppColors.textPrimary)
+
+          if let subtitle {
+            Text(subtitle)
+              .font(.system(size: 12, weight: .medium))
+              .foregroundColor(AppColors.textSecondary)
+              .multilineTextAlignment(.leading)
+          }
+        }
+
+        Spacer()
+      }
+      .padding(12)
+      .background(Color(.systemGray6))
+      .overlay(
+        RoundedRectangle(cornerRadius: 12)
+          .stroke(isSelected ? AppColors.accent : Color(.systemGray4), lineWidth: 1)
+      )
+      .cornerRadius(12)
+    }
+    .buttonStyle(.plain)
+    .disabled(isSubmitting)
   }
 }
 

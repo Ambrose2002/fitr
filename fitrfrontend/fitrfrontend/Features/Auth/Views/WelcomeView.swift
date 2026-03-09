@@ -23,9 +23,9 @@ struct WelcomeView: View {
                     .multilineTextAlignment(.center)
                 AppIcons.appIcon
                     .font(.system(size: 80))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppColors.background)
                     .frame(width: 120, height: 120)
-                    .background(Color.black)
+                    .background(AppColors.textPrimary)
                     .cornerRadius(28)
                 
                 // Title
@@ -52,7 +52,7 @@ struct WelcomeView: View {
                         Text("Log In to Account")
                     }
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppColors.surface)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
                     .background(AppColors.primaryTeal)
@@ -100,7 +100,7 @@ struct WelcomeView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 40)
         }
-        .background(AppColors.backgroundLight)
+        .background(AppColors.background)
         .navigationDestination(for: String.self) {destination in
             switch destination {
             case "login":
@@ -117,4 +117,3 @@ struct WelcomeView: View {
 //#Preview {
 //    WelcomeView(sessionStore: SessionStore())
 //}
-
