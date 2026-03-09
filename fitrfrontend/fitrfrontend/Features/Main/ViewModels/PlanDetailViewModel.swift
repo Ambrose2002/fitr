@@ -265,15 +265,17 @@ final class PlanDetailViewModel: ObservableObject {
     persistSnapshot(loadedAt: Date())
   }
 
-  func deletePlan() async {
+  func deletePlan() async -> Bool {
     do {
       try await workoutPlanService.deletePlan(id: planId)
       for day in enrichedDays {
         sessionStore.runtimeViewCache.remove(.planDayDetail(day.id))
       }
       sessionStore.runtimeViewCache.remove(.planDetail(planId))
+      return true
     } catch {
       errorMessage = "Failed to delete plan."
+      return false
     }
   }
 
@@ -312,6 +314,19 @@ final class PlanDetailViewModel: ObservableObject {
   var averageExercisesPerDay: Double {
     guard !enrichedDays.isEmpty else { return 0 }
     return Double(totalExercisesCount) / Double(enrichedDays.count)
+  }
+
+  func currentPlanSummaryPayload() -> (plan: WorkoutPlanResponse, daysCount: Int, exercisesCount: Int)?
+  {
+    guard let planDetail else {
+      return nil
+    }
+
+    return (
+      plan: planDetail,
+      daysCount: enrichedDays.count,
+      exercisesCount: totalExercisesCount
+    )
   }
 
   private func resetForPlanChange() {

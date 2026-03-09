@@ -207,7 +207,58 @@ final class WorkoutPlanViewModel: ObservableObject {
     return updatedPlan
   }
 
-  func deletePlan(id: Int64) async {
+  func applyPlanDetailUpdate(
+    plan: WorkoutPlanResponse,
+    daysCount: Int,
+    exercisesCount: Int
+  ) {
+    let averageExercisesPerDay =
+      daysCount == 0 ? 0 : Double(exercisesCount) / Double(daysCount)
+
+    if let index = plans.firstIndex(where: { $0.id == plan.id }) {
+      plans[index] = PlanSummary(
+        id: plan.id,
+        name: plan.name,
+        createdAt: plan.createdAt,
+        isActive: plan.isActive,
+        daysCount: daysCount,
+        exercisesCount: exercisesCount,
+        averageExercisesPerDay: averageExercisesPerDay
+      )
+    } else {
+      plans.insert(
+        PlanSummary(
+          id: plan.id,
+          name: plan.name,
+          createdAt: plan.createdAt,
+          isActive: plan.isActive,
+          daysCount: daysCount,
+          exercisesCount: exercisesCount,
+          averageExercisesPerDay: averageExercisesPerDay
+        ),
+        at: 0
+      )
+    }
+
+    if selectedPlan?.id == plan.id {
+      selectedPlan = plan
+    }
+
+    hasLoadedSnapshot = true
+    lastLoadedAt = Date()
+  }
+
+  func applyDeletedPlan(id: Int64) {
+    plans.removeAll { $0.id == id }
+    if selectedPlan?.id == id {
+      selectedPlan = nil
+    }
+
+    hasLoadedSnapshot = true
+    lastLoadedAt = Date()
+  }
+
+  func deletePlan(id: Int64) async -> Bool {
     errorMessage = nil
 
     do {
@@ -227,9 +278,15 @@ final class WorkoutPlanViewModel: ObservableObject {
       }
       lastLoadedAt = Date()
       hasLoadedSnapshot = true
+      return true
     } catch {
       setErrorIfNotCancellation(error)
+      return false
     }
+  }
+
+  func invalidateFreshness() {
+    lastLoadedAt = nil
   }
 
   func selectPlan(id: Int64) {

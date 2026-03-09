@@ -216,6 +216,10 @@ final class ProgressViewModel: ObservableObject {
     await loadDashboard(forceRefresh: true)
   }
 
+  func invalidateFreshness() {
+    lastLoadedAt = nil
+  }
+
   private func buildDashboard(
     completedWorkouts: [WorkoutSessionResponse],
     weightMetrics: [BodyMetricResponse],

@@ -304,9 +304,9 @@ final class WorkoutsViewModel: ObservableObject {
     lastLoadedAt = Date()
   }
 
-  func deleteWorkoutFromHistory(id: Int64) async {
+  func deleteWorkoutFromHistory(id: Int64) async -> Bool {
     guard !isDeletingWorkout else {
-      return
+      return false
     }
 
     isDeletingWorkout = true
@@ -319,11 +319,18 @@ final class WorkoutsViewModel: ObservableObject {
     do {
       try await workoutsService.deleteWorkoutSession(id: id)
       removeWorkout(id: id)
+      return true
     } catch let apiError as APIErrorResponse {
       actionErrorMessage = apiError.message
+      return false
     } catch {
       actionErrorMessage = "Failed to delete that workout."
+      return false
     }
+  }
+
+  func invalidateFreshness() {
+    lastLoadedAt = nil
   }
 
   private static let noLocationLabel = "No location"

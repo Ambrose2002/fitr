@@ -205,6 +205,16 @@ final class ProfileViewModel: ObservableObject {
     sessionStore.logout()
   }
 
+  func applyLocationCount(_ count: Int) {
+    applyLocationSummary(count)
+    hasLoadedSnapshot = true
+    lastLoadedAt = Date()
+  }
+
+  func invalidateFreshness() {
+    lastLoadedAt = nil
+  }
+
   private func fetchProfile() async -> FetchOutcome<UserProfileResponse> {
     do {
       return .success(try await profileService.getProfile())

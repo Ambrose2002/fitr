@@ -101,6 +101,10 @@ final class HomeViewModel: ObservableObject {
     }
   }
 
+  func invalidateFreshness() {
+    lastLoadedAt = nil
+  }
+
   private func buildGreeting() -> String {
     if let firstName = sessionStore.userProfile?.firstname, !firstName.isEmpty {
       return "G'day, \(firstName)!"
