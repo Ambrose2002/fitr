@@ -116,7 +116,7 @@ struct MainAppView: View {
                 Text(tab.rawValue)
                   .font(.system(size: 10, weight: .semibold))
               }
-              .foregroundColor(selectedTab == tab ? AppColors.accent : Color.gray)
+              .foregroundColor(selectedTab == tab ? AppColors.accent : AppColors.textSecondary)
               .frame(maxWidth: .infinity)
               .frame(height: 60)
             }

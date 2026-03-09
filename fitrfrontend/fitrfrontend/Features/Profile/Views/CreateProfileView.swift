@@ -174,7 +174,7 @@ struct CreateProfileView: View {
 
               HStack(spacing: 8) {
                 AppIcons.height
-                  .foregroundColor(.gray)
+                  .foregroundColor(AppColors.textSecondary)
                   .frame(width: 20)
                   .padding(.leading, 10)
 
@@ -185,7 +185,7 @@ struct CreateProfileView: View {
 
                 Text("CM")
                   .font(.system(size: 12, weight: .semibold))
-                  .foregroundColor(.gray)
+                  .foregroundColor(AppColors.textSecondary)
                   .padding(.trailing, 10)
               }
               .frame(height: 48)
@@ -203,7 +203,7 @@ struct CreateProfileView: View {
 
               HStack(spacing: 8) {
                 AppIcons.weight
-                  .foregroundColor(.gray)
+                  .foregroundColor(AppColors.textSecondary)
                   .frame(width: 20)
                   .padding(.leading, 10)
 
@@ -214,7 +214,7 @@ struct CreateProfileView: View {
 
                 Text(viewModel.selectedWeightUnit.abbreviation)
                   .font(.system(size: 12, weight: .semibold))
-                  .foregroundColor(.gray)
+                  .foregroundColor(AppColors.textSecondary)
                   .padding(.trailing, 10)
               }
               .frame(height: 48)
@@ -265,7 +265,7 @@ struct CreateProfileView: View {
             VStack(alignment: .leading, spacing: 8) {
               Text("WEIGHT UNIT")
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.gray)
+                .foregroundColor(AppColors.textSecondary)
                 .textCase(.uppercase)
 
               Picker("Weight Unit", selection: $viewModel.selectedWeightUnit) {
@@ -280,7 +280,7 @@ struct CreateProfileView: View {
             VStack(alignment: .leading, spacing: 8) {
               Text("DISTANCE UNIT")
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.gray)
+                .foregroundColor(AppColors.textSecondary)
                 .textCase(.uppercase)
 
               Picker("Distance Unit", selection: $viewModel.selectedDistanceUnit) {
@@ -312,7 +312,7 @@ struct CreateProfileView: View {
               Image(systemName: "chevron.right")
             }
             .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(.white)
+            .foregroundColor(AppColors.textOnAccent)
             .frame(maxWidth: .infinity)
             .frame(height: 56)
             .background(AppColors.accent)
@@ -352,7 +352,7 @@ struct CreateProfileView: View {
 
               Image(systemName: "checkmark")
                 .font(.system(size: 32, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(AppColors.textOnAccent)
             }
 
             VStack(spacing: 8) {

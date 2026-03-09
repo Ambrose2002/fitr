@@ -70,6 +70,9 @@ struct AppColors {
     
     /// Secondary text color (light/dark aware)
     static let textSecondary = Color(uiColor: .secondaryLabel)
+
+    /// Text color intended for filled primary actions (accent backgrounds)
+    static let textOnAccent = Color.white
     
     // MARK: - Border & Divider Colors
     

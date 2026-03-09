@@ -66,7 +66,7 @@ struct SignUpView: View {
                                 .padding(.leading, 40)
                                 .overlay(
                                     Image(systemName: "person")
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(AppColors.textSecondary)
                                         .padding(.leading, 12),
                                     alignment: .leading
                                 )
@@ -87,7 +87,7 @@ struct SignUpView: View {
                                 .padding(.leading, 40)
                                 .overlay(
                                     Image(systemName: "person")
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(AppColors.textSecondary)
                                         .padding(.leading, 12),
                                     alignment: .leading
                                 )
@@ -108,7 +108,7 @@ struct SignUpView: View {
                         .padding(.leading, 40)
                         .overlay(
                             AppIcons.email
-                                .foregroundColor(.gray)
+                                .foregroundColor(AppColors.textSecondary)
                                 .padding(.leading, 12),
                             alignment: .leading
                         )
@@ -135,7 +135,7 @@ struct SignUpView: View {
                                 .padding(.leading, 40)
                                 .overlay(
                                     AppIcons.lock
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(AppColors.textSecondary)
                                         .padding(.leading, 12),
                                     alignment: .leading
                                 )
@@ -145,7 +145,7 @@ struct SignUpView: View {
                                 .padding(.leading, 40)
                                 .overlay(
                                     AppIcons.lock
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(AppColors.textSecondary)
                                         .padding(.leading, 12),
                                     alignment: .leading
                                 )
@@ -154,7 +154,7 @@ struct SignUpView: View {
                             isPasswordVisible.toggle()
                         } label: {
                             Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
-                                .foregroundColor(.gray)
+                                .foregroundColor(AppColors.textSecondary)
                                 .padding(.trailing, 12)
                         }
                     }
@@ -168,21 +168,21 @@ struct SignUpView: View {
                     HStack(spacing: 8) {
                         HStack(spacing: 8) {
                             Image(systemName: isPasswordLongEnough ? "checkmark.circle.fill" : "checkmark.circle")
-                                .foregroundColor(isPasswordLongEnough ? AppColors.primaryTeal : .gray)
+                                .foregroundColor(isPasswordLongEnough ? AppColors.primaryTeal : AppColors.textSecondary)
                             Text("8+ Characters")
                                 .foregroundColor(AppColors.textPrimary)
                                 .font(.subheadline)
                         }
                         HStack(spacing: 8) {
                             Image(systemName: hasUppercase ? "checkmark.circle.fill" : "checkmark.circle")
-                                .foregroundColor(hasUppercase ? AppColors.primaryTeal : .gray)
+                                .foregroundColor(hasUppercase ? AppColors.primaryTeal : AppColors.textSecondary)
                             Text("1 Upper case")
                                 .foregroundColor(AppColors.textPrimary)
                                 .font(.subheadline)
                         }
                         HStack(spacing: 8) {
                             Image(systemName: hasNumber ? "checkmark.circle.fill" : "checkmark.circle")
-                                .foregroundColor(hasNumber ? AppColors.primaryTeal : .gray)
+                                .foregroundColor(hasNumber ? AppColors.primaryTeal : AppColors.textSecondary)
                             Text("1 Number")
                                 .foregroundColor(AppColors.textPrimary)
                                 .font(.subheadline)
@@ -213,7 +213,7 @@ struct SignUpView: View {
                             
                     }
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(AppColors.surface)
+                    .foregroundColor(AppColors.textOnAccent)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
                     .background(allPasswordRulesPass ? AppColors.primaryTeal : AppColors.primaryTeal.opacity(0.5))
@@ -225,17 +225,17 @@ struct SignUpView: View {
                     Rectangle()
                         .frame(height: 0.5)
                             .frame(maxWidth: 100)
-                            .foregroundColor(.gray)
+                            .foregroundColor(AppColors.textSecondary)
                     
                     Text("SECURE AUTHENTICATION")
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.gray)
+                        .foregroundColor(AppColors.textSecondary)
                         .lineLimit(1)
                     
                     Rectangle()
                         .frame(height: 0.5)
                         .frame(maxWidth: 100)
-                        .foregroundColor(.gray)
+                        .foregroundColor(AppColors.textSecondary)
                 }
                 
                 Spacer()

@@ -61,7 +61,7 @@ struct PlansView: View {
               VStack(alignment: .leading, spacing: 4) {
                 Text("Your Programs")
                   .font(.system(size: 28, weight: .bold))
-                  .foregroundColor(.black)
+                  .foregroundColor(AppColors.textPrimary)
                 Text("Manage your training blocks and active schedules.")
                   .font(.system(size: 14))
                   .foregroundColor(.secondary)
@@ -74,7 +74,7 @@ struct PlansView: View {
                 VStack(spacing: 16) {
                   Image(systemName: "doc.text")
                     .font(.system(size: 48))
-                    .foregroundColor(.gray)
+                    .foregroundColor(AppColors.textSecondary)
                   Text("No workout plans yet")
                     .font(.headline)
                   Text("Create your first plan to get started")
@@ -90,7 +90,7 @@ struct PlansView: View {
                       Text("Create Your First Plan")
                         .font(.system(size: 15, weight: .semibold))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(AppColors.textOnAccent)
                     .frame(maxWidth: .infinity)
                     .frame(height: 48)
                     .background(AppColors.accent)
@@ -143,7 +143,7 @@ struct PlansView: View {
               } label: {
                 Image(systemName: "plus")
                   .font(.system(size: 20, weight: .semibold))
-                  .foregroundColor(.white)
+                  .foregroundColor(AppColors.textOnAccent)
                   .frame(width: 56, height: 56)
                   .background(AppColors.accent)
                   .cornerRadius(28)
@@ -526,14 +526,14 @@ struct PlanNameSheet: View {
             if isSubmitting {
               ProgressView()
                 .progressViewStyle(.circular)
-                .tint(.white)
+                .tint(AppColors.textOnAccent)
                 .scaleEffect(0.85)
             }
 
             Text(submissionTitle)
               .font(.system(size: 16, weight: .semibold))
           }
-          .foregroundColor(.white)
+          .foregroundColor(AppColors.textOnAccent)
           .frame(maxWidth: .infinity)
           .frame(height: 50)
           .background(canSubmit ? AppColors.accent : AppColors.accent.opacity(0.4))

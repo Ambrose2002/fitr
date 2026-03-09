@@ -49,7 +49,7 @@ struct LoginView: View {
                         .padding(.leading, 40)
                         .overlay(
                             AppIcons.email
-                                .foregroundColor(.gray)
+                                .foregroundColor(AppColors.textSecondary)
                                 .padding(.leading, 12),
                             alignment: .leading
                         )
@@ -76,7 +76,7 @@ struct LoginView: View {
                                 .padding(.leading, 40)
                                 .overlay(
                                     AppIcons.lock
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(AppColors.textSecondary)
                                         .padding(.leading, 12),
                                     alignment: .leading
                                 )
@@ -86,7 +86,7 @@ struct LoginView: View {
                                 .padding(.leading, 40)
                                 .overlay(
                                     AppIcons.lock
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(AppColors.textSecondary)
                                         .padding(.leading, 12),
                                     alignment: .leading
                                 )
@@ -95,7 +95,7 @@ struct LoginView: View {
                             isPasswordVisible.toggle()
                         } label: {
                             Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
-                                .foregroundColor(.gray)
+                                .foregroundColor(AppColors.textSecondary)
                                 .padding(.trailing, 12)
                         }
                     }
@@ -127,7 +127,7 @@ struct LoginView: View {
                             
                     }
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(AppColors.surface)
+                    .foregroundColor(AppColors.textOnAccent)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
                     .background(AppColors.primaryTeal)
@@ -138,17 +138,17 @@ struct LoginView: View {
                     Rectangle()
                         .frame(height: 0.5)
                             .frame(maxWidth: 100)
-                            .foregroundColor(.gray)
+                            .foregroundColor(AppColors.textSecondary)
                     
                     Text("SECURE AUTHENTICATION")
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.gray)
+                        .foregroundColor(AppColors.textSecondary)
                         .lineLimit(1)
                     
                     Rectangle()
                         .frame(height: 0.5)
                         .frame(maxWidth: 100)
-                        .foregroundColor(.gray)
+                        .foregroundColor(AppColors.textSecondary)
                 }
                 
                 Spacer()

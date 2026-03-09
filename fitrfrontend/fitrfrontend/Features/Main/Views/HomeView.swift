@@ -96,7 +96,7 @@ struct HomeView: View {
               VStack(alignment: .leading, spacing: 4) {
                 Text(data.greeting)
                   .font(.system(size: 28, weight: .bold))
-                  .foregroundColor(.black)
+                  .foregroundColor(AppColors.textPrimary)
                 Text(data.weekProgress)
                   .font(.system(size: 14))
                   .foregroundColor(.secondary)
@@ -166,7 +166,7 @@ struct HomeView: View {
                       Text("New Session")
                     }
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppColors.textOnAccent)
                     .frame(maxWidth: .infinity)
                     .frame(height: 48)
                     .background(AppColors.accent)
@@ -202,7 +202,7 @@ struct HomeView: View {
                       Text("New Session")
                     }
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppColors.textOnAccent)
                     .frame(maxWidth: .infinity)
                     .frame(height: 48)
                     .background(AppColors.accent)
