@@ -13,6 +13,8 @@ struct LiveWorkoutView: View {
   @EnvironmentObject private var activeWorkoutCoordinator: ActiveWorkoutCoordinator
   @StateObject private var viewModel: LiveWorkoutViewModel
   @State private var showDiscardConfirmation = false
+  @State private var showExerciseRemovalConfirmation = false
+  @State private var pendingExerciseRemoval: LiveWorkoutExerciseState?
   @State private var showPlanSheet = false
   @State private var isFinishingWorkout = false
   @State private var shouldDismissLiveWorkoutAfterFinish = false
@@ -188,6 +190,33 @@ struct LiveWorkoutView: View {
     } message: {
       Text("Your logged sets will be removed.")
     }
+    .confirmationDialog(
+      "Remove exercise?",
+      isPresented: Binding(
+        get: { showExerciseRemovalConfirmation },
+        set: { isPresented in
+          showExerciseRemovalConfirmation = isPresented
+          if !isPresented {
+            pendingExerciseRemoval = nil
+          }
+        }
+      ),
+      presenting: pendingExerciseRemoval
+    ) { exerciseState in
+      Button("Remove Exercise", role: .destructive) {
+        pendingExerciseRemoval = nil
+        showExerciseRemovalConfirmation = false
+        Task {
+          await viewModel.removeExercise(exerciseState)
+        }
+      }
+      Button("Cancel", role: .cancel) {
+        pendingExerciseRemoval = nil
+        showExerciseRemovalConfirmation = false
+      }
+    } message: { exerciseState in
+      Text("Remove \(exerciseState.exercise.name) from this workout? This cannot be undone.")
+    }
   }
 
   private var content: some View {
@@ -218,9 +247,8 @@ struct LiveWorkoutView: View {
                     viewModel.presentExtraSetEditor(for: state.id)
                   },
                   onRemove: {
-                    Task {
-                      await viewModel.removeExercise(state)
-                    }
+                    pendingExerciseRemoval = state
+                    showExerciseRemovalConfirmation = true
                   }
                 )
                 .id(state.id)
@@ -472,11 +500,11 @@ struct LiveWorkoutView: View {
   }
 
   private var chromePrimaryTextColor: Color {
-    colorScheme == .dark ? AppColors.surface : AppColors.textPrimary
+    AppColors.textPrimary
   }
 
   private var chromeSecondaryTextColor: Color {
-    colorScheme == .dark ? AppColors.surface.opacity(0.75) : AppColors.textSecondary
+    AppColors.textSecondary
   }
 
   private var chromeMutedBackgroundColor: Color {
@@ -719,7 +747,7 @@ private struct LiveWorkoutExercisePickerSheet: View {
         VStack(alignment: .leading, spacing: 16) {
           HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-              .foregroundColor(.secondary)
+              .foregroundColor(AppColors.textSecondary)
             TextField("Search exercises", text: $searchText)
               .textInputAutocapitalization(.never)
               .disableAutocorrection(true)

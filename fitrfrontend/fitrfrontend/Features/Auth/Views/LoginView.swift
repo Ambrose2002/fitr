@@ -10,169 +10,169 @@ import SwiftUI
 struct LoginView: View {
     @StateObject private var loginViewModel: LoginViewModel
     @State private var isPasswordVisible: Bool = false
+    private let contentTopPadding: CGFloat = 52
     
     init(sessionStore: SessionStore) {
         _loginViewModel = StateObject(wrappedValue: LoginViewModel( sessionStore: sessionStore))
     }
 
     var body: some View {
-        
-        VStack(spacing: 0) {
+        ZStack {
+            AppColors.background.ignoresSafeArea()
             
-            Spacer()
-                .frame(height: 60)
-            
-            VStack (spacing: 40){
-                VStack(spacing: 16) {
-                    AppIcons.appIcon
-                        .font(.system(size: 40))
-                        .foregroundColor(AppColors.background)
-                        .frame(width: 80, height: 80)
-                        .background(AppColors.textPrimary)
-                        .cornerRadius(11)
-                    Text("Fitr")
-                        .font(.system(size: 22, weight: .bold))
-                        .multilineTextAlignment(.center)
+            VStack(spacing: 0) {
+                VStack (spacing: 40){
+                    VStack(spacing: 16) {
+                        AppIcons.appIcon
+                            .font(.system(size: 40))
+                            .foregroundColor(AppColors.background)
+                            .frame(width: 80, height: 80)
+                            .background(AppColors.textPrimary)
+                            .cornerRadius(11)
+                        Text("Fitr")
+                            .font(.system(size: 22, weight: .bold))
+                            .multilineTextAlignment(.center)
+                        
+                        Text("Welcome back, athlete.")
+                            .font(.system(size: 14, weight: .medium))
+                            .multilineTextAlignment(.center)
+                    }
                     
-                    Text("Welcome back, athlete.")
-                        .font(.system(size: 14, weight: .medium))
-                        .multilineTextAlignment(.center)
-                }
-                
-                VStack(spacing: 15) {
-                    Text("Email Address")
-                        .font(.system(size: 16))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    TextField("email", text: $loginViewModel.email)
-                        .foregroundColor(AppColors.textPrimary)
-                        .padding(.leading, 40)
-                        .overlay(
-                            AppIcons.email
-                                .foregroundColor(AppColors.textSecondary)
-                                .padding(.leading, 12),
-                            alignment: .leading
-                        )
+                    VStack(spacing: 15) {
+                        Text("Email Address")
+                            .font(.system(size: 16))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        
+                        TextField("email", text: $loginViewModel.email)
+                            .foregroundColor(AppColors.textPrimary)
+                            .padding(.leading, 40)
+                            .overlay(
+                                AppIcons.email
+                                    .foregroundColor(AppColors.textSecondary)
+                                    .padding(.leading, 12),
+                                alignment: .leading
+                            )
+                            .frame(height: 44)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                            .foregroundColor(AppColors.textPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        
+                        HStack{
+                            Text("Password")
+                                .font(.system(size: 16))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                        }
+                        
+                        HStack {
+                            if isPasswordVisible {
+                                TextField("password", text: $loginViewModel.password)
+                                    .textContentType(.password)
+                                    .autocapitalization(.none)
+                                    .textInputAutocapitalization(.never)
+                                    .disableAutocorrection(true)
+                                    .padding(.leading, 40)
+                                    .overlay(
+                                        AppIcons.lock
+                                            .foregroundColor(AppColors.textSecondary)
+                                            .padding(.leading, 12),
+                                        alignment: .leading
+                                    )
+                            } else {
+                                SecureField("password", text: $loginViewModel.password)
+                                    .textContentType(.password)
+                                    .padding(.leading, 40)
+                                    .overlay(
+                                        AppIcons.lock
+                                            .foregroundColor(AppColors.textSecondary)
+                                            .padding(.leading, 12),
+                                        alignment: .leading
+                                    )
+                            }
+                            Button {
+                                isPasswordVisible.toggle()
+                            } label: {
+                                Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
+                                    .foregroundColor(AppColors.textSecondary)
+                                    .padding(.trailing, 12)
+                            }
+                        }
                         .frame(height: 44)
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
                         .foregroundColor(AppColors.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    HStack{
-                        Text("Password")
-                            .font(.system(size: 16))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        
                     }
-                    
-                    HStack {
-                        if isPasswordVisible {
-                            TextField("password", text: $loginViewModel.password)
-                                .textContentType(.password)
-                                .autocapitalization(.none)
-                                .textInputAutocapitalization(.never)
-                                .disableAutocorrection(true)
-                                .padding(.leading, 40)
-                                .overlay(
-                                    AppIcons.lock
-                                        .foregroundColor(AppColors.textSecondary)
-                                        .padding(.leading, 12),
-                                    alignment: .leading
-                                )
-                        } else {
-                            SecureField("password", text: $loginViewModel.password)
-                                .textContentType(.password)
-                                .padding(.leading, 40)
-                                .overlay(
-                                    AppIcons.lock
-                                        .foregroundColor(AppColors.textSecondary)
-                                        .padding(.leading, 12),
-                                    alignment: .leading
-                                )
-                        }
-                        Button {
-                            isPasswordVisible.toggle()
-                        } label: {
-                            Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
-                                .foregroundColor(AppColors.textSecondary)
-                                .padding(.trailing, 12)
-                        }
-                    }
-                    .frame(height: 44)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
                     .foregroundColor(AppColors.textPrimary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .foregroundColor(AppColors.textPrimary)
-                
-                if let error = loginViewModel.errorMessage, !error.isEmpty {
-                    Text(error)
-                        .foregroundColor(AppColors.errorRed)
-                        .font(.callout)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.top, 4)
-                }
-                
-                Button {
-                    Task {
-                        await loginViewModel.login()
+                    
+                    if let error = loginViewModel.errorMessage, !error.isEmpty {
+                        Text(error)
+                            .foregroundColor(AppColors.errorRed)
+                            .font(.callout)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.top, 4)
                     }
-                } label: {
-                    HStack {
-                        AppIcons.loginIcon
-                        Text("Sign In")
-                            
+                    
+                    Button {
+                        Task {
+                            await loginViewModel.login()
+                        }
+                    } label: {
+                        HStack {
+                            AppIcons.loginIcon
+                            Text("Sign In")
+                                
+                        }
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(AppColors.textOnAccent)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(AppColors.primaryTeal)
+                        .cornerRadius(16)
                     }
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(AppColors.textOnAccent)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(AppColors.primaryTeal)
-                    .cornerRadius(16)
-                }
-                
-                HStack(spacing: 12) {
-                    Rectangle()
-                        .frame(height: 0.5)
+                    
+                    HStack(spacing: 12) {
+                        Rectangle()
+                            .frame(height: 0.5)
+                                .frame(maxWidth: 100)
+                                .foregroundColor(AppColors.textSecondary)
+                        
+                        Text("SECURE AUTHENTICATION")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(AppColors.textSecondary)
+                            .lineLimit(1)
+                        
+                        Rectangle()
+                            .frame(height: 0.5)
                             .frame(maxWidth: 100)
                             .foregroundColor(AppColors.textSecondary)
+                    }
                     
-                    Text("SECURE AUTHENTICATION")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(AppColors.textSecondary)
-                        .lineLimit(1)
+                    Spacer()
                     
-                    Rectangle()
-                        .frame(height: 0.5)
-                        .frame(maxWidth: 100)
-                        .foregroundColor(AppColors.textSecondary)
-                }
-                
-                Spacer()
-                
-                HStack(spacing: 4) {
-                    Text("Don't have an account?")
-                        .foregroundColor(AppColors.textPrimary)
-                    NavigationLink {
-                        SignUpView(sessionStore: loginViewModel.sessionStore)
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text("Join Fitr")
-                                .foregroundColor(AppColors.primaryTeal)
-                            Image(systemName: "arrow.right")
-                                .foregroundColor(AppColors.primaryTeal)
+                    HStack(spacing: 4) {
+                        Text("Don't have an account?")
+                            .foregroundColor(AppColors.textPrimary)
+                        NavigationLink {
+                            SignUpView(sessionStore: loginViewModel.sessionStore)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("Join Fitr")
+                                    .foregroundColor(AppColors.primaryTeal)
+                                Image(systemName: "arrow.right")
+                                    .foregroundColor(AppColors.primaryTeal)
+                            }
                         }
                     }
                 }
+                .padding(.top, contentTopPadding)
             }
-            
+            .padding(.horizontal, 24)
+            .padding(.bottom, 40)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .background(AppColors.background.ignoresSafeArea())
-        .padding(.horizontal, 24)
-        .padding(.bottom, 40)
         .overlay {
             // Loading overlay
             if loginViewModel.isLoading {

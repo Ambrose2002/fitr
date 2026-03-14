@@ -640,6 +640,26 @@ private struct MonthlyTrendsSection: View {
     return orderedPoints.filter { selectedMonthStarts.contains($0.monthStart) }
   }
 
+  private var chartMaximumValue: Double {
+    let maxSessionCount = Double(orderedPoints.map(\.sessionCount).max() ?? 0)
+    let maxNormalizedVolume = orderedPoints.map(\.normalizedVolume).max() ?? 0
+    return max(maxSessionCount, maxNormalizedVolume, 1)
+  }
+
+  private var chartYUpperBound: Int {
+    let scaledValue = Int(ceil(chartMaximumValue * 1.2))
+    return max(scaledValue, 1)
+  }
+
+  private var chartYDomain: ClosedRange<Double> {
+    0...Double(chartYUpperBound)
+  }
+
+  private var chartYAxisValues: [Double] {
+    let midpoint = Double(max(1, Int(round(Double(chartYUpperBound) / 2.0))))
+    return Array(Set([0, midpoint, Double(chartYUpperBound)])).sorted()
+  }
+
   private var selectionSummary: MonthlyTrendSelectionSummaryData {
     let scopedPoints = activePoints
     let totalSessions = scopedPoints.reduce(0) { $0 + $1.sessionCount }
@@ -737,6 +757,8 @@ private struct MonthlyTrendsSection: View {
         .foregroundStyle(AppColors.textPrimary)
 
       VStack(alignment: .leading, spacing: 16) {
+        chartLegend
+
         Chart {
           ForEach(orderedPoints) { point in
             BarMark(
@@ -746,14 +768,14 @@ private struct MonthlyTrendsSection: View {
             .foregroundStyle(
               selectedMonthStarts.contains(point.monthStart)
                 ? AppColors.accentStrong
-                : AppColors.accent.opacity(0.22)
+                : AppColors.accent.opacity(0.42)
             )
 
             LineMark(
               x: .value("Month", point.monthStart),
               y: .value("Normalized Volume", point.normalizedVolume)
             )
-            .interpolationMethod(.catmullRom)
+            .interpolationMethod(.linear)
             .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
             .foregroundStyle(AppColors.textPrimary)
 
@@ -766,7 +788,7 @@ private struct MonthlyTrendsSection: View {
           }
         }
         .frame(height: 180)
-        .chartYAxis(.hidden)
+        .chartYScale(domain: chartYDomain)
         .chartLegend(.hidden)
         .chartXAxis {
           AxisMarks(values: orderedPoints.map(\.monthStart)) { value in
@@ -774,6 +796,21 @@ private struct MonthlyTrendsSection: View {
               if let monthStart = value.as(Date.self) {
                 Text(monthStart, format: .dateTime.month(.abbreviated))
                   .font(.system(size: 11, weight: .semibold))
+                  .foregroundStyle(AppColors.textSecondary)
+              }
+            }
+          }
+        }
+        .chartYAxis {
+          AxisMarks(position: .leading, values: chartYAxisValues) { value in
+            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.8, dash: [3, 3]))
+              .foregroundStyle(AppColors.borderGray.opacity(0.55))
+            AxisTick(stroke: StrokeStyle(lineWidth: 0.8))
+              .foregroundStyle(AppColors.borderGray.opacity(0.85))
+            AxisValueLabel {
+              if let rawValue = value.as(Double.self) {
+                Text("\(Int(rawValue.rounded()))")
+                  .font(.system(size: 10, weight: .semibold))
                   .foregroundStyle(AppColors.textSecondary)
               }
             }
@@ -820,6 +857,35 @@ private struct MonthlyTrendsSection: View {
         RoundedRectangle(cornerRadius: 16, style: .continuous)
           .stroke(AppColors.borderGray, lineWidth: 1)
       )
+    }
+  }
+
+  private var chartLegend: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack(spacing: 8) {
+        RoundedRectangle(cornerRadius: 2, style: .continuous)
+          .fill(AppColors.accent.opacity(0.42))
+          .frame(width: 12, height: 12)
+
+        Text("Sessions (bars)")
+          .font(.system(size: 11, weight: .semibold))
+          .foregroundStyle(AppColors.textSecondary)
+      }
+
+      HStack(spacing: 8) {
+        Capsule()
+          .fill(AppColors.textPrimary)
+          .frame(width: 16, height: 3)
+          .overlay(alignment: .trailing) {
+            Circle()
+              .fill(AppColors.textPrimary)
+              .frame(width: 5, height: 5)
+          }
+
+        Text("Volume trend (normalized line)")
+          .font(.system(size: 11, weight: .semibold))
+          .foregroundStyle(AppColors.textSecondary)
+      }
     }
   }
 
