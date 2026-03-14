@@ -83,6 +83,7 @@ struct ActiveWorkoutContext: Codable, Equatable, Identifiable {
   let pausedDurationSeconds: Double
   let restTimerEndsAt: Date?
   let plannedExercises: [ActiveWorkoutPlannedExercise]
+  let removedPlannedExerciseIds: [Int64]
 
   var id: Int64 { workoutId }
 
@@ -98,6 +99,7 @@ struct ActiveWorkoutContext: Codable, Equatable, Identifiable {
     case pausedDurationSeconds
     case restTimerEndsAt
     case plannedExercises
+    case removedPlannedExerciseIds
   }
 
   init(
@@ -111,7 +113,8 @@ struct ActiveWorkoutContext: Codable, Equatable, Identifiable {
     pausedAt: Date?,
     pausedDurationSeconds: Double,
     restTimerEndsAt: Date?,
-    plannedExercises: [ActiveWorkoutPlannedExercise]
+    plannedExercises: [ActiveWorkoutPlannedExercise],
+    removedPlannedExerciseIds: [Int64] = []
   ) {
     self.workoutId = workoutId
     self.origin = origin
@@ -124,6 +127,7 @@ struct ActiveWorkoutContext: Codable, Equatable, Identifiable {
     self.pausedDurationSeconds = pausedDurationSeconds
     self.restTimerEndsAt = restTimerEndsAt
     self.plannedExercises = plannedExercises
+    self.removedPlannedExerciseIds = removedPlannedExerciseIds
   }
 
   init(from decoder: Decoder) throws {
@@ -142,6 +146,9 @@ struct ActiveWorkoutContext: Codable, Equatable, Identifiable {
     plannedExercises =
       try container.decodeIfPresent([ActiveWorkoutPlannedExercise].self, forKey: .plannedExercises)
       ?? []
+    removedPlannedExerciseIds =
+      try container.decodeIfPresent([Int64].self, forKey: .removedPlannedExerciseIds)
+      ?? []
   }
 
   func encode(to encoder: Encoder) throws {
@@ -157,6 +164,7 @@ struct ActiveWorkoutContext: Codable, Equatable, Identifiable {
     try container.encode(pausedDurationSeconds, forKey: .pausedDurationSeconds)
     try container.encodeIfPresent(restTimerEndsAt, forKey: .restTimerEndsAt)
     try container.encode(plannedExercises, forKey: .plannedExercises)
+    try container.encode(removedPlannedExerciseIds, forKey: .removedPlannedExerciseIds)
   }
 }
 
@@ -194,7 +202,8 @@ final class ActiveWorkoutCoordinator: ObservableObject {
       pausedAt: nil,
       pausedDurationSeconds: 0,
       restTimerEndsAt: nil,
-      plannedExercises: []
+      plannedExercises: [],
+      removedPlannedExerciseIds: []
     )
 
     setActiveContext(context, shouldPresent: true)
@@ -246,7 +255,8 @@ final class ActiveWorkoutCoordinator: ObservableObject {
       pausedAt: nil,
       pausedDurationSeconds: 0,
       restTimerEndsAt: nil,
-      plannedExercises: plannedExercises
+      plannedExercises: plannedExercises,
+      removedPlannedExerciseIds: []
     )
 
     setActiveContext(context, shouldPresent: true)
@@ -274,7 +284,8 @@ final class ActiveWorkoutCoordinator: ObservableObject {
           pausedAt: existingContext.pausedAt,
           pausedDurationSeconds: existingContext.pausedDurationSeconds,
           restTimerEndsAt: existingContext.restTimerEndsAt,
-          plannedExercises: existingContext.plannedExercises
+          plannedExercises: existingContext.plannedExercises,
+          removedPlannedExerciseIds: existingContext.removedPlannedExerciseIds
         )
         setActiveContext(synced, shouldPresent: presentedContext != nil)
       } else {
@@ -289,7 +300,8 @@ final class ActiveWorkoutCoordinator: ObservableObject {
           pausedAt: nil,
           pausedDurationSeconds: 0,
           restTimerEndsAt: nil,
-          plannedExercises: []
+          plannedExercises: [],
+          removedPlannedExerciseIds: []
         )
         let shouldPresent = presentedContext != nil || activeContext == nil
         setActiveContext(restored, shouldPresent: shouldPresent)
@@ -326,7 +338,8 @@ final class ActiveWorkoutCoordinator: ObservableObject {
       pausedAt: activeContext.pausedAt,
       pausedDurationSeconds: activeContext.pausedDurationSeconds,
       restTimerEndsAt: endDate,
-      plannedExercises: activeContext.plannedExercises
+      plannedExercises: activeContext.plannedExercises,
+      removedPlannedExerciseIds: activeContext.removedPlannedExerciseIds
     )
     setActiveContext(updatedContext, shouldPresent: false)
   }
@@ -347,7 +360,8 @@ final class ActiveWorkoutCoordinator: ObservableObject {
       pausedAt: activeContext.pausedAt,
       pausedDurationSeconds: activeContext.pausedDurationSeconds,
       restTimerEndsAt: activeContext.restTimerEndsAt,
-      plannedExercises: activeContext.plannedExercises
+      plannedExercises: activeContext.plannedExercises,
+      removedPlannedExerciseIds: activeContext.removedPlannedExerciseIds
     )
     setActiveContext(updatedContext, shouldPresent: false)
   }
@@ -372,7 +386,35 @@ final class ActiveWorkoutCoordinator: ObservableObject {
       pausedAt: pausedAt,
       pausedDurationSeconds: pausedDurationSeconds,
       restTimerEndsAt: activeContext.restTimerEndsAt,
-      plannedExercises: activeContext.plannedExercises
+      plannedExercises: activeContext.plannedExercises,
+      removedPlannedExerciseIds: activeContext.removedPlannedExerciseIds
+    )
+    setActiveContext(updatedContext, shouldPresent: false)
+  }
+
+  func syncRemovedPlannedExerciseIds(_ ids: Set<Int64>) {
+    guard let activeContext else {
+      return
+    }
+
+    let updatedIds = ids.sorted()
+    guard activeContext.removedPlannedExerciseIds != updatedIds else {
+      return
+    }
+
+    let updatedContext = ActiveWorkoutContext(
+      workoutId: activeContext.workoutId,
+      origin: activeContext.origin,
+      sessionTitle: activeContext.sessionTitle,
+      locationId: activeContext.locationId,
+      locationName: activeContext.locationName,
+      startedAt: activeContext.startedAt,
+      isPaused: activeContext.isPaused,
+      pausedAt: activeContext.pausedAt,
+      pausedDurationSeconds: activeContext.pausedDurationSeconds,
+      restTimerEndsAt: activeContext.restTimerEndsAt,
+      plannedExercises: activeContext.plannedExercises,
+      removedPlannedExerciseIds: updatedIds
     )
     setActiveContext(updatedContext, shouldPresent: false)
   }

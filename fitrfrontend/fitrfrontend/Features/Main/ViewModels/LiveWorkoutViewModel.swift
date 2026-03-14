@@ -162,6 +162,7 @@ final class LiveWorkoutViewModel: ObservableObject {
     self.isTimerPaused = context.isPaused
     self.pausedAt = context.pausedAt
     self.pausedDurationSeconds = context.pausedDurationSeconds
+    self.removedPlaceholderExerciseIds = Set(context.removedPlannedExerciseIds)
     configureTimer()
   }
 
@@ -273,6 +274,7 @@ final class LiveWorkoutViewModel: ObservableObject {
 
   func attachCoordinator(_ coordinator: ActiveWorkoutCoordinator) {
     activeWorkoutCoordinator = coordinator
+    coordinator.syncRemovedPlannedExerciseIds(removedPlaceholderExerciseIds)
   }
 
   func toggleSessionTimerPause() {
@@ -583,7 +585,7 @@ final class LiveWorkoutViewModel: ObservableObject {
 
     for exerciseState in incompleteExercises {
       if exerciseState.source == .planned {
-        removedPlaceholderExerciseIds.insert(exerciseState.exercise.id)
+        markPlannedExerciseAsRemoved(exerciseState.exercise.id)
       }
 
       if activeSetEditor?.exerciseStateId == exerciseState.id {
@@ -748,7 +750,7 @@ final class LiveWorkoutViewModel: ObservableObject {
         workoutId: context.workoutId,
         request: CreateWorkoutExerciseRequest(exerciseId: exercise.id)
       )
-      removedPlaceholderExerciseIds.remove(exercise.id)
+      unmarkPlannedExerciseAsRemoved(exercise.id)
       showAddExerciseSheet = false
       await reloadSession()
       requestedScrollToExerciseId = exerciseStateIdentifier(for: exercise.id)
@@ -765,7 +767,7 @@ final class LiveWorkoutViewModel: ObservableObject {
     }
 
     if exerciseState.source == .planned {
-      removedPlaceholderExerciseIds.insert(exerciseState.exercise.id)
+      markPlannedExerciseAsRemoved(exerciseState.exercise.id)
     }
 
     if activeSetEditor?.exerciseStateId == exerciseState.id {
@@ -788,12 +790,12 @@ final class LiveWorkoutViewModel: ObservableObject {
       await reloadSession()
     } catch let apiError as APIErrorResponse {
       if exerciseState.source == .planned {
-        removedPlaceholderExerciseIds.remove(exerciseState.exercise.id)
+        unmarkPlannedExerciseAsRemoved(exerciseState.exercise.id)
       }
       errorMessage = apiError.message
     } catch {
       if exerciseState.source == .planned {
-        removedPlaceholderExerciseIds.remove(exerciseState.exercise.id)
+        unmarkPlannedExerciseAsRemoved(exerciseState.exercise.id)
       }
       errorMessage = "Failed to remove the exercise."
     }
@@ -829,13 +831,23 @@ final class LiveWorkoutViewModel: ObservableObject {
       suggestedValues: editorContext.suggestedValues,
       isExtra: editorContext.isExtra
     )
-    removedPlaceholderExerciseIds.remove(editorContext.exercise.id)
+    unmarkPlannedExerciseAsRemoved(editorContext.exercise.id)
     await reloadSession()
   }
 
   private func clearScreenErrorMessage() {
     errorMessage = nil
     preserveErrorOnNextSetEditorDismiss = false
+  }
+
+  private func markPlannedExerciseAsRemoved(_ exerciseId: Int64) {
+    removedPlaceholderExerciseIds.insert(exerciseId)
+    activeWorkoutCoordinator?.syncRemovedPlannedExerciseIds(removedPlaceholderExerciseIds)
+  }
+
+  private func unmarkPlannedExerciseAsRemoved(_ exerciseId: Int64) {
+    removedPlaceholderExerciseIds.remove(exerciseId)
+    activeWorkoutCoordinator?.syncRemovedPlannedExerciseIds(removedPlaceholderExerciseIds)
   }
 
   private func clearSetEditorMutationError() {
