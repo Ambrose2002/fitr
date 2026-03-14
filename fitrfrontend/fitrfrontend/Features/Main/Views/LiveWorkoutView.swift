@@ -500,11 +500,11 @@ struct LiveWorkoutView: View {
   }
 
   private var chromePrimaryTextColor: Color {
-    colorScheme == .dark ? AppColors.surface : AppColors.textPrimary
+    AppColors.textPrimary
   }
 
   private var chromeSecondaryTextColor: Color {
-    colorScheme == .dark ? AppColors.surface.opacity(0.75) : AppColors.textSecondary
+    AppColors.textSecondary
   }
 
   private var chromeMutedBackgroundColor: Color {
@@ -747,7 +747,7 @@ private struct LiveWorkoutExercisePickerSheet: View {
         VStack(alignment: .leading, spacing: 16) {
           HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-              .foregroundColor(.secondary)
+              .foregroundColor(AppColors.textSecondary)
             TextField("Search exercises", text: $searchText)
               .textInputAutocapitalization(.never)
               .disableAutocorrection(true)
