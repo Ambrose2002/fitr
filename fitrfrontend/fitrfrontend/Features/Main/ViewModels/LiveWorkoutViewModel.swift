@@ -234,26 +234,25 @@ final class LiveWorkoutViewModel: ObservableObject {
   }
 
   var restCountdownText: String {
-    guard let restTimerEndsAt else {
+    guard hasActiveRestTimer else {
       return "Ready"
     }
 
-    let remaining = max(Int(restTimerEndsAt.timeIntervalSince(currentDate)), 0)
-    if remaining == 0 {
-      return "Ready"
-    }
-
-    let minutes = remaining / 60
-    let seconds = remaining % 60
+    let minutes = remainingRestSeconds / 60
+    let seconds = remainingRestSeconds % 60
     return String(format: "%02d:%02d", minutes, seconds)
   }
 
-  var hasActiveRestTimer: Bool {
+  var remainingRestSeconds: Int {
     guard let restTimerEndsAt else {
-      return false
+      return 0
     }
 
-    return restTimerEndsAt > currentDate
+    return max(Int(restTimerEndsAt.timeIntervalSince(restCountdownReferenceDate)), 0)
+  }
+
+  var hasActiveRestTimer: Bool {
+    restTimerEndsAt != nil && remainingRestSeconds > 0
   }
 
   var preferredWeightUnit: Unit {
@@ -280,7 +279,11 @@ final class LiveWorkoutViewModel: ObservableObject {
   func toggleSessionTimerPause() {
     if isTimerPaused {
       if let pausedAt {
-        pausedDurationSeconds += max(currentDate.timeIntervalSince(pausedAt), 0)
+        let pausedDuration = max(currentDate.timeIntervalSince(pausedAt), 0)
+        pausedDurationSeconds += pausedDuration
+        if pausedDuration > 0, let restTimerEndsAt {
+          self.restTimerEndsAt = restTimerEndsAt.addingTimeInterval(pausedDuration)
+        }
       }
       isTimerPaused = false
       self.pausedAt = nil
@@ -294,6 +297,31 @@ final class LiveWorkoutViewModel: ObservableObject {
       pausedAt: pausedAt,
       pausedDurationSeconds: pausedDurationSeconds
     )
+  }
+
+  func startRestTimer(seconds: TimeInterval) {
+    guard seconds > 0 else {
+      skipRestTimer()
+      return
+    }
+
+    restTimerEndsAt = currentDate.addingTimeInterval(seconds)
+  }
+
+  func skipRestTimer() {
+    restTimerEndsAt = nil
+  }
+
+  func extendRestTimer(seconds: TimeInterval) {
+    guard seconds > 0 else {
+      return
+    }
+
+    if let restTimerEndsAt {
+      self.restTimerEndsAt = restTimerEndsAt.addingTimeInterval(seconds)
+    } else {
+      startRestTimer(seconds: seconds)
+    }
   }
 
   func load() async {
@@ -494,7 +522,7 @@ final class LiveWorkoutViewModel: ObservableObject {
         )
       }
 
-      restTimerEndsAt = Date().addingTimeInterval(90)
+      startRestTimer(seconds: 60)
       clearScreenErrorMessage()
       clearSetEditorMutationError()
       self.activeSetEditor = nil
@@ -810,10 +838,20 @@ final class LiveWorkoutViewModel: ObservableObject {
         }
 
         self.currentDate = currentDate
-        if let restTimerEndsAt = self.restTimerEndsAt, restTimerEndsAt <= currentDate {
+        if !self.isTimerPaused,
+          let restTimerEndsAt = self.restTimerEndsAt,
+          restTimerEndsAt <= currentDate
+        {
           self.restTimerEndsAt = nil
         }
       }
+  }
+
+  private var restCountdownReferenceDate: Date {
+    if isTimerPaused, let pausedAt {
+      return pausedAt
+    }
+    return currentDate
   }
 
   private func preserveCreatedWorkoutExerciseOnFailedSave(
