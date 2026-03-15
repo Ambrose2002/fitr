@@ -559,8 +559,11 @@ final class WorkoutDetailViewModel: ObservableObject {
   }
 
   private func formattedWeightValue(_ kg: Float) -> String {
-    let displayValue = preferredWeightUnit == .kg ? kg : UnitConverter.kgToLb(kg)
-    return UnitFormatter.formatValue(displayValue, decimalPlaces: 1)
+    let displayValue = WorkoutWeightNormalizer.displayWeight(
+      fromKg: kg,
+      preferredUnit: preferredWeightUnit
+    )
+    return WorkoutWeightNormalizer.formatDisplayWeight(displayValue)
   }
 
   private func formattedDistanceValue(_ km: Float) -> String {

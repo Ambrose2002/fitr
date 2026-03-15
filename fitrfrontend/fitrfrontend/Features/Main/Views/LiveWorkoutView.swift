@@ -345,7 +345,7 @@ struct LiveWorkoutView: View {
           HStack(spacing: 6) {
             Image(systemName: viewModel.isTimerPaused ? "play.fill" : "pause.fill")
               .font(.system(size: 12, weight: .semibold))
-            Text(viewModel.isTimerPaused ? "Resume Timer" : "Pause Timer")
+            Text(viewModel.isTimerPaused ? "Resume Workout Timer" : "Pause Workout Timer")
               .font(.system(size: 13, weight: .semibold))
           }
           .foregroundColor(Color.white.opacity(0.9))
@@ -355,22 +355,83 @@ struct LiveWorkoutView: View {
           .clipShape(Capsule())
         }
         .buttonStyle(.plain)
-
-        if viewModel.hasActiveRestTimer {
-          HStack(spacing: 6) {
-            Image(systemName: "timer")
-              .font(.system(size: 12, weight: .semibold))
-            Text("Rest \(viewModel.restCountdownText)")
-              .font(.system(size: 13, weight: .semibold))
-          }
-          .foregroundColor(Color.white.opacity(0.72))
-          .padding(.horizontal, 12)
-          .padding(.vertical, 8)
-          .background(Color.white.opacity(0.05))
-          .clipShape(Capsule())
-        }
-
         Spacer()
+      }
+
+      if viewModel.hasActiveRestTimer {
+        VStack(alignment: .leading, spacing: 10) {
+          HStack(alignment: .center) {
+            HStack(spacing: 8) {
+              Image(systemName: "timer")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(AppColors.accent)
+              Text(viewModel.isTimerPaused ? "Rest Paused" : "Resting")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(Color.white.opacity(0.86))
+            }
+
+            Spacer()
+
+            Text(viewModel.restCountdownText)
+              .font(.system(size: 28, weight: .black))
+              .foregroundColor(.white)
+              .monospacedDigit()
+          }
+
+          HStack(spacing: 10) {
+            Button {
+              viewModel.skipRestTimer()
+            } label: {
+              Label("Skip", systemImage: "forward.fill")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(Color.white.opacity(0.9))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.08))
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+
+            Button {
+              viewModel.extendRestTimer(seconds: 60)
+            } label: {
+              Text("+1:00")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(Color.white.opacity(0.9))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.08))
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+          }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.06))
+        .overlay(
+          RoundedRectangle(cornerRadius: 14)
+            .stroke(Color.white.opacity(0.12), lineWidth: 1)
+        )
+        .cornerRadius(14)
+      } else {
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Rest Ready")
+            .font(.system(size: 13, weight: .bold))
+            .foregroundColor(Color.white.opacity(0.86))
+
+          Text("Logging a set starts a 1:00 rest.")
+            .font(.system(size: 12, weight: .medium))
+            .foregroundColor(Color.white.opacity(0.64))
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.04))
+        .overlay(
+          RoundedRectangle(cornerRadius: 14)
+            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .cornerRadius(14)
       }
     }
     .padding(18)
@@ -673,7 +734,12 @@ private struct LiveWorkoutExerciseCard: View {
     guard let kg, kg > 0 else {
       return "--"
     }
-    return UnitFormatter.formatWeight(kg, preferredUnit: preferredWeightUnit)
+    let displayWeight = WorkoutWeightNormalizer.displayWeight(
+      fromKg: kg,
+      preferredUnit: preferredWeightUnit
+    )
+    let weightText = WorkoutWeightNormalizer.formatDisplayWeight(displayWeight)
+    return "\(weightText) \(preferredWeightUnit.abbreviation)"
   }
 
   private func formattedDistance(_ km: Float?) -> String {
@@ -1079,6 +1145,9 @@ private struct LiveWorkoutSetEditorSheet: View {
   @State private var calories = ""
   @State private var localErrorMessage: String?
   @State private var didHydrateDisplayInputs = false
+  @State private var initialCanonicalWeightKg: Float?
+  @State private var initialNormalizedDisplayWeight: Float?
+  @State private var isWeightInputDirty = false
 
   init(
     editor: LiveWorkoutSetEditorContext,
@@ -1096,6 +1165,7 @@ private struct LiveWorkoutSetEditorSheet: View {
     self.deleteErrorMessage = deleteErrorMessage
     self.onSave = onSave
     self.onDelete = onDelete
+    _initialCanonicalWeightKg = State(initialValue: editor.suggestedValues.weight)
     _reps = State(initialValue: editor.suggestedValues.reps.map(String.init) ?? "")
     _weight = State(initialValue: "")
     _duration = State(
@@ -1208,6 +1278,7 @@ private struct LiveWorkoutSetEditorSheet: View {
       }
       .onChange(of: weight) { _, _ in
         localErrorMessage = nil
+        updateWeightInputDirtyState()
       }
       .onChange(of: duration) { _, _ in
         localErrorMessage = nil
@@ -1403,10 +1474,20 @@ private struct LiveWorkoutSetEditorSheet: View {
       return nil
     }
 
-    if preferredWeightUnit == .kg {
-      return displayValue
+    let normalizedDisplayWeight = WorkoutWeightNormalizer.snapToStep(displayValue)
+
+    if !isWeightInputDirty,
+      let initialCanonicalWeightKg,
+      let initialNormalizedDisplayWeight,
+      WorkoutWeightNormalizer.isEffectivelyEqual(normalizedDisplayWeight, initialNormalizedDisplayWeight)
+    {
+      return initialCanonicalWeightKg
     }
-    return UnitConverter.lbToKg(displayValue)
+
+    return WorkoutWeightNormalizer.backendKg(
+      fromDisplayWeight: normalizedDisplayWeight,
+      preferredUnit: preferredWeightUnit
+    )
   }
 
   private func backendDistance(from displayValue: Float?) -> Float? {
@@ -1424,7 +1505,12 @@ private struct LiveWorkoutSetEditorSheet: View {
     guard let kg else {
       return "--"
     }
-    return UnitFormatter.formatWeight(kg, preferredUnit: preferredWeightUnit)
+    let displayWeight = WorkoutWeightNormalizer.displayWeight(
+      fromKg: kg,
+      preferredUnit: preferredWeightUnit
+    )
+    let valueText = WorkoutWeightNormalizer.formatDisplayWeight(displayWeight)
+    return "\(valueText) \(preferredWeightUnit.abbreviation)"
   }
 
   private func formatDistance(_ km: Float?) -> String {
@@ -1440,8 +1526,18 @@ private struct LiveWorkoutSetEditorSheet: View {
     }
 
     if let weightValue = editor.suggestedValues.weight {
-      let displayWeight = preferredWeightUnit == .kg ? weightValue : UnitConverter.kgToLb(weightValue)
-      weight = Self.displayValue(for: displayWeight)
+      let displayWeight = WorkoutWeightNormalizer.displayWeight(
+        fromKg: weightValue,
+        preferredUnit: preferredWeightUnit
+      )
+      initialCanonicalWeightKg = weightValue
+      initialNormalizedDisplayWeight = displayWeight
+      weight = WorkoutWeightNormalizer.formatDisplayWeight(displayWeight)
+      isWeightInputDirty = false
+    } else {
+      initialCanonicalWeightKg = nil
+      initialNormalizedDisplayWeight = nil
+      isWeightInputDirty = false
     }
 
     if let distanceValue = editor.suggestedValues.distance {
@@ -1452,6 +1548,29 @@ private struct LiveWorkoutSetEditorSheet: View {
     }
 
     didHydrateDisplayInputs = true
+  }
+
+  private func updateWeightInputDirtyState() {
+    guard didHydrateDisplayInputs else {
+      return
+    }
+
+    let trimmedWeight = weight.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let initialNormalizedDisplayWeight else {
+      isWeightInputDirty = !trimmedWeight.isEmpty
+      return
+    }
+
+    guard let parsedWeight = Float(trimmedWeight), parsedWeight.isFinite else {
+      isWeightInputDirty = !trimmedWeight.isEmpty
+      return
+    }
+
+    let normalizedWeight = WorkoutWeightNormalizer.snapToStep(parsedWeight)
+    isWeightInputDirty = !WorkoutWeightNormalizer.isEffectivelyEqual(
+      normalizedWeight,
+      initialNormalizedDisplayWeight
+    )
   }
 
   private static func displayValue(for value: Float?) -> String {

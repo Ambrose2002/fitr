@@ -639,8 +639,11 @@ struct PlanDayExerciseCard: View {
   }
 
   private func formattedWeight(_ kg: Float) -> String {
-    let displayValue = preferredWeightUnit == .kg ? kg : UnitConverter.kgToLb(kg)
-    return UnitFormatter.formatValue(displayValue, decimalPlaces: 1)
+    let displayValue = WorkoutWeightNormalizer.displayWeight(
+      fromKg: kg,
+      preferredUnit: preferredWeightUnit
+    )
+    return WorkoutWeightNormalizer.formatDisplayWeight(displayValue)
   }
 
   private func formattedDistance(_ km: Float) -> String {
@@ -1115,8 +1118,10 @@ struct AddPlanDayExerciseTargetsSheet: View {
   }
 
   private func backendWeight(from value: Float) -> Float {
-    let kgValue = preferredWeightUnit == .kg ? value : UnitConverter.lbToKg(value)
-    return UnitConverter.round(kgValue, decimalPlaces: 1)
+    WorkoutWeightNormalizer.backendKg(
+      fromDisplayWeight: value,
+      preferredUnit: preferredWeightUnit
+    )
   }
 
   private func backendDistance(from value: Float) -> Float {
@@ -1138,6 +1143,9 @@ struct EditPlanDayExerciseTargetsSheet: View {
   @State private var targetDistance: String
   @State private var targetCalories: String
   @State private var targetWeight: String
+  @State private var initialCanonicalWeightKg: Float?
+  @State private var initialNormalizedDisplayWeight: Float?
+  @State private var isWeightInputDirty = false
   private let maxSets = 30
   private let maxReps = 200
   private let maxDistance = Float(1_000)
@@ -1223,6 +1231,9 @@ struct EditPlanDayExerciseTargetsSheet: View {
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         prefillTargets()
+      }
+      .onChange(of: targetWeight) { _, _ in
+        updateWeightInputDirtyState()
       }
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
@@ -1353,13 +1364,20 @@ struct EditPlanDayExerciseTargetsSheet: View {
     }
 
     if exercise.targetWeight > 0 {
-      let displayValue =
-        preferredWeightUnit == .kg
-        ? exercise.targetWeight
-        : UnitConverter.kgToLb(exercise.targetWeight)
+      let displayValue = WorkoutWeightNormalizer.displayWeight(
+        fromKg: exercise.targetWeight,
+        preferredUnit: preferredWeightUnit
+      )
       if displayValue > 0 && displayValue <= maxWeight {
-        targetWeight = UnitFormatter.formatValue(displayValue, decimalPlaces: 1)
+        targetWeight = WorkoutWeightNormalizer.formatDisplayWeight(displayValue)
+        initialCanonicalWeightKg = exercise.targetWeight
+        initialNormalizedDisplayWeight = displayValue
+        isWeightInputDirty = false
       }
+    } else {
+      initialCanonicalWeightKg = nil
+      initialNormalizedDisplayWeight = nil
+      isWeightInputDirty = false
     }
 
     switch exercise.measurementType {
@@ -1422,13 +1440,44 @@ struct EditPlanDayExerciseTargetsSheet: View {
   }
 
   private func backendWeight(from value: Float) -> Float {
-    let kgValue = preferredWeightUnit == .kg ? value : UnitConverter.lbToKg(value)
-    return UnitConverter.round(kgValue, decimalPlaces: 1)
+    let normalizedDisplayWeight = WorkoutWeightNormalizer.snapToStep(value)
+
+    if !isWeightInputDirty,
+      let initialCanonicalWeightKg,
+      let initialNormalizedDisplayWeight,
+      WorkoutWeightNormalizer.isEffectivelyEqual(normalizedDisplayWeight, initialNormalizedDisplayWeight)
+    {
+      return initialCanonicalWeightKg
+    }
+
+    return WorkoutWeightNormalizer.backendKg(
+      fromDisplayWeight: normalizedDisplayWeight,
+      preferredUnit: preferredWeightUnit
+    )
   }
 
   private func backendDistance(from value: Float) -> Float {
     let kmValue = preferredDistanceUnit == .km ? value : UnitConverter.miToKm(value)
     return UnitConverter.round(kmValue, decimalPlaces: 1)
+  }
+
+  private func updateWeightInputDirtyState() {
+    let trimmedWeight = targetWeight.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let initialNormalizedDisplayWeight else {
+      isWeightInputDirty = !trimmedWeight.isEmpty
+      return
+    }
+
+    guard let parsedWeight = Float(trimmedWeight), parsedWeight.isFinite else {
+      isWeightInputDirty = !trimmedWeight.isEmpty
+      return
+    }
+
+    let normalizedWeight = WorkoutWeightNormalizer.snapToStep(parsedWeight)
+    isWeightInputDirty = !WorkoutWeightNormalizer.isEffectivelyEqual(
+      normalizedWeight,
+      initialNormalizedDisplayWeight
+    )
   }
 }
 
