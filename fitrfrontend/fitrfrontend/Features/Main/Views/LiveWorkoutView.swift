@@ -798,13 +798,7 @@ private struct LiveWorkoutExercisePickerSheet: View {
   @State private var selectedExercise: ExerciseResponse?
 
   private var filteredExercises: [ExerciseResponse] {
-    let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-    if trimmed.isEmpty {
-      return exercises.sorted { $0.name < $1.name }
-    }
-    return exercises
-      .filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
-      .sorted { $0.name < $1.name }
+    ExerciseSearchMatcher.filterAndSort(exercises, query: searchText)
   }
 
   private var canContinue: Bool {
