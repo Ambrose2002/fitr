@@ -798,13 +798,16 @@ private struct LiveWorkoutExercisePickerSheet: View {
   @State private var selectedExercise: ExerciseResponse?
 
   private var filteredExercises: [ExerciseResponse] {
-    let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-    if trimmed.isEmpty {
-      return exercises.sorted { $0.name < $1.name }
-    }
-    return exercises
-      .filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
-      .sorted { $0.name < $1.name }
+    ExerciseSearchMatcher.filterAndSort(exercises, query: searchText)
+  }
+
+  private var canContinue: Bool {
+    guard let selectedExercise else { return false }
+    return !existingExerciseIds.contains(selectedExercise.id)
+  }
+
+  private var hasSelectableExercises: Bool {
+    exercises.contains { !existingExerciseIds.contains($0.id) }
   }
 
   var body: some View {
@@ -822,45 +825,75 @@ private struct LiveWorkoutExercisePickerSheet: View {
           .background(Color(.systemGray6))
           .cornerRadius(12)
 
+          if !exercises.isEmpty && !hasSelectableExercises {
+            Text("Every available exercise is already in this workout.")
+              .font(.system(size: 13, weight: .medium))
+              .foregroundColor(AppColors.textSecondary)
+          }
+
           VStack(spacing: 8) {
             ForEach(filteredExercises) { exercise in
               let isSelected = selectedExercise?.id == exercise.id
               let isExisting = existingExerciseIds.contains(exercise.id)
 
               Button {
-                selectedExercise = exercise
+                guard !isExisting else { return }
+
+                if selectedExercise?.id == exercise.id {
+                  selectedExercise = nil
+                } else {
+                  selectedExercise = exercise
+                }
               } label: {
                 HStack {
                   VStack(alignment: .leading, spacing: 6) {
                     Text(exercise.name)
                       .font(.system(size: 16, weight: .semibold))
-                      .foregroundColor(AppColors.textPrimary)
+                      .foregroundColor(isExisting ? AppColors.textSecondary : AppColors.textPrimary)
 
                     Text(
-                      isExisting
-                        ? "\(exercise.measurementType.workoutDisplayLabel) • Already in workout"
-                        : exercise.measurementType.workoutDisplayLabel
+                      exercise.measurementType.workoutDisplayLabel
                     )
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(AppColors.textSecondary)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(isExisting ? AppColors.textSecondary : AppColors.accent)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                      isExisting ? Color(.systemGray5) : AppColors.accent.opacity(0.12)
+                    )
+                    .cornerRadius(999)
                   }
 
                   Spacer()
 
-                  if isSelected {
+                  if isExisting {
+                    HStack(spacing: 6) {
+                      Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                      Text("Already Picked")
+                        .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundColor(AppColors.textSecondary)
+                  } else if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                       .foregroundColor(AppColors.accent)
                   }
                 }
                 .padding(12)
-                .background(isSelected ? AppColors.accent.opacity(0.08) : Color(.systemBackground))
+                .background(
+                  isExisting
+                    ? Color(.systemGray6)
+                    : (isSelected ? AppColors.accent.opacity(0.08) : Color(.systemBackground))
+                )
                 .overlay(
                   RoundedRectangle(cornerRadius: 12)
                     .stroke(Color(.systemGray4), lineWidth: 1)
                 )
                 .cornerRadius(12)
+                .opacity(isExisting ? 0.6 : 1)
               }
               .buttonStyle(.plain)
+              .disabled(isExisting)
             }
           }
         }
@@ -879,13 +912,16 @@ private struct LiveWorkoutExercisePickerSheet: View {
             guard let selectedExercise else {
               return
             }
+            guard !existingExerciseIds.contains(selectedExercise.id) else {
+              return
+            }
 
             Task { @MainActor in
               await onAdd(selectedExercise)
               dismiss()
             }
           }
-          .disabled(selectedExercise == nil)
+          .disabled(!canContinue)
         }
       }
     }
