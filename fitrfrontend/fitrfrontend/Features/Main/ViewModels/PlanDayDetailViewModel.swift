@@ -122,9 +122,10 @@ final class PlanDayDetailViewModel: ObservableObject {
     do {
       let fetchedExercises = try await workoutPlanService.getExercises(dayId: dayId)
       let exerciseCatalog = try await workoutPlanService.getAllExercises(systemOnly: false)
-      let lookup = Dictionary(uniqueKeysWithValues: exerciseCatalog.map { ($0.id, $0) })
+      let sortedCatalog = sortedExercises(exerciseCatalog)
+      let lookup = Dictionary(uniqueKeysWithValues: sortedCatalog.map { ($0.id, $0) })
 
-      availableExercises = exerciseCatalog
+      availableExercises = sortedCatalog
       exercises = fetchedExercises.map { response in
         let meta = lookup[response.exerciseId]
         return EnrichedPlanExercise(
@@ -194,6 +195,23 @@ final class PlanDayDetailViewModel: ObservableObject {
     } catch {
       errorMessage = "Failed to add exercise."
     }
+  }
+
+  func createCustomExercise(
+    name: String,
+    measurementType: MeasurementType
+  ) async throws -> ExerciseResponse {
+    let payload = CreateExerciseRequest(name: name, measurementType: measurementType)
+    let createdExercise = try await workoutPlanService.createExercise(
+      request: payload,
+      isSystemDefined: false
+    )
+    upsertAvailableExercise(createdExercise)
+    errorMessage = nil
+    let loadedAt = Date()
+    persistSnapshot(loadedAt: loadedAt)
+    syncPlanDetailSnapshot(loadedAt: loadedAt)
+    return createdExercise
   }
 
   func updateExercise(
@@ -455,5 +473,24 @@ final class PlanDayDetailViewModel: ObservableObject {
       isActiveToggle: snapshot.value.isActiveToggle
     )
     sessionStore.runtimeViewCache.store(updatedSnapshot, for: .planDetail(planId), at: loadedAt)
+  }
+
+  private func upsertAvailableExercise(_ exercise: ExerciseResponse) {
+    if let index = availableExercises.firstIndex(where: { $0.id == exercise.id }) {
+      availableExercises[index] = exercise
+    } else {
+      availableExercises.append(exercise)
+    }
+    availableExercises = sortedExercises(availableExercises)
+  }
+
+  private func sortedExercises(_ source: [ExerciseResponse]) -> [ExerciseResponse] {
+    source.sorted { lhs, rhs in
+      let order = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+      if order == .orderedSame {
+        return lhs.id < rhs.id
+      }
+      return order == .orderedAscending
+    }
   }
 }

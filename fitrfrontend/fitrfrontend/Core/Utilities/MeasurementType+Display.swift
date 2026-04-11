@@ -26,4 +26,23 @@ extension MeasurementType {
       return "Calories"
     }
   }
+
+  var customExerciseFormLabel: String {
+    switch self {
+    case .reps:
+      return "Strength (Reps)"
+    case .repsAndTime:
+      return "Paced (Reps + Time)"
+    case .time:
+      return "Timed (Time)"
+    case .timeAndWeight:
+      return "Timed + Weight"
+    case .repsAndWeight:
+      return "Strength + Weight"
+    case .distanceAndTime:
+      return "Distance + Time"
+    case .caloriesAndTime:
+      return "Calories + Time"
+    }
+  }
 }

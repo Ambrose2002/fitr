@@ -90,6 +90,88 @@ struct WorkoutPlanService {
     }
   }
 
+  func createExercise(
+    request payload: CreateExerciseRequest,
+    isSystemDefined: Bool = false
+  ) async throws -> ExerciseResponse {
+    guard var components = URLComponents(string: Constants.baseUrl + APIEndpoints.exercises) else {
+      throw URLError(.badURL)
+    }
+
+    components.queryItems = [
+      URLQueryItem(name: "isSystemDefined", value: isSystemDefined ? "true" : "false")
+    ]
+
+    guard let url = components.url else {
+      throw URLError(.badURL)
+    }
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    addAuthHeaders(&request)
+    request.httpBody = try JSONEncoder().encode(payload)
+
+    let (data, response) = try await URLSession.shared.data(for: request)
+
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw URLError(.badServerResponse)
+    }
+
+    switch httpResponse.statusCode {
+    case 200...299:
+      return try createDecoder().decode(ExerciseResponse.self, from: data)
+
+    case 400...599:
+      if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
+        throw apiError
+      }
+      throw URLError(.unknown)
+
+    default:
+      throw URLError(.unknown)
+    }
+  }
+
+  func updateExercise(
+    id: Int64,
+    request payload: CreateExerciseRequest
+  ) async throws -> ExerciseResponse {
+    guard let resolvedId = Int(exactly: id) else {
+      throw URLError(.badURL)
+    }
+
+    guard let url = URL(string: Constants.baseUrl + APIEndpoints.exercise(id: resolvedId)) else {
+      throw URLError(.badURL)
+    }
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "PUT"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    addAuthHeaders(&request)
+    request.httpBody = try JSONEncoder().encode(payload)
+
+    let (data, response) = try await URLSession.shared.data(for: request)
+
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw URLError(.badServerResponse)
+    }
+
+    switch httpResponse.statusCode {
+    case 200...299:
+      return try createDecoder().decode(ExerciseResponse.self, from: data)
+
+    case 400...599:
+      if let apiError = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
+        throw apiError
+      }
+      throw URLError(.unknown)
+
+    default:
+      throw URLError(.unknown)
+    }
+  }
+
   // MARK: - Workout Plans CRUD
 
   /// Fetches all workout plans for the current user

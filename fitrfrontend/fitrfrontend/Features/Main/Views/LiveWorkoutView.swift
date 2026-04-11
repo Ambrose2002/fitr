@@ -105,7 +105,13 @@ struct LiveWorkoutView: View {
     .sheet(isPresented: $viewModel.showAddExerciseSheet) {
       LiveWorkoutExercisePickerSheet(
         exercises: viewModel.availableExercises,
-        existingExerciseIds: Set(viewModel.exerciseStates.map(\.exercise.id))
+        existingExerciseIds: Set(viewModel.exerciseStates.map(\.exercise.id)),
+        onCreateCustom: { name, measurementType in
+          try await viewModel.createCustomExercise(
+            name: name,
+            measurementType: measurementType
+          )
+        }
       ) { exercise in
         await viewModel.addExercise(exercise)
       }
@@ -792,10 +798,12 @@ private struct LiveWorkoutExercisePickerSheet: View {
 
   let exercises: [ExerciseResponse]
   let existingExerciseIds: Set<Int64>
+  let onCreateCustom: @MainActor (String, MeasurementType) async throws -> ExerciseResponse
   let onAdd: @MainActor (ExerciseResponse) async -> Void
 
   @State private var searchText = ""
   @State private var selectedExercise: ExerciseResponse?
+  @State private var showCreateExerciseSheet = false
 
   private var filteredExercises: [ExerciseResponse] {
     ExerciseSearchMatcher.filterAndSort(exercises, query: searchText)
@@ -835,6 +843,9 @@ private struct LiveWorkoutExercisePickerSheet: View {
             ForEach(filteredExercises) { exercise in
               let isSelected = selectedExercise?.id == exercise.id
               let isExisting = existingExerciseIds.contains(exercise.id)
+              let sourceBadgeColor = exercise.isCustomExercise
+                ? AppColors.warningYellow
+                : AppColors.infoBlue
 
               Button {
                 guard !isExisting else { return }
@@ -851,17 +862,27 @@ private struct LiveWorkoutExercisePickerSheet: View {
                       .font(.system(size: 16, weight: .semibold))
                       .foregroundColor(isExisting ? AppColors.textSecondary : AppColors.textPrimary)
 
-                    Text(
-                      exercise.measurementType.workoutDisplayLabel
-                    )
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(isExisting ? AppColors.textSecondary : AppColors.accent)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                      isExisting ? Color(.systemGray5) : AppColors.accent.opacity(0.12)
-                    )
-                    .cornerRadius(999)
+                    HStack(spacing: 8) {
+                      Text(exercise.measurementType.workoutDisplayLabel)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(isExisting ? AppColors.textSecondary : AppColors.accent)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                          isExisting ? Color(.systemGray5) : AppColors.accent.opacity(0.12)
+                        )
+                        .cornerRadius(999)
+
+                      Text(exercise.sourceBadgeText)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(isExisting ? AppColors.textSecondary : sourceBadgeColor)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                          isExisting ? Color(.systemGray5) : sourceBadgeColor.opacity(0.14)
+                        )
+                        .cornerRadius(999)
+                    }
                   }
 
                   Spacer()
@@ -896,6 +917,27 @@ private struct LiveWorkoutExercisePickerSheet: View {
               .disabled(isExisting)
             }
           }
+
+          Button {
+            showCreateExerciseSheet = true
+          } label: {
+            HStack(spacing: 8) {
+              Image(systemName: "plus")
+                .font(.system(size: 13, weight: .bold))
+              Text("Create Custom Exercise")
+                .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundColor(AppColors.accent)
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+            .background(AppColors.accent.opacity(0.08))
+            .overlay(
+              RoundedRectangle(cornerRadius: 12)
+                .stroke(AppColors.accent.opacity(0.35), lineWidth: 1)
+            )
+            .cornerRadius(12)
+          }
+          .buttonStyle(.plain)
         }
         .padding(16)
       }
@@ -923,6 +965,14 @@ private struct LiveWorkoutExercisePickerSheet: View {
           }
           .disabled(!canContinue)
         }
+      }
+    }
+    .sheet(isPresented: $showCreateExerciseSheet) {
+      CustomExerciseFormSheet(mode: .create) { name, measurementType in
+        try await onCreateCustom(name, measurementType)
+      } onComplete: { exercise in
+        selectedExercise = exercise
+        searchText = ""
       }
     }
   }

@@ -14,6 +14,7 @@ enum RuntimeViewCacheKey: Hashable {
   case planDayDetail(Int64)
   case workoutDetail(Int64)
   case gymLocations
+  case exerciseLibrary
   case weightHistory
   case editProfile
 }

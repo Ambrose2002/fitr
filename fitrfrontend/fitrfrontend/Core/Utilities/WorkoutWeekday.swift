@@ -2,7 +2,7 @@
 //  WorkoutWeekday.swift
 //  fitrfrontend
 //
-//  Created by Codex on 2/28/26.
+//  Created by Ambrose Blay on 2/28/26.
 //
 
 import Foundation

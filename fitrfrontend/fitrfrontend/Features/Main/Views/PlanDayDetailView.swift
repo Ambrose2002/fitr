@@ -438,7 +438,13 @@ private struct PlanDayDetailPageView: View {
     .sheet(isPresented: $viewModel.showAddExerciseSheet) {
       AddPlanDayExerciseSheet(
         exercises: viewModel.availableExercises,
-        unavailableExerciseIds: viewModel.existingExerciseIds
+        unavailableExerciseIds: viewModel.existingExerciseIds,
+        onCreateCustom: { name, measurementType in
+          try await viewModel.createCustomExercise(
+            name: name,
+            measurementType: measurementType
+          )
+        }
       ) { exercise, targets in
         await viewModel.addExercise(exercise: exercise, targets: targets)
       }
@@ -765,11 +771,13 @@ struct AddPlanDayExerciseSheet: View {
 
   let exercises: [ExerciseResponse]
   let unavailableExerciseIds: Set<Int64>
+  let onCreateCustom: @MainActor (String, MeasurementType) async throws -> ExerciseResponse
   let onAdd: @MainActor (ExerciseResponse, PlanExerciseTargets) async -> Void
 
   @State private var searchText = ""
   @State private var selectedExercise: ExerciseResponse?
   @State private var showTargetsSheet = false
+  @State private var showCreateExerciseSheet = false
 
   private var filteredExercises: [ExerciseResponse] {
     ExerciseSearchMatcher.filterAndSort(exercises, query: searchText)
@@ -806,6 +814,27 @@ struct AddPlanDayExerciseSheet: View {
             }
           }
 
+          Button {
+            showCreateExerciseSheet = true
+          } label: {
+            HStack(spacing: 8) {
+              Image(systemName: "plus")
+                .font(.system(size: 13, weight: .bold))
+              Text("Create Custom Exercise")
+                .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundColor(AppColors.accent)
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+            .background(AppColors.accent.opacity(0.08))
+            .overlay(
+              RoundedRectangle(cornerRadius: 12)
+                .stroke(AppColors.accent.opacity(0.35), lineWidth: 1)
+            )
+            .cornerRadius(12)
+          }
+          .buttonStyle(.plain)
+
         }
         .padding(16)
       }
@@ -835,6 +864,14 @@ struct AddPlanDayExerciseSheet: View {
         .presentationDetents([.medium])
       }
     }
+    .sheet(isPresented: $showCreateExerciseSheet) {
+      CustomExerciseFormSheet(mode: .create) { name, measurementType in
+        try await onCreateCustom(name, measurementType)
+      } onComplete: { exercise in
+        selectedExercise = exercise
+        searchText = ""
+      }
+    }
   }
 
   private var searchField: some View {
@@ -853,6 +890,7 @@ struct AddPlanDayExerciseSheet: View {
   private func exerciseRow(_ exercise: ExerciseResponse) -> some View {
     let isSelected = selectedExercise?.id == exercise.id
     let isUnavailable = unavailableExerciseIds.contains(exercise.id)
+    let sourceBadgeColor = exercise.isCustomExercise ? AppColors.warningYellow : AppColors.infoBlue
 
     return Button {
       guard !isUnavailable else { return }
@@ -869,15 +907,27 @@ struct AddPlanDayExerciseSheet: View {
             .font(.system(size: 16, weight: .semibold))
             .foregroundColor(isUnavailable ? AppColors.textSecondary : AppColors.textPrimary)
 
-          Text(exercise.measurementType.workoutDisplayLabel)
-            .font(.system(size: 11, weight: .bold))
-            .foregroundColor(isUnavailable ? AppColors.textSecondary : AppColors.accent)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(
-              isUnavailable ? Color(.systemGray5) : AppColors.accent.opacity(0.12)
-            )
-            .cornerRadius(999)
+          HStack(spacing: 8) {
+            Text(exercise.measurementType.workoutDisplayLabel)
+              .font(.system(size: 11, weight: .bold))
+              .foregroundColor(isUnavailable ? AppColors.textSecondary : AppColors.accent)
+              .padding(.horizontal, 8)
+              .padding(.vertical, 4)
+              .background(
+                isUnavailable ? Color(.systemGray5) : AppColors.accent.opacity(0.12)
+              )
+              .cornerRadius(999)
+
+            Text(exercise.sourceBadgeText)
+              .font(.system(size: 10, weight: .bold))
+              .foregroundColor(isUnavailable ? AppColors.textSecondary : sourceBadgeColor)
+              .padding(.horizontal, 8)
+              .padding(.vertical, 4)
+              .background(
+                isUnavailable ? Color(.systemGray5) : sourceBadgeColor.opacity(0.14)
+              )
+              .cornerRadius(999)
+          }
         }
 
         Spacer()
