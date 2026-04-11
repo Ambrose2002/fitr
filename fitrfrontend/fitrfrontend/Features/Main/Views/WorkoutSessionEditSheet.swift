@@ -2,7 +2,7 @@
 //  WorkoutSessionEditSheet.swift
 //  fitrfrontend
 //
-//  Created by Codex on 3/2/26.
+//  Created by Ambrose Blay on 3/2/26.
 //
 
 import SwiftUI
@@ -149,22 +149,25 @@ struct WorkoutSessionEditSheet: View {
                     draft.selectedLocationId = location.id
                   } label: {
                     HStack(spacing: 12) {
-                      Image(systemName: draft.selectedLocationId == location.id
-                        ? "largecircle.fill.circle"
-                        : "circle")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(
-                          draft.selectedLocationId == location.id
-                            ? AppColors.accent
-                            : AppColors.textSecondary
-                        )
+                      Image(
+                        systemName: draft.selectedLocationId == location.id
+                          ? "largecircle.fill.circle"
+                          : "circle"
+                      )
+                      .font(.system(size: 16, weight: .semibold))
+                      .foregroundColor(
+                        draft.selectedLocationId == location.id
+                          ? AppColors.accent
+                          : AppColors.textSecondary
+                      )
 
                       VStack(alignment: .leading, spacing: 4) {
                         Text(location.name)
                           .font(.system(size: 15, weight: .semibold))
                           .foregroundColor(AppColors.textPrimary)
 
-                        if !location.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        if !location.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        {
                           Text(location.address)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(AppColors.textSecondary)

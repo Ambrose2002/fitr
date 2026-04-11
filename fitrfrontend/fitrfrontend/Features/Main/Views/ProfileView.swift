@@ -149,6 +149,18 @@ struct ProfileView: View {
             viewModel.applyLocationCount(count)
           }
         }
+
+        Divider()
+          .padding(.leading, 64)
+
+        ProfileSettingsNavigationRow(
+          iconName: "figure.strengthtraining.traditional",
+          iconTint: AppColors.accent,
+          title: "Exercise Library",
+          subtitle: viewModel.rowSubtitles.exercises
+        ) {
+          ExerciseLibraryView(sessionStore: sessionStore)
+        }
       }
 
       sectionGroup(title: "PREFERENCES") {
