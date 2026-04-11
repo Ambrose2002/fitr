@@ -24,6 +24,7 @@ final class ProfileViewModel: ObservableObject {
   struct RowSubtitles {
     var personalInfo: String
     var locations: String
+    var exercises: String
     var units: String
     var appVersion: String
   }
@@ -39,6 +40,7 @@ final class ProfileViewModel: ObservableObject {
   @Published private(set) var rowSubtitles = RowSubtitles(
     personalInfo: "Name, email, gender, goals",
     locations: "No saved locations yet",
+    exercises: "Create and edit custom exercises",
     units: "Weight: KG • Distance: KM",
     appVersion: ProfileViewModel.appVersionString
   )

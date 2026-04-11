@@ -333,7 +333,7 @@ final class LiveWorkoutViewModel: ObservableObject {
       async let catalogRequest = workoutPlanService.getAllExercises(systemOnly: false)
       let (fetchedWorkout, fetchedCatalog) = try await (workoutRequest, catalogRequest)
       workout = fetchedWorkout
-      availableExercises = fetchedCatalog
+      availableExercises = sortedExercises(fetchedCatalog)
       let ignoredInvalidSetLogs = rebuildExerciseStates()
       applySuccessfulReloadMessage(ignoredInvalidSetLogs: ignoredInvalidSetLogs)
     } catch let apiError as APIErrorResponse {
@@ -789,6 +789,20 @@ final class LiveWorkoutViewModel: ObservableObject {
     }
   }
 
+  func createCustomExercise(
+    name: String,
+    measurementType: MeasurementType
+  ) async throws -> ExerciseResponse {
+    let payload = CreateExerciseRequest(name: name, measurementType: measurementType)
+    let createdExercise = try await workoutPlanService.createExercise(
+      request: payload,
+      isSystemDefined: false
+    )
+    upsertAvailableExercise(createdExercise)
+    errorMessage = nil
+    return createdExercise
+  }
+
   func removeExercise(_ exerciseState: LiveWorkoutExerciseState) async {
     guard exerciseState.canRemove else {
       return
@@ -994,6 +1008,25 @@ final class LiveWorkoutViewModel: ObservableObject {
 
     exerciseStates = orderedStates + adHocStates
     return ignoredInvalidSetLogs
+  }
+
+  private func upsertAvailableExercise(_ exercise: ExerciseResponse) {
+    if let index = availableExercises.firstIndex(where: { $0.id == exercise.id }) {
+      availableExercises[index] = exercise
+    } else {
+      availableExercises.append(exercise)
+    }
+    availableExercises = sortedExercises(availableExercises)
+  }
+
+  private func sortedExercises(_ source: [ExerciseResponse]) -> [ExerciseResponse] {
+    source.sorted { lhs, rhs in
+      let order = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+      if order == .orderedSame {
+        return lhs.id < rhs.id
+      }
+      return order == .orderedAscending
+    }
   }
 
   private func buildRows(
