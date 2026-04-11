@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -204,6 +205,10 @@ public class WorkoutSessionService {
         }
         Exercise exercise = exerciseRepo.findById(req.getExerciseId())
                 .orElseThrow(() -> new DataNotFoundException(req.getExerciseId(), "Exercise"));
+        if (!exercise.isSystemDefined()
+                && (exercise.getUser() == null || !Objects.equals(exercise.getUser().getEmail(), email))) {
+            throw new DataCreationFailedException("user does not own exercise");
+        }
 
         List<WorkoutExercise> existingWorkoutExercises = workoutExerciseRepo.findByWorkoutSessionIdAndExerciseId(
                 workoutId, req.getExerciseId());

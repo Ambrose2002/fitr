@@ -73,6 +73,11 @@ public class ExerciseController {
 
     @PutMapping("/{id}")
     public ExerciseResponse updateExercise(@PathVariable Long id, @RequestBody CreateExerciseRequest req) {
-        return exerciseService.updateExercise(req, id);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new AuthenticationFailedException("auth not found");
+        }
+        String email = auth.getName();
+        return exerciseService.updateExercise(email, req, id);
     }
 }

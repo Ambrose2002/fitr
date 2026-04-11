@@ -73,23 +73,13 @@ public class ExerciseService {
     public ExerciseResponse updateExercise(String email, CreateExerciseRequest req, Long exerciseId) {
         Exercise exercise = exerciseRepo.findById(exerciseId).orElseThrow(() -> new DataNotFoundException(exerciseId, "exercise"));
 
-        if (!Objects.equals(exercise.getUser().getEmail(), email)) {
+        if (exercise.isSystemDefined()) {
+            throw new DataCreationFailedException("system exercises cannot be updated");
+        }
+
+        if (exercise.getUser() == null || !Objects.equals(exercise.getUser().getEmail(), email)) {
             throw new DataCreationFailedException("user does not own exercise");
         }
-
-        if (req.getName() != null && !req.getName().isEmpty()) {
-            exercise.setName(req.getName());
-        }
-
-        if (req.getMeasurementType() != null) {
-            exercise.setMeasurementType(req.getMeasurementType());
-        }
-
-        return toExerciseResponse(exerciseRepo.save(exercise));
-    }
-
-    public ExerciseResponse updateExercise(CreateExerciseRequest req, Long exerciseId) {
-        Exercise exercise = exerciseRepo.findById(exerciseId).orElseThrow(() -> new DataNotFoundException(exerciseId, "exercise"));
 
         if (req.getName() != null && !req.getName().isEmpty()) {
             exercise.setName(req.getName());
