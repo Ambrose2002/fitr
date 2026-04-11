@@ -12,9 +12,7 @@ struct ExerciseSearchMatcher {
     let preparedQuery = PreparedText(query)
 
     if preparedQuery.normalized.isEmpty {
-      return exercises.sorted { lhs, rhs in
-        lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-      }
+      return exercises.sorted(by: isAlphabeticalOrder)
     }
 
     let ranked = exercises.compactMap { exercise -> RankedExercise? in
@@ -30,10 +28,17 @@ struct ExerciseSearchMatcher {
         if lhs.rank != rhs.rank {
           return lhs.rank < rhs.rank
         }
-        return lhs.exercise.name.localizedCaseInsensitiveCompare(rhs.exercise.name)
-          == .orderedAscending
+        return isAlphabeticalOrder(lhs.exercise, rhs.exercise)
       }
       .map(\.exercise)
+  }
+
+  private static func isAlphabeticalOrder(_ lhs: ExerciseResponse, _ rhs: ExerciseResponse) -> Bool {
+    let order = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+    if order == .orderedSame {
+      return lhs.id < rhs.id
+    }
+    return order == .orderedAscending
   }
 
   private static func matchRank(for candidate: PreparedText, query: PreparedText) -> Int? {
